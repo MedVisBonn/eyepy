@@ -1,7 +1,9 @@
 pip==19.2.3
+commitizen==1.6.0
 bump2version==0.5.11
 wheel==0.33.6
 watchdog==0.9.0
+black==19.10b0
 flake8==3.7.8
 tox==3.14.0
 coverage==4.5.4

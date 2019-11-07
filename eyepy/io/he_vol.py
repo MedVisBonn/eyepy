@@ -1,7 +1,7 @@
 from struct import unpack
 import numpy as np
 import os
-import cv2
+from skimage import exposure
 
 import functools
 
@@ -521,7 +521,7 @@ def improve_contrast(bscans, method="hist_match"):
         bscans = hist_match(bscans)
     elif method == "equalize":
         bscans = (bscans * 255).astype("uint8")
-        bscans = cv2.equalizeHist(bscans)
+        bscans = exposure.equalize_hist(bscans)
     else:
         bscans = (bscans * 255).astype("uint8")
 
