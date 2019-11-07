@@ -174,3 +174,18 @@ def log_gabor(image, wavelength=3, sigma=0.55, angle=0.0, angular_frac=1/6):
     even_odd = np.fft.ifft2(image_fft*kernel)
     
     return even_odd
+
+def mean_phase(image, min_wavelength = 3,sigma=0.55,n_scale=4, n_orient=6):
+    phase_sum=np.zeros(image.shape)
+    count = 0
+    for scale in range(n_scale):
+        wavelength = min_wavelength*2.1**scale
+        for orient in range(n_orient):
+            angle = orient*np.pi/n_orient
+            eo = log_gabor(image, wavelength, sigma, angle=angle, angular_frac=1/n_orient)
+            phase = np.arctan2(np.abs(eo.imag), eo.real)
+            ampl = np.sqrt(eo.imag**2+eo.real**2)
+            phase_sum += phase*ampl
+            count += 1
+            
+    return phase_sum/count
