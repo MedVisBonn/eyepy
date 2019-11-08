@@ -54,7 +54,8 @@ def multimodal_2D(
     model_robust, inliers = ransac(
         (src_key[matches[:, 1]], dest_key[matches[:, 0]]),
         AffineTransform,
-        min_samples=3, **ransac_kwargs
+        min_samples=3,
+        **ransac_kwargs
     )
 
     # Warp Image

@@ -4,6 +4,7 @@ import numpy as np
 
 Shape = Union[int, Tuple[int, int]]
 
+
 @lru_cache(maxsize=8)
 def filtergrid(size: Shape) -> Tuple[np.ndarray, np.ndarray]:
     """ Generates grid for constructing frequency domain filters
@@ -77,9 +78,7 @@ def theta_filtergrid(size: Shape) -> np.ndarray:
 
 
 @lru_cache(maxsize=8)
-def lowpassfilter(
-    size: Shape, cutoff: float, order: int
-) -> np.ndarray:
+def lowpassfilter(size: Shape, cutoff: float, order: int) -> np.ndarray:
     """ Constructs a low-pass butterworth filter.
 
     Parameters
@@ -115,9 +114,7 @@ def lowpassfilter(
 
 
 @lru_cache(maxsize=8)
-def _log_gabor_radial(
-    size: Shape, wavelength: float, sigma: float
-) -> np.ndarray:
+def _log_gabor_radial(size: Shape, wavelength: float, sigma: float) -> np.ndarray:
     """
 
     Parameters
@@ -151,9 +148,7 @@ def _log_gabor_radial(
 
 
 @lru_cache(maxsize=8)
-def _log_gabor_angular(
-    size: Shape, angle: float, angular_frac: float
-) -> np.ndarray:
+def _log_gabor_angular(size: Shape, angle: float, angular_frac: float) -> np.ndarray:
     # For each point in the filter matrix calculate the angular distance from
     # the specified filter orientation.  To overcome the angular wrap-around
     # problem sine difference and cosine difference values are first computed
