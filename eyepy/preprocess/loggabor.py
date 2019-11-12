@@ -1,5 +1,7 @@
-from typing import Union, Tuple
+# -*- coding: utf-8 -*-
 from functools import lru_cache
+from typing import Tuple, Union
+
 import numpy as np
 
 Shape = Union[int, Tuple[int, int]]
@@ -7,7 +9,7 @@ Shape = Union[int, Tuple[int, int]]
 
 @lru_cache(maxsize=8)
 def filtergrid(size: Shape) -> Tuple[np.ndarray, np.ndarray]:
-    """ Generates grid for constructing frequency domain filters
+    """Generates grid for constructing frequency domain filters.
 
     Parameters
     ----------
@@ -79,7 +81,7 @@ def theta_filtergrid(size: Shape) -> np.ndarray:
 
 @lru_cache(maxsize=8)
 def lowpassfilter(size: Shape, cutoff: float, order: int) -> np.ndarray:
-    """ Constructs a low-pass butterworth filter.
+    """Constructs a low-pass butterworth filter.
 
     Parameters
     ----------
@@ -94,7 +96,7 @@ def lowpassfilter(size: Shape, cutoff: float, order: int) -> np.ndarray:
 
     The filter is compute using the following formula:
     filter = 1.0 / (1.0 + (radius / cutoff) ^ (2 * order))
-    
+
     The frequency origin of the returned filter is at the corners.
 
     Inspired by lowpassfilter.m found at https://www.peterkovesi.com/matlabfns/
@@ -267,6 +269,210 @@ def mean_phase(
             phase = np.arctan2(np.abs(eo.imag), eo.real)
             ampl = np.sqrt(eo.imag ** 2 + eo.real ** 2)
             phase_sum += phase * ampl
-            count += 1
+            count += ampl
 
     return phase_sum / count
+
+
+def phase_congruency(
+    image: np.ndarray,
+    min_wavelength: float = 3,
+    sigma: float = 0.55,
+    n_scale: int = 4,
+    mult: float = 2.1,
+    n_orient: int = 6,
+    noise_method: int = -1,
+    k: float = 2.0,
+    cutoff: float = 0.5,
+    g: int = 10,
+):
+
+    """
+
+    Parameters
+    ----------
+    image :
+    min_wavelength :
+    sigma :
+    n_scale :
+    mult :
+    n_orient :
+    noise_method:
+    k: No of standard deviations of the noise energy beyond the mean at which we set the noise threshold point.
+    You may want to vary this up to a value of 10 or20 for noisy images
+    cutoff: The fractional measure of frequency spread below which phase congruency values get penalized.
+    g: Controls the sharpness of the transition in the sigmoid function used to weight phase congruency for
+    frequency spread.
+
+    Returns
+    -------
+
+    """
+    epsilon = 0.00001
+    pcSum = np.zeros(image.shape)
+    covx2 = np.zeros(image.shape)
+    covy2 = np.zeros(image.shape)
+    covxy = np.zeros(image.shape)
+    eo_filter_responses = {}
+    EnergyV = np.zeros(image.shape + (3,))
+    pc = {}
+    for orient in range(n_orient):
+        angle = orient * np.pi / n_orient
+        sumE_ThisOrient = np.zeros(image.shape)  # Initialize accumulator matrices.
+        sumO_ThisOrient = np.zeros(image.shape)
+        sumA_ThisOrient = np.zeros(image.shape)
+        Energy = np.zeros(image.shape)
+        for scale in range(n_scale):
+            wavelength = min_wavelength * mult ** scale
+
+            eo = log_gabor(
+                image, wavelength, sigma, angle=angle, angular_frac=1 / n_orient
+            )
+            amplitude = abs(eo)
+            sumA_ThisOrient = sumA_ThisOrient + amplitude
+            sumE_ThisOrient = sumE_ThisOrient + eo.real
+            sumO_ThisOrient = sumO_ThisOrient + eo.imag
+
+            eo_filter_responses[(orient, scale)] = eo
+
+            # At the smallest scale estimate noise characteristics from the
+            # distribution of the filter amplitude responses stored in sumAn.
+            # tau is the Rayleigh parameter that is used to describe the
+            # distribution.
+            if scale == 0:
+                if noise_method == -1:  # Use median to estimate noise statistics
+                    tau = np.median(sumA_ThisOrient / np.sqrt(np.log(4)))
+                # elif noise_method == -2:   # Use mode to estimate noise statistics
+                #    tau = rayleighmode(sumAn_ThisOrient(:))
+                maxA = amplitude
+            else:
+                # Record maximum amplitude of components across scales.  This is needed
+                # to determine the frequency spread weighting.
+                maxA = np.maximum(maxA, amplitude)
+
+        # Accumulate total 3D energy vector data, this will be used to
+        # determine overall feature orientation and feature phase/type
+        EnergyV[:, :, 0] = EnergyV[:, :, 0] + sumE_ThisOrient
+        EnergyV[:, :, 1] = EnergyV[:, :, 1] + np.cos(angle) * sumO_ThisOrient
+        EnergyV[:, :, 2] = EnergyV[:, :, 2] + np.sin(angle) * sumO_ThisOrient
+
+        # Get weighted mean filter response vector, this gives the weighted mean
+        # phase angle.
+        XEnergy = np.sqrt(sumE_ThisOrient ** 2 + sumO_ThisOrient ** 2) + epsilon
+        MeanE = sumE_ThisOrient / XEnergy
+        MeanO = sumO_ThisOrient / XEnergy
+
+        # Now calculate An(cos(phase_deviation) - | sin(phase_deviation)) | by
+        # using dot and cross products between the weighted mean filter response
+        # vector and the individual filter response vectors at each scale.  This
+        # quantity is phase congruency multiplied by An, which we call energy.
+
+        for scale in range(n_scale):
+            # Extract even and odd convolution results.
+            even = eo.real
+            odd = eo.imag
+
+            Energy = (
+                Energy + even * MeanE + odd * MeanO - abs(even * MeanO - odd * MeanE)
+            )
+
+        # Automatically determine noise threshold
+        #
+        # Assuming the noise is Gaussian the response of the filters to noise will
+        # form Rayleigh distribution.  We use the filter responses at the smallest
+        # scale as a guide to the underlying noise level because the smallest scale
+        # filters spend most of their time responding to noise, and only
+        # occasionally responding to features. Either the median, or the mode, of
+        # the distribution of filter responses can be used as a robust statistic to
+        # estimate the distribution mean and standard deviation as these are related
+        # to the median or mode by fixed constants.  The response of the larger
+        # scale filters to noise can then be estimated from the smallest scale
+        # filter response according to their relative bandwidths.
+        #
+        # This code assumes that the expected reponse to noise on the phase congruency
+        # calculation is simply the sum of the expected noise responses of each of
+        # the filters.  This is a simplistic overestimate, however these two
+        # quantities should be related by some constant that will depend on the
+        # filter bank being used.  Appropriate tuning of the parameter 'k' will
+        # allow you to produce the desired output.
+
+        if noise_method >= 0:  # We are using a fixed noise threshold
+            T = noise_method
+            # use supplied noiseMethod value as the threshold
+        else:
+            # Estimate the effect of noise on the sum of the filter responses as
+            # the sum of estimated individual responses (this is a simplistic
+            # overestimate). As the estimated noise response at succesive scales
+            # is scaled inversely proportional to bandwidth we have a simple
+            # geometric sum.
+            totalTau = tau * (1 - (1 / mult) ** n_scale) / (1 - (1 / mult))
+
+            # Calculate mean and std dev from tau using fixed relationship
+            # between these parameters and tau. See
+            # http://mathworld.wolfram.com/RayleighDistribution.html
+            EstNoiseEnergyMean = totalTau * np.sqrt(np.pi / 2)  # Expected mean and std
+            EstNoiseEnergySigma = totalTau * np.sqrt(
+                (4 - np.pi) / 2
+            )  # values of noise energy
+
+            T = EstNoiseEnergyMean + k * EstNoiseEnergySigma  # Noise threshold
+
+        # Apply noise threshold,  this is effectively wavelet denoising via
+        # soft thresholding.
+        Energy = np.maximum(Energy - T, 0)
+
+        # Form weighting that penalizes frequency distributions that are
+        # particularly narrow.  Calculate fractional 'width' of the frequencies
+        # present by taking the sum of the filter response amplitudes and dividing
+        # by the maximum amplitude at each point on the image.   If
+        # there is only one non-zero component width takes on a value of 0, if
+        # all components are equal width is 1.
+        width = (sumA_ThisOrient / (maxA + epsilon) - 1) / (n_scale - 1)
+
+        # Now calculate the sigmoidal weighting function for this orientation.
+        weight = 1.0 / (1 + np.exp((cutoff - width) * g))
+
+        # Apply weighting to energy and then calculate phase congruency
+        pc[orient] = (
+            weight * Energy / sumA_ThisOrient
+        )  # Phase congruency for this orientatio
+
+        pcSum = pcSum + pc[orient]
+
+        # Build up covariance data for every point
+        covx = pc[orient] * np.cos(angle)
+        covy = pc[orient] * np.sin(angle)
+        covx2 = covx2 + covx ** 2
+        covy2 = covy2 + covy ** 2
+        covxy = covxy + covx * covy
+
+    ## Edge and Corner calculations
+    # The following is optimised code to calculate principal vector
+    # of the phase congruency covariance data and to calculate
+    # the minimumum and maximum moments - these correspond to
+    # the singular values.
+
+    # First normalise covariance values by the number of orientations/2
+    covx2 = covx2 / (n_orient / 2)
+    covy2 = covy2 / (n_orient / 2)
+    covxy = 4 * covxy / n_orient  # This gives us 2*covxy/(n_orient/2)
+    denom = np.sqrt(covxy ** 2 + (covx2 - covy2) ** 2) + epsilon
+    M = (covy2 + covx2 + denom) / 2  # Maximum moment
+    m = (covy2 + covx2 - denom) / 2  # ... and minimum moment
+
+    # Orientation and feature phase/type computation
+    comp_orient = np.arctan2(EnergyV[:, :, 2], EnergyV[:, :, 1])
+    comp_orient[comp_orient < 0] = (
+        comp_orient[comp_orient < 0] + np.pi
+    )  # Wrap angles -pi..0 to 0..pi
+    comp_orient = np.round(
+        comp_orient * 180 / np.pi
+    )  # Orientation in degrees between 0 and 180
+
+    OddV = np.sqrt(EnergyV[:, :, 1] ** 2 + EnergyV[:, :, 2] ** 2)
+    feat_type = np.arctan2(
+        EnergyV[:, :, 0], OddV
+    )  # Feature phase  pi/2 <-> white line,
+    # 0 <-> step, -pi/2 <-> black line
+
+    return M, m, comp_orient, feat_type, pc, eo_filter_responses, T

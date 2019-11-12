@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import numpy as np
 from skimage.feature import hog
 
@@ -10,8 +11,7 @@ def hog_extract(
     rotate_hist=False,
     sub_sample_factor=2,
 ):
-    """
-    """
+    """"""
 
     hog_features = hog(
         img,
@@ -49,10 +49,7 @@ def hog_extract(
 
 
 def rotate_hog(hog_features):
-    """
-
-
-    """
+    """"""
     orientations = hog_features.shape[-1]
     M = hog_features.shape[-2]
     rotated_hog = np.zeros(hog_features.shape[:2] + (orientations, M, M, orientations))
