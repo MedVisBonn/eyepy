@@ -33,7 +33,7 @@ def get_octmeta(filepath):
 
 
 def read_vol(filepath: Union[str, Path]):
-    """ Read a Heyex OCT from a .vol file and return a HeyexOct object.
+    """ Return a HeyexOct object for a .vol file at the given filepath
 
     Parameters
     ----------
@@ -48,26 +48,39 @@ def read_vol(filepath: Union[str, Path]):
 
 class HeyexOct:
     """
-
-
-    The HeyexOct object has not yet read the .vol file when returned to you. It
-    will only read exactly what you ask for. No B-Scan image is read from the
-    file if you only want the SLO or a specific field from the .vol header. This
-    makes it faster to analyse large collections of .vol files based on their
-    headers.
+    The HeyexOct object lazy loads the .vol file. It will only read exactly what
+    you ask for. This means that no B-Scan image is read from the file if you
+    only want the SLO or a specific field from the .vol header.
+    In comparison to reading the complete file, this makes all operations on
+    .vol files faster which do not require the complete file e.g. peaking at
+    header fields, plotting the SLO, plotting individual B-Scans.
 
     .vol header
     -----------
     All fields from the .vol header can be accessed as attributes of the
-    HeyexOct.  object:
+    HeyexOct object.
 
-    Accessing the attribute `slo` reads the IR SLO image and returns it as a
-    numpy.ndarray of dtype `uint8`.
+    SLO
+    ---
+    The attribute `slo` of the HeyexOct object gives access to the IR SLO image
+    and returns it as a numpy.ndarray of dtype `uint8`.
 
+    B-Scans
+    -------
     Individual B-Scans can be accessed using `oct_scan[index]`. The returned
     HeyexBscan object exposes all B-Scan header fields as attributes and the
     raw B-Scan image as `numpy.ndarray` of type `float32` under the attribute
-    `scan_raw`.
+    `scan_raw`. A transformed version of the raw B-Scan which is more similar to
+    the Heyex experience can be accessed with the attribute `scan` and returns
+    the 4th root of the raw B-Scan scaled to [0,255] as `uint8`.
+
+    Segmentations
+    -------------
+    B-Scan segmentations can be accessed for individual B-Scans like
+    `bscan.segmentation`. This return a numpy.ndarray of shape (NumSeg, SizeX)
+    The `segmentation` attribute of the HeyexOct object returns a dictionary,
+    where the key is a number and the value is a numpy.ndarray of shape
+    (NumBScans, SizeX).
 
     """
 
@@ -107,9 +120,10 @@ class HeyexOct:
     @property
     def segmentation(self):
         segmentations = np.stack([bscan.segmentation for bscan in self._bscans])
-        # It seems like there is no standard structure in the exported segmentations from HEYEX
-        # seg_mapping = {"ILM":0,"GCL":2, "BM":1, "IPl":3, "INL":4, "IPL":5, "ONL":6, "ELM":8, "EZ/PR1":14, "IZ/PR2":15,
-        #               "RPE":16}
+        # It seems like there is no standard structure in the exported
+        # segmentations from HEYEX
+        # seg_mapping = {"ILM":0,"GCL":2, "BM":1, "IPl":3, "INL":4, "IPL":5,
+        #                "ONL":6, "ELM":8, "EZ/PR1":14, "IZ/PR2":15, "RPE":16}
         # return {k: segmentations[:, seg_mapping[k], :] for k in seg_mapping}
         return {
             "{}".format(i): segmentations[:, i, :]
@@ -118,7 +132,7 @@ class HeyexOct:
 
     @property
     def volume(self):
-        return np.stack([x.scan_raw for x in self.bscans], axis=-1)
+        return np.stack([x.scan for x in self._bscans], axis=-1)
 
     @classmethod
     def read_vol(cls, filepath):
@@ -129,10 +143,6 @@ class HeyexOct:
 
 
 class HeyexOctMeta:
-    """
-
-    """
-
     def __new__(cls, filepath, version=None, *args, **kwargs):
         if version is None:
             with open(filepath, mode="rb") as myfile:
@@ -145,6 +155,12 @@ class HeyexOctMeta:
         return object.__new__(cls, *args, **kwargs)
 
     def __init__(self, filepath):
+        """
+
+        Parameters
+        ----------
+        filepath :
+        """
         self._filepath = filepath
         self._startpos = 0
 
@@ -162,6 +178,13 @@ class HeyexOctMeta:
 
 class HeyexSlo:
     def __init__(self, filepath, oct_meta=None):
+        """
+
+        Parameters
+        ----------
+        filepath :
+        oct_meta :
+        """
         self._filepath = filepath
         self._data = None
 
@@ -207,7 +230,14 @@ class HeyexBscanMeta:
             setattr(cls, k, v)
         return object.__new__(cls, *args, **kwargs)
 
-    def __init__(self, filepath, startpos, version=None):
+    def __init__(self, filepath, startpos, **kwargs):
+        """
+
+        Parameters
+        ----------
+        filepath :
+        startpos :
+        """
         self._filepath = filepath
         self._startpos = startpos
 
@@ -234,6 +264,14 @@ class HeyexBscan:
         return object.__new__(cls, *args, **kwargs)
 
     def __init__(self, filepath, startpos, oct_meta):
+        """
+
+        Parameters
+        ----------
+        filepath :
+        startpos :
+        oct_meta :
+        """
         self._filepath = filepath
         self._startpos = startpos
 
@@ -296,6 +334,13 @@ class HeyexBscan:
 
 class HeyexBscans:
     def __init__(self, filepath, oct_meta=None):
+        """
+
+        Parameters
+        ----------
+        filepath :
+        oct_meta :
+        """
         self._filepath = filepath
         self._hdr_start = None
         self._oct_meta = oct_meta
