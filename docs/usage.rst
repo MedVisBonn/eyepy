@@ -4,4 +4,4 @@ Usage
 
 To use eyepy in a project::
 
-    import eyepy
+    import eyepy as ep

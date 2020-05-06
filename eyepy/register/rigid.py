@@ -1,63 +1,83 @@
-from skimage.feature import ORB
-from skimage.feature import match_descriptors
-from skimage.transform import AffineTransform, warp
-import numpy as np
+# -*- coding: utf-8 -*-
+from typing import Tuple, Union
+
 import eyepy as ep
-from skimage.measure import ransac
+import numpy as np
+import skimage as ski
+
+Shape = Union[int, Tuple[int, int]]
 
 
-def orb_detect_extract(img, **kwargs):
-    descriptor_extractor = ORB(**kwargs)
-    descriptor_extractor.detect_and_extract(img)
-    keypoints = descriptor_extractor.keypoints
-    descriptors = descriptor_extractor.descriptors
-
-    return keypoints, descriptors
-
-
-def multimodal_2D(
+def rigid_multimodal(
     src_img: np.ndarray,
     dest_img: np.ndarray,
-    mp_kwargs: dict = {},
-    orb_kwargs: dict = {"n_keypoints": 200},
-    ransac_kwargs: dict = {"residual_threshold": 2},
+    scale: int = 1,
+    mp_kwargs: dict = {
+        "min_wavelength": 3,
+        "sigma": 0.55,
+        "n_scale": 4,
+        "mult": 2.1,
+        "n_orient": 6,
+    },
+    hog_kwargs: dict = {
+        "orientations": 12,
+        "pixels_per_cell": (10, 10),
+        "cells_per_block": (5, 5),
+        "sub_sample_factor": 1,
+    },
+    ransac_kwargs: dict = {"residual_threshold": 5},
 ) -> np.ndarray:
     """
 
     Parameters
     ----------
-    src_img :
-    dest_img :
-    mp_kwargs :
-    orb_kwargs :
-    ransac_kwargs :
+    src_img
+    dest_img
+    work_size
+    mp_kwargs
+    hog_kwargs
+    ransac_kwargs
 
     Returns
     -------
 
     """
+
+    # Resize images
+    src_small = ski.transform.rescale(src_img, scale, anti_aliasing=True)
+    dest_small = ski.transform.rescale(dest_img, scale, anti_aliasing=True)
+
     # Calculate Mean Phase Image
-    src_mp = np.log(ep.preprocess.mean_phase(src_img, **mp_kwargs))
-    dest_mp = np.log(ep.preprocess.mean_phase(dest_img, **mp_kwargs))
+    src_mp = ep.preprocess.mean_phase(src_small, **mp_kwargs)
+    dest_mp = ep.preprocess.mean_phase(dest_small, **mp_kwargs)
 
-    # Detect Features
-    dest_key, dest_feat = orb_detect_extract(dest_mp, **orb_kwargs)
-    src_key, src_feat = orb_detect_extract(src_mp, **orb_kwargs)
+    # Detect Features - HOG
+    dest_keys, dest_features = ep.register.feature.hog_extract(dest_mp, **hog_kwargs)
+    src_keys, src_features = ep.register.feature.hog_extract(
+        src_mp, rotate_hist=True, **hog_kwargs
+    )
 
-    # Match Features
-    matches = match_descriptors(dest_feat, src_feat, cross_check=True)
+    # Match Features - > ANN
+    matches = ski.feature.match_descriptors(
+        dest_features, src_features, cross_check=True
+    )
+
+    # Switch row, col to col, row order for the keys and compensate the
+    # downscaling to produce an affine for the original image
+    dest_keys = (dest_keys / scale)[:, [1, 0]]
+    src_keys = (src_keys[:, :2] / scale)[:, [1, 0]]
 
     # Compute Affine
-    dest_key = dest_key[:, [1, 0]]
-    src_key = src_key[:, [1, 0]]
-
-    model_robust, inliers = ransac(
-        (src_key[matches[:, 1]], dest_key[matches[:, 0]]),
-        AffineTransform,
-        min_samples=3, **ransac_kwargs
+    model_robust, inliers = ski.measure.ransac(
+        (src_keys[matches[:, 1]], dest_keys[matches[:, 0]]),
+        ski.transform.AffineTransform,
+        min_samples=3,
+        **ransac_kwargs
     )
 
     # Warp Image
-    transformed_src = warp(src_img, model_robust.inverse)
+    transformed_src = ski.transform.warp(
+        src_img, model_robust.inverse, output_shape=dest_img.shape
+    )
 
-    return transformed_src
+    return transformed_src, model_robust

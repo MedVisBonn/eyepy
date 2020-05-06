@@ -6,6 +6,4 @@ __author__ = """Olivier Morelle"""
 __email__ = "oli4morelle@gmail.com"
 __version__ = "0.1.0"
 
-from . import io
-from . import preprocess
-from . import register
+from . import io, preprocess, register

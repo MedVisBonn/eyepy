@@ -8,10 +8,12 @@ Welcome to eyepy's documentation!
    readme
    installation
    usage
+   examples
    modules
    contributing
    authors
    history
+
 
 Indices and tables
 ==================
