@@ -7,7 +7,7 @@ from typing import Union
 import numpy as np
 from skimage import img_as_ubyte
 
-from .const import OCT_HDR_VERSIONS, BSCAN_HDR_VERSIONS
+from .const import OCT_HDR_VERSIONS, BSCAN_HDR_VERSIONS, SEG_MAPPING
 from .utils import _get_meta_attr, _create_properties, _clean_ascii
 
 """
@@ -103,6 +103,8 @@ class HeyexOct:
         self._meta = meta
 
         self._slo = None
+        self._segmentation = None
+        self._volume = None
 
     def __getitem__(self, key):
         return self._bscans[key]
@@ -119,20 +121,26 @@ class HeyexOct:
 
     @property
     def segmentation(self):
-        segmentations = np.stack([bscan.segmentation for bscan in self._bscans])
-        # It seems like there is no standard structure in the exported
-        # segmentations from HEYEX
-        # seg_mapping = {"ILM":0,"GCL":2, "BM":1, "IPl":3, "INL":4, "IPL":5,
-        #                "ONL":6, "ELM":8, "EZ/PR1":14, "IZ/PR2":15, "RPE":16}
-        # return {k: segmentations[:, seg_mapping[k], :] for k in seg_mapping}
-        return {
-            "{}".format(i): segmentations[:, i, :]
-            for i in range(segmentations.shape[1])
-        }
+        if self._segmentation is None:
+            segmentations = [bscan.segmentation for bscan in self]
+            segmentations = {}
+            for key in SEG_MAPPING.keys():
+                seg = np.full((self.NumBScans, self.SizeX), np.nan)
+                for i, bscan in enumerate(self):
+                    if key in bscan.segmentation.keys():
+                        seg[i] = bscan.segmentation[key]
+
+                if np.nansum(seg) != 0:
+                    segmentations[key] = seg
+            self._segmentation = segmentations
+
+        return self._segmentation
 
     @property
     def volume(self):
-        return np.stack([x.scan for x in self._bscans], axis=-1)
+        if self._volume is None:
+            self._volume = np.stack([x.scan for x in self._bscans], axis=-1)
+        return self._volume
 
     @classmethod
     def read_vol(cls, filepath):
@@ -230,7 +238,7 @@ class HeyexBscanMeta:
             setattr(cls, k, v)
         return object.__new__(cls, *args, **kwargs)
 
-    def __init__(self, filepath, startpos, **kwargs):
+    def __init__(self, filepath, startpos, *args, **kwargs):
         """
 
         Parameters
@@ -285,7 +293,7 @@ class HeyexBscan:
 
     @property
     def _segmentation_size(self):
-        return self.NumSeg * self.oct_meta.SizeX
+        return self.oct_meta.SizeX * 17
 
     @property
     def segmentation(self):
@@ -294,11 +302,18 @@ class HeyexBscan:
                 myfile.seek(self._segmentation_start, 0)
                 content = myfile.read(self._segmentation_size * 4)
 
-            f = f"{str(int(self._segmentation_size))}f"
             f = f"{self._segmentation_size}f"
             seg_lines = unpack(f, content)
-            seg_lines = np.asarray(seg_lines, dtype="float32")
-            return seg_lines.reshape(self.NumSeg, -1)
+            seg_lines = np.asarray(seg_lines, dtype="float32").reshape(17, -1)
+            invalid = np.nonzero(np.logical_or(seg_lines < 0,
+                                               seg_lines > self.oct_meta.SizeZ))
+            seg_lines[invalid] = np.nan
+
+            self._segmentation = {key: seg_lines[val]
+                                  for key, val in SEG_MAPPING.items()
+                                  if np.nansum(seg_lines[val]) != 0}
+
+        return self._segmentation
 
     @property
     def scan(self):
