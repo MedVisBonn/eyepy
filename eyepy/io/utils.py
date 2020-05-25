@@ -28,12 +28,11 @@ def _create_property(field, func):
         fmt = self._fmt[field_position]
 
         if getattr(self, f"_{field}") is None:
-            with open(self._filepath, mode="rb") as myfile:
-                myfile.seek(startpos, 0)
-                content = myfile.read(calcsize(fmt))
-                attr = func(unpack(fmt, content))
+            self._file_obj.seek(startpos, 0)
+            content = self._file_obj.read(calcsize(fmt))
+            attr = func(unpack(fmt, content))
 
-                setattr(self, f"_{field}", attr)
+            setattr(self, f"_{field}", attr)
 
         return getattr(self, f"_{field}")
 

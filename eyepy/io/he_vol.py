@@ -1,8 +1,9 @@
 import functools
+import mmap
 import os
-from pathlib import Path
+from pathlib import Path, PosixPath
 from struct import unpack, calcsize
-from typing import Union
+from typing import Union, IO
 
 import numpy as np
 from skimage import img_as_ubyte
@@ -18,32 +19,39 @@ https://github.com/FabianRathke/octSegmentation/blob/master/collector/HDEVolImpo
 
 
 @functools.lru_cache(maxsize=4, typed=False)
-def get_slo(filepath, oct_meta=None):
-    return HeyexSlo(filepath, oct_meta)
+def get_slo(file_obj, oct_meta=None):
+    return HeyexSlo(file_obj, oct_meta)
 
 
 @functools.lru_cache(maxsize=4, typed=False)
-def get_bscans(filepath, oct_meta=None):
-    return HeyexBscans(filepath, oct_meta)
+def get_bscans(file_obj, oct_meta=None):
+    return HeyexBscans(file_obj, oct_meta)
 
 
 @functools.lru_cache(maxsize=4, typed=False)
-def get_octmeta(filepath):
-    return HeyexOctMeta(filepath)
+def get_octmeta(file_obj):
+    return HeyexOctMeta(file_obj)
 
 
-def read_vol(filepath: Union[str, Path]):
-    """ Return a HeyexOct object for a .vol file at the given filepath
+def read_vol(file_obj: Union[str, Path, IO]):
+    """ Return a HeyexOct object for a .vol file at the given file_obj
 
     Parameters
     ----------
-    filepath : Path to the .vol file
+    file_obj : Path to the .vol file
 
     Returns
     -------
     HeyexOct
     """
-    return HeyexOct.read_vol(filepath)
+
+    if type(file_obj) is str or type(file_obj) is PosixPath:
+        with open(file_obj, "rb") as myfile:
+            mm = mmap.mmap(myfile.fileno(), 0, access=mmap.ACCESS_READ)
+            return HeyexOct.read_vol(mm)
+    else:
+        mm = mmap.mmap(file_obj.fileno(), 0, access=mmap.ACCESS_READ)
+        return HeyexOct.read_vol(mm)
 
 
 class HeyexOct:
@@ -103,8 +111,7 @@ class HeyexOct:
         self._meta = meta
 
         self._slo = None
-        self._segmentation = None
-        self._volume = None
+        self._segmentation_raw = None
 
     def __getitem__(self, key):
         return self._bscans[key]
@@ -120,56 +127,58 @@ class HeyexOct:
         return self._meta
 
     @property
+    def segmentation_raw(self):
+        if self._segmentation_raw is None:
+            self._segmentation_raw = np.stack([x.segmentation_raw
+                                               for x in self._bscans], axis=1)
+        return self._segmentation_raw
+
+    @property
     def segmentation(self):
-        if self._segmentation is None:
-            segmentations = [bscan.segmentation for bscan in self]
-            segmentations = {}
-            for key in SEG_MAPPING.keys():
-                seg = np.full((self.NumBScans, self.SizeX), np.nan)
-                for i, bscan in enumerate(self):
-                    if key in bscan.segmentation.keys():
-                        seg[i] = bscan.segmentation[key]
+        empty = np.nonzero(np.logical_or(
+            self.segmentation_raw < 0,
+            self.segmentation_raw > self.meta.SizeZ)
+        )
+        data = self.segmentation_raw.copy()
+        data[empty] = np.nan
+        return {name: data[i, ...] for name, i in SEG_MAPPING.items()
+                if np.nansum(data[i, ...]) != 0}
 
-                if np.nansum(seg) != 0:
-                    segmentations[key] = seg
-            self._segmentation = segmentations
-
-        return self._segmentation
+    @property
+    def volume_raw(self):
+        return np.stack([x.scan_raw for x in self._bscans], axis=-1)
 
     @property
     def volume(self):
-        if self._volume is None:
-            self._volume = np.stack([x.scan for x in self._bscans], axis=-1)
-        return self._volume
+        return np.stack([x.scan for x in self._bscans], axis=-1)
 
     @classmethod
-    def read_vol(cls, filepath):
-        meta = get_octmeta(filepath)
-        bscans = get_bscans(filepath, meta)
-        slo = get_slo(filepath, meta)
+    def read_vol(cls, file_obj):
+        meta = get_octmeta(file_obj)
+        bscans = get_bscans(file_obj, meta)
+        slo = get_slo(file_obj, meta)
         return cls(bscans, slo, meta)
 
 
 class HeyexOctMeta:
-    def __new__(cls, filepath, version=None, *args, **kwargs):
+    def __new__(cls, file_obj, version=None, *args, **kwargs):
         if version is None:
-            with open(filepath, mode="rb") as myfile:
-                fmt = "=12s"
-                content = myfile.read(calcsize(fmt))
-                version = _clean_ascii(unpack(fmt, content))
+            fmt = "=12s"
+            content = file_obj.read(calcsize(fmt))
+            version = _clean_ascii(unpack(fmt, content))
 
         for k, v in _create_properties(version, OCT_HDR_VERSIONS).items():
             setattr(cls, k, v)
         return object.__new__(cls, *args, **kwargs)
 
-    def __init__(self, filepath):
+    def __init__(self, file_obj):
         """
 
         Parameters
         ----------
-        filepath :
+        file_obj :
         """
-        self._filepath = filepath
+        self._file_obj = file_obj
         self._startpos = 0
 
         for key in self._meta_fields[1:]:
@@ -185,15 +194,15 @@ class HeyexOctMeta:
 
 
 class HeyexSlo:
-    def __init__(self, filepath, oct_meta=None):
+    def __init__(self, file_obj, oct_meta=None):
         """
 
         Parameters
         ----------
-        filepath :
+        file_obj :
         oct_meta :
         """
-        self._filepath = filepath
+        self._file_obj = file_obj
         self._data = None
 
         self._oct_meta = oct_meta
@@ -205,48 +214,38 @@ class HeyexSlo:
     @property
     def data(self):
         if self._data is None:
-            with open(self._filepath, mode="rb") as myfile:
-                myfile.seek(self._slo_start, 0)
-                content = myfile.read(self._size)
-
-            # Read SLO image
-            fmt = f"={self._size}B"
-            self._data = np.asarray(unpack(fmt, content),
-                                    dtype="uint8").reshape(
-                self.shape
-            )
-
+            self._data = np.ndarray(buffer=self._file_obj, dtype="uint8",
+                                    offset=self._slo_start, shape=self.shape)
         return self._data
 
     @property
     def oct_meta(self):
         if self._oct_meta is None:
-            self._oct_meta = get_octmeta(self._filepath)
+            self._oct_meta = get_octmeta(self._file_obj)
         return self._oct_meta
 
 
 class HeyexBscanMeta:
-    def __new__(cls, filepath, startpos, version=None, *args, **kwargs):
+    def __new__(cls, file_obj, startpos, version=None, *args, **kwargs):
         if version is None:
-            with open(filepath, mode="rb") as myfile:
-                fmt = "=12s"
-                myfile.seek(startpos)
-                content = myfile.read(calcsize(fmt))
-                version = _clean_ascii(unpack(fmt, content))
+            fmt = "=12s"
+            file_obj.seek(startpos)
+            content = file_obj.read(calcsize(fmt))
+            version = _clean_ascii(unpack(fmt, content))
 
         for k, v in _create_properties(version, BSCAN_HDR_VERSIONS).items():
             setattr(cls, k, v)
         return object.__new__(cls, *args, **kwargs)
 
-    def __init__(self, filepath, startpos, *args, **kwargs):
+    def __init__(self, file_obj, startpos, *args, **kwargs):
         """
 
         Parameters
         ----------
-        filepath :
+        file_obj :
         startpos :
         """
-        self._filepath = filepath
+        self._file_obj = file_obj
         self._startpos = startpos
 
         for key in self._meta_fields[1:]:
@@ -263,29 +262,29 @@ class HeyexBscanMeta:
 
 class HeyexBscan:
     def __new__(
-        cls, filepath, startpos, oct_meta=None, version=None, *args, **kwargs):
-        meta = HeyexBscanMeta(filepath, startpos, version)
+        cls, file_obj, startpos, oct_meta=None, version=None, *args, **kwargs):
+        meta = HeyexBscanMeta(file_obj, startpos, version)
         setattr(cls, "meta", meta)
 
         for meta_attr in meta._meta_fields:
             setattr(cls, meta_attr, _get_meta_attr(meta_attr))
         return object.__new__(cls, *args, **kwargs)
 
-    def __init__(self, filepath, startpos, oct_meta):
+    def __init__(self, file_obj, startpos, oct_meta):
         """
 
         Parameters
         ----------
-        filepath :
+        file_obj :
         startpos :
         oct_meta :
         """
-        self._filepath = filepath
+        self._file_obj = file_obj
         self._startpos = startpos
 
         self.oct_meta = oct_meta
         self._scan_raw = None
-        self._segmentation = None
+        self._segmentation_raw = None
 
     @property
     def _segmentation_start(self):
@@ -296,46 +295,36 @@ class HeyexBscan:
         return self.oct_meta.SizeX * 17
 
     @property
+    def segmentation_raw(self):
+        if self._segmentation_raw is None:
+            self._segmentation_raw = np.ndarray(buffer=self._file_obj,
+                                                dtype="float32",
+                                                offset=self._segmentation_start,
+                                                shape=(17, self.oct_meta.SizeX))
+        return self._segmentation_raw
+
+    @property
     def segmentation(self):
-        if self._segmentation is None:
-            with open(self._filepath, mode="rb") as myfile:
-                myfile.seek(self._segmentation_start, 0)
-                content = myfile.read(self._segmentation_size * 4)
-
-            f = f"{self._segmentation_size}f"
-            seg_lines = unpack(f, content)
-            seg_lines = np.asarray(seg_lines, dtype="float32").reshape(17, -1)
-            invalid = np.nonzero(np.logical_or(seg_lines < 0,
-                                               seg_lines > self.oct_meta.SizeZ))
-            seg_lines[invalid] = np.nan
-
-            self._segmentation = {key: seg_lines[val]
-                                  for key, val in SEG_MAPPING.items()
-                                  if np.nansum(seg_lines[val]) != 0}
-
-        return self._segmentation
+        data = self.segmentation_raw.copy()
+        empty = np.nonzero(np.logical_or(data < 0, data > self.oct_meta.SizeZ))
+        data[empty] = np.nan
+        return {name: data[i] for name, i in SEG_MAPPING.items()
+                if np.nansum(data[i]) != 0}
 
     @property
     def scan(self):
-        return img_as_ubyte(np.power(self.scan_raw, 1 / 4))
+        # Ignore regions masked by max float
+        data = self.scan_raw.copy()
+        data[data > 1.1] = np.nan
+        return img_as_ubyte(np.power(data, 1 / 4))
 
     @property
     def scan_raw(self):
         if self._scan_raw is None:
-            with open(self._filepath, mode="rb") as myfile:
-                myfile.seek(self._scan_start, 0)
-                content = myfile.read(self._scan_size * 4)
-
-            f = str(int(self._scan_size)) + "f"
-            bscan_img = unpack(f, content)
-            bscan_img = np.asarray(bscan_img, dtype="float32")
-
-            # Ignore regions masked by max float
-            bscan_img[bscan_img > 1.1] = 0
-
-            self._scan_raw = bscan_img.reshape(self.oct_meta.SizeZ,
-                                               self.oct_meta.SizeX)
-
+            shape = (self.oct_meta.SizeZ, self.oct_meta.SizeX)
+            self._scan_raw = np.ndarray(buffer=self._file_obj, dtype="float32",
+                                        offset=self._scan_start,
+                                        shape=shape)
         return self._scan_raw
 
     @property
@@ -348,15 +337,15 @@ class HeyexBscan:
 
 
 class HeyexBscans:
-    def __init__(self, filepath, oct_meta=None):
+    def __init__(self, file_obj, oct_meta=None):
         """
 
         Parameters
         ----------
-        filepath :
+        file_obj :
         oct_meta :
         """
-        self._filepath = filepath
+        self._file_obj = file_obj
         self._hdr_start = None
         self._oct_meta = oct_meta
 
@@ -389,7 +378,7 @@ class HeyexBscans:
         return self.oct_meta.BScanHdrSize
 
     def _get_current_bscan(self):
-        return HeyexBscan(self._filepath, self.hdr_start,
+        return HeyexBscan(self._file_obj, self.hdr_start,
                           oct_meta=self.oct_meta)
 
     def __len__(self):
@@ -415,5 +404,5 @@ class HeyexBscans:
     @property
     def oct_meta(self):
         if self._oct_meta is None:
-            self._oct_meta = get_octmeta(self._filepath)
+            self._oct_meta = get_octmeta(self._file_obj)
         return self._oct_meta
