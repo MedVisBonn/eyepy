@@ -1,76 +1,259 @@
-# -*- coding: utf-8 -*-
+import functools
+import os
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+import imageio
 import numpy as np
-import untangle
+
+from .const import HEXML_VERSIONS, HEXML_BSCAN_VERSIONS, SEG_MAPPING
+from .utils import _get_meta_attr, _create_properties_xml
+
+"""
+Inspired by:
+https://github.com/ayl/heyexReader/blob/master/heyexReader/volReader.py
+https://github.com/FabianRathke/octSegmentation/blob/master/collector/HDEVolImporter.m
+"""
 
 
-class SpectralisXMLReader(object):
-    def __init__(self, path):
-        self.obj = untangle.parse(path)
+@functools.lru_cache(maxsize=4, typed=False)
+def get_xml_root(filepath):
+    tree = ET.parse(filepath)
+    return tree.getroot()
+
+
+@functools.lru_cache(maxsize=4, typed=False)
+def get_slo(filepath, oct_meta=None):
+    return HeyexSlo(filepath, oct_meta)
+
+
+@functools.lru_cache(maxsize=4, typed=False)
+def get_bscans(filepath, oct_meta=None):
+    return HeyexBscans(filepath, oct_meta)
+
+
+@functools.lru_cache(maxsize=4, typed=False)
+def get_octmeta(filepath):
+    return HeyexOctMeta(filepath)
+
+
+class HeyexOctMeta:
+    def __new__(cls, filepath, version=None, *args, **kwargs):
+        if version is None:
+            root = get_xml_root(filepath)
+            version = root[0].find("SWVersion")[1].text
+
+        for k, v in _create_properties_xml(version, HEXML_VERSIONS).items():
+            setattr(cls, k, v)
+        return object.__new__(cls, *args, **kwargs)
+
+    def __init__(self, filepath):
+        """
+
+        Parameters
+        ----------
+        file_obj :
+        """
+        self._filepath = filepath
+        self._root = get_xml_root(filepath)
+
+        for key in self._meta_fields[1:]:
+            setattr(self, f"_{key}", None)
+
+    def __str__(self):
+        return f"{os.linesep}".join(
+            [f"{f}: {getattr(self, f)}" for f in self._meta_fields
+             if f != "__empty"])
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class HeyexSlo:
+    def __init__(self, filepath, oct_meta=None):
+        """
+
+        Parameters
+        ----------
+        root :
+        oct_meta :
+        """
+        self._xmlfilepath = Path(filepath)
+        self._root = get_xml_root(filepath)
+        self._data = None
+
+        self._oct_meta = oct_meta
+
+        self.shape = (self.oct_meta.SizeXSlo, self.oct_meta.SizeYSlo)
+        self._size = self.shape[0] * self.shape[1]
 
     @property
-    def version(self):
-        self.obj.HEDX.BODY.SWVersion.Version.cdata
+    def data(self):
+        if self._data is None:
+            localizer_path = self._root[0].find(
+                ".//ImageType[Type='LOCALIZER']../ImageData/ExamURL").text
+            localizer_name = localizer_path.split("\\")[-1]
+            self._data = imageio.imread(
+                self._xmlfilepath.parent / localizer_name)
+        return self._data
 
     @property
-    def octs(self):
-        images = self.obj.HEDX.BODY.Patient.Study.Series.Image
-        return [i for i in images if i.ImageType.Type == "OCT"]
+    def oct_meta(self):
+        if self._oct_meta is None:
+            self._oct_meta = get_octmeta(self._xmlfilepath)
+        return self._oct_meta
+
+
+class HeyexBscanMeta:
+    def __new__(cls, filepath, version=None, *args, **kwargs):
+        if version is None:
+            root = get_xml_root(filepath)
+            version = root[0].find("SWVersion")[1].text
+
+        for k, v in _create_properties_xml(version,
+                                           HEXML_BSCAN_VERSIONS).items():
+            setattr(cls, k, v)
+        return object.__new__(cls, *args, **kwargs)
+
+    def __init__(self, filepath, *args, **kwargs):
+        """
+
+        Parameters
+        ----------
+        filepath :
+        startpos :
+        """
+        self._xmlfilepath = Path(filepath)
+        self._root = get_xml_root(filepath)
+
+        for key in self._meta_fields[1:]:
+            setattr(self, f"_{key}", None)
+
+    def __str__(self):
+        return f"{os.linesep}".join(
+            [f"{f}: {getattr(self, f)}" for f in self._meta_fields
+             if f != "__empty"])
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class HeyexBscan:
+    def __new__(
+        cls, filepath, bscan_index, oct_meta=None, version=None, *args,
+        **kwargs):
+        meta = HeyexBscanMeta(filepath, version)
+        setattr(cls, "meta", meta)
+
+        for meta_attr in meta._meta_fields:
+            setattr(cls, meta_attr, _get_meta_attr(meta_attr))
+        return object.__new__(cls, *args, **kwargs)
+
+    def __init__(self, filepath, bscan_index, oct_meta):
+        """
+
+        Parameters
+        ----------
+        filepath :
+        bscan_index :
+        oct_meta :
+        """
+        self._xmlfilepath = Path(filepath)
+        self._root = get_xml_root(filepath)
+        self._index = bscan_index
+
+        self.oct_meta = oct_meta
+        self._scan = None
+        self._segmentation_raw = None
 
     @property
-    def oct_filenames(self):
-        octs = self.octs
-        return self.get_oct_filenames(octs)
+    def _segmentation_start(self):
+        return self._startpos + self.OffSeg
 
     @property
-    def localizer_filename(self):
-        return self.get_localizer_filename()
+    def _segmentation_size(self):
+        return self.oct_meta.SizeX * 17
 
     @property
-    def oct_width(self):
-        return int(self.octs[0].OphthalmicAcquisitionContext.Width.cdata)
+    def segmentation_raw(self):
+        if self._segmentation_raw is None:
+            self._segmentation_raw = np.full(shape=(17, self.oct_meta.SizeX),
+                                             fill_value=np.nan, dtype="float32")
+            # Iterate over Segmentations
+            segmentations = self._root[0].findall(
+                ".//ImageType[Type='OCT']..")[self._index]
+
+            for segline in segmentations.findall(".//SegLine"):
+                name = segline.find("./Name").text
+                self._segmentation_raw[SEG_MAPPING[name], :] = \
+                    [float(x) for x in segline.find("./Array").text.split()]
+        return self._segmentation_raw
 
     @property
-    def oct_height(self):
-        return int(self.octs[0].OphthalmicAcquisitionContext.Height.cdata)
+    def segmentation(self):
+        data = self.segmentation_raw.copy()
+        empty = np.nonzero(np.logical_or(data < 0, data > self.oct_meta.SizeZ))
+        data[empty] = np.nan
+        return {name: data[i] for name, i in SEG_MAPPING.items()
+                if np.nansum(data[i]) != 0}
 
     @property
-    def oct_n(self):
-        return int(len(self.octs))
+    def scan(self):
+        if self._scan is None:
+            img_path = self._root[0].findall(
+                ".//ImageType[Type='OCT']../ImageData/ExamURL")[
+                self._index].text
+            img_name = img_path.split("\\")[-1]
+            self._scan = imageio.imread(self._xmlfilepath.parent / img_name)
+        return self._scan
 
-    def get_segmentations(self):
+    @property
+    def scan_raw(self):
+        raise NotImplementedError("The Heyex XML export does not contain the"
+                                  " raw OCT data.")
 
-        self.segmentations = {}
-        seg_types = [x.Name for x in self.octs[0].Segmentation.SegLine]
+    @property
+    def size(self):
+        return self.oct_meta.SizeX * self.oct_meta.SizeZ
 
-        for seg_type in seg_types:
-            self.segmentations[seg_type.cdata] = self.get_segmentation(seg_type.cdata)
 
-            self.segmentations[seg_type.cdata] *= 255
-            self.segmentations[seg_type.cdata] = self.segmentations[
-                seg_type.cdata
-            ].astype(np.uint8)
-        return self.segmentations
+class HeyexBscans:
+    def __init__(self, filepath, oct_meta=None):
+        """
 
-    def get_segmentation(self, name):
-        seg = np.zeros((self.oct_n, self.oct_height, self.oct_width))
-        for i in range(self.oct_n):
-            for s in self.octs[i].Segmentation.SegLine:
-                if s.Name.cdata == name:
-                    seg_data = np.array(s.Array.cdata.split(" ")).astype("float")
-                    x = np.where(seg_data < 10000)
-                    y = np.rint(seg_data[x]).astype(int)
-                    seg[i, y, x] = 1
-                    # seg = (seg*255).astype(np.uint8)
+        Parameters
+        ----------
+        filepath :
+        oct_meta :
+        """
+        self._xmlfilepath = Path(filepath)
+        self._root = get_xml_root(filepath)
+        self._oct_meta = oct_meta
 
-        return seg
+    def _get_bscan(self, index):
+        return HeyexBscan(self._xmlfilepath, index,
+                          oct_meta=self.oct_meta)
 
-    def get_oct_filenames(self, octs):
-        names = []
-        for o in octs:
-            names.append(o.ImageData.ExamURL.cdata.split("\\")[-1])
-        return names
+    def __len__(self):
+        return self.oct_meta.NumBScans
 
-    def get_localizer_filename(self):
-        images = self.obj.HEDX.BODY.Patient.Study.Series.Image
-        path = [i for i in images if i.ImageType.Type == "LOCALIZER"][0]
-        return path.ImageData.ExamURL.cdata.split("\\")[-1]
+    def __getitem__(self, index):
+        if type(index) == int:
+            if index < 0:
+                index = self.oct_meta.NumBScans + index
+            elif index >= self.oct_meta.NumBScans:
+                raise IndexError
+            return self._get_bscan(index)
+        elif type(index) == slice:
+            bscans = []
+            for i in range(*index.indices(self.oct_meta.NumBScans)):
+                bscans.append(self._get_bscan(i))
+            return bscans
+        else:
+            raise TypeError("Index has to be of type 'int' or 'slice'")
+
+    @property
+    def oct_meta(self):
+        if self._oct_meta is None:
+            self._oct_meta = get_octmeta(self._xmlfilepath)
+        return self._oct_meta
