@@ -5,8 +5,10 @@ from struct import unpack, calcsize
 import numpy as np
 from skimage import img_as_ubyte
 
-from .const import HEVOL_VERSIONS, HEVOL_BSCAN_VERSIONS, SEG_MAPPING
-from .utils import _get_meta_attr, _create_properties, _clean_ascii
+from eyepy.core.config import SEG_MAPPING
+from eyepy.core.octbase import Bscan
+from eyepy.io.utils import _get_meta_attr, _create_properties, _clean_ascii
+from .const import HEVOL_VERSIONS, HEVOL_BSCAN_VERSIONS
 
 """
 Inspired by:
@@ -130,7 +132,7 @@ class HeyexBscanMeta:
         return self.__str__()
 
 
-class HeyexBscan:
+class HeyexBscan(Bscan):
     def __new__(
         cls, file_obj, startpos, oct_meta=None, version=None, *args, **kwargs):
         meta = HeyexBscanMeta(file_obj, startpos, version)

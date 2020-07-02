@@ -6,8 +6,10 @@ from pathlib import Path
 import imageio
 import numpy as np
 
-from .const import HEXML_VERSIONS, HEXML_BSCAN_VERSIONS, SEG_MAPPING
-from .utils import _get_meta_attr, _create_properties_xml
+from eyepy.core.config import SEG_MAPPING
+from eyepy.core.octbase import Bscan
+from eyepy.io.utils import _get_meta_attr, _create_properties_xml
+from .const import HEXML_VERSIONS, HEXML_BSCAN_VERSIONS
 
 """
 Inspired by:
@@ -138,7 +140,7 @@ class HeyexBscanMeta:
         return self.__str__()
 
 
-class HeyexBscan:
+class HeyexBscan(Bscan):
     def __new__(
         cls, filepath, bscan_index, oct_meta=None, version=None, *args,
         **kwargs):
@@ -162,7 +164,7 @@ class HeyexBscan:
         self._index = bscan_index
         self._root = get_xml_root(filepath)[0].findall(
             ".//ImageType[Type='OCT']..")[self._index]
-        
+
         self._index = bscan_index
 
         self.oct_meta = oct_meta

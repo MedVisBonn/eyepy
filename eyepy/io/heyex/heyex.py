@@ -4,12 +4,13 @@ from typing import Union, IO
 
 import numpy as np
 
-from eyepy.io import he_vol, he_xml
-from eyepy.io.const import SEG_MAPPING
+from eyepy.core.config import SEG_MAPPING
+from eyepy.core.octbase import Oct
+from eyepy.io.heyex import he_vol, he_xml
 from eyepy.io.utils import _get_meta_attr
 
 
-class HeyexOct:
+class HeyexOct(Oct):
     """
     The HeyexOct object lazy loads the .vol file. It will only read exactly what
     you ask for. This means that no B-Scan image is read from the file if you
@@ -70,6 +71,9 @@ class HeyexOct:
 
     def __getitem__(self, key):
         return self._bscans[key]
+
+    def __len__(self):
+        return self.NumBScans
 
     @property
     def slo(self):
