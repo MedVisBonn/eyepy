@@ -105,7 +105,7 @@ class HeyexSlo:
 
 
 class HeyexBscanMeta:
-    def __new__(cls, filepath, version=None, *args, **kwargs):
+    def __new__(cls, filepath, bscan_index, version=None, *args, **kwargs):
         if version is None:
             root = get_xml_root(filepath)
             version = root[0].find("SWVersion")[1].text
@@ -115,7 +115,7 @@ class HeyexBscanMeta:
             setattr(cls, k, v)
         return object.__new__(cls, *args, **kwargs)
 
-    def __init__(self, filepath, *args, **kwargs):
+    def __init__(self, filepath, bscan_index, *args, **kwargs):
         """
 
         Parameters
@@ -124,7 +124,7 @@ class HeyexBscanMeta:
         startpos :
         """
         self._xmlfilepath = Path(filepath)
-        self._root = get_xml_root(filepath)
+        self._root = get_xml_root(filepath)[0].findall(f".//Image[ImageNumber='{bscan_index+1}']")
 
         for key in self._meta_fields[1:]:
             setattr(self, f"_{key}", None)
@@ -142,7 +142,7 @@ class HeyexBscan:
     def __new__(
         cls, filepath, bscan_index, oct_meta=None, version=None, *args,
         **kwargs):
-        meta = HeyexBscanMeta(filepath, version)
+        meta = HeyexBscanMeta(filepath, bscan_index, version)
         setattr(cls, "meta", meta)
 
         for meta_attr in meta._meta_fields:
@@ -159,7 +159,10 @@ class HeyexBscan:
         oct_meta :
         """
         self._xmlfilepath = Path(filepath)
-        self._root = get_xml_root(filepath)
+        self._index = bscan_index
+        self._root = get_xml_root(filepath)[0].findall(
+            ".//ImageType[Type='OCT']..")[self._index]
+        
         self._index = bscan_index
 
         self.oct_meta = oct_meta
@@ -179,11 +182,8 @@ class HeyexBscan:
         if self._segmentation_raw is None:
             self._segmentation_raw = np.full(shape=(17, self.oct_meta.SizeX),
                                              fill_value=np.nan, dtype="float32")
-            # Iterate over Segmentations
-            segmentations = self._root[0].findall(
-                ".//ImageType[Type='OCT']..")[self._index]
 
-            for segline in segmentations.findall(".//SegLine"):
+            for segline in self._root.findall(".//SegLine"):
                 name = segline.find("./Name").text
                 self._segmentation_raw[SEG_MAPPING[name], :] = \
                     [float(x) for x in segline.find("./Array").text.split()]
@@ -200,9 +200,7 @@ class HeyexBscan:
     @property
     def scan(self):
         if self._scan is None:
-            img_path = self._root[0].findall(
-                ".//ImageType[Type='OCT']../ImageData/ExamURL")[
-                self._index].text
+            img_path = self._root.find("./ImageData/ExamURL").text
             img_name = img_path.split("\\")[-1]
             self._scan = imageio.imread(self._xmlfilepath.parent / img_name)
         return self._scan

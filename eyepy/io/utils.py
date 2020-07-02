@@ -99,20 +99,31 @@ def _date_from_seconds(s: int, epoche: datetime = datetime.utcfromtimestamp(0),
 
 
 def _get_first_as_int(elements):
-    return int(elements[0].text)
+    if elements:
+        return int(elements[0].text)
+    else:
+        return None
 
 
 def _get_first_as_float(elements):
-    return float(elements[0].text)
+    if elements:
+        return float(elements[0].text)
+    else:
+        return None
 
 
 def _get_first_as_str(elements):
-    return elements[0].text
+    if elements:
+        return elements[0].text
+    else:
+        return None
 
 
 def _get_datetime_from_xml(elements):
-    date = elements[0].find("ReferenceSeries/ExamDate/Date")
+    date = elements[0].find("Series/ExamDate/Date")
     time = elements[0].find("Image/AcquisitionTime/Time")
+    if date is None or time is None:
+        return None
 
     year = int(date.find("Year").text)
     month = int(date.find("Month").text)

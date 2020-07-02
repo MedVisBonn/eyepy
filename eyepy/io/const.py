@@ -249,7 +249,7 @@ HEXML_BSCAN_VERSIONS = {
         ("StartX", "./OphthalmicAcquisitionContext/Start/Coord/X",
          _get_first_as_float),
         # Y-Coordinate of the B-Scan's start point in mm.
-        ("StartY", "./OphthalmicAcquisitionContext/Start/Coord/X",
+        ("StartY", "./OphthalmicAcquisitionContext/Start/Coord/Y",
          _get_first_as_float),
         # X-Coordinate of the B-Scan's end point in mm. For circle scans, this
         # is the X-Coordinate of the circle's center point.
@@ -257,7 +257,7 @@ HEXML_BSCAN_VERSIONS = {
          _get_first_as_float),
         # Y-Coordinate of the B-Scan's end point in mm. For circle scans, this
         # is the Y-Coordinate of the circle's center point.
-        ("EndY", "./OphthalmicAcquisitionContext/End/Coord/X",
+        ("EndY", "./OphthalmicAcquisitionContext/End/Coord/Y",
          _get_first_as_float),
         # Number of segmentation vectors
         ("NumSeg", "./Segmentation/NumSegmentations", _get_first_as_int),
