@@ -9,7 +9,6 @@ Welcome to eyepy's documentation!
    installation
    usage
    examples
-   modules
    contributing
    authors
    history
