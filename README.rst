@@ -1,8 +1,6 @@
 =====
 eyepy
 =====
-.. image:: docs/logo.svg
-
 
 .. image:: https://img.shields.io/pypi/v/eyepy.svg
         :target: https://pypi.python.org/pypi/eyepy

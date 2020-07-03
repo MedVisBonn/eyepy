@@ -1,46 +1,98 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import untangle
+from pathlib import Path
+import imageio
 
+def read_xml_export(path):
+    return SpectralisXMLReader(path)
 
 class SpectralisXMLReader(object):
     def __init__(self, path):
-        self.obj = untangle.parse(path)
+        self.path = Path(path)
+        self.xml_path = list(self.path.glob("*.xml"))
+        print(self.xml_path)
+        if len(self.xml_path) != 1:
+            raise ValueError("There is not exactly one .xml file under the given path.")
+        else:
+            self.xml_path = self.xml_path[0]
+        self.xml_obj = untangle.parse(str(self.xml_path))
+
+        self._slo = None
+        self._slo_filename = None
+        self._bscan_filenames = None
+        self._NumBScans = None
 
     @property
-    def version(self):
-        self.obj.HEDX.BODY.SWVersion.Version.cdata
+    def slo(self):
+        if self._slo is None:
+            self._slo = imageio.imread(self.path / self.slo_filename)
+        return self._slo
+
+    def _get_bscan(self, index):
+        return imageio.imread(self.path / self.bscan_filenames[index])
+
+
+    def __getitem__(self, index):
+        if type(index) == int:
+            if index < 0:
+                index = self.NumBScans + index
+            elif index >= self.NumBScans:
+                raise IndexError
+            return self._get_bscan(index)
+        elif type(index) == slice:
+            bscans = []
+            for b in range(*index.indices(self.NumBScans)):
+                bscans.append(self._get_bscan(b))
+            return bscans
+        else:
+            raise TypeError("Index has to be of type 'int' or 'slice'")
 
     @property
-    def octs(self):
-        images = self.obj.HEDX.BODY.Patient.Study.Series.Image
+    def Version(self):
+        self.xml_obj.HEDX.BODY.SWVersion.Version.cdata
+
+    @property
+    def NumBScans(self):
+        if self._NumBScans is None:
+            self._NumBScans = len(self.bscans())
+        return self._NumBScans
+
+    def bscans(self):
+        images = self.xml_obj.HEDX.BODY.Patient.Study.Series.Image
         return [i for i in images if i.ImageType.Type == "OCT"]
 
     @property
-    def oct_filenames(self):
-        octs = self.octs
-        return self.get_oct_filenames(octs)
+    def bscan_filenames(self):
+        if self._bscan_filenames is None:
+            self._bscan_filenames = self.get_bscan_filenames(self.bscans())
+        return self._bscan_filenames
 
     @property
-    def localizer_filename(self):
-        return self.get_localizer_filename()
+    def slo_filename(self):
+        if self._slo_filename is None:
+            images = self.xml_obj.HEDX.BODY.Patient.Study.Series.Image
+            path = [i for i in images if i.ImageType.Type == "LOCALIZER"][0]
+            self._slo_filename =  path.ImageData.ExamURL.cdata.split("\\")[-1]
+
+        return self._slo_filename
 
     @property
     def oct_width(self):
-        return int(self.octs[0].OphthalmicAcquisitionContext.Width.cdata)
+        return int(self.bscans[0].OphthalmicAcquisitionContext.Width.cdata)
 
     @property
     def oct_height(self):
-        return int(self.octs[0].OphthalmicAcquisitionContext.Height.cdata)
+        return int(self.bscans[0].OphthalmicAcquisitionContext.Height.cdata)
 
     @property
     def oct_n(self):
-        return int(len(self.octs))
+        return int(len(self.bscans))
 
     def get_segmentations(self):
 
         self.segmentations = {}
-        seg_types = [x.Name for x in self.octs[0].Segmentation.SegLine]
+        seg_types = [x.Name for x in self.bscans[0].Segmentation.SegLine]
 
         for seg_type in seg_types:
             self.segmentations[seg_type.cdata] = self.get_segmentation(seg_type.cdata)
@@ -54,7 +106,7 @@ class SpectralisXMLReader(object):
     def get_segmentation(self, name):
         seg = np.zeros((self.oct_n, self.oct_height, self.oct_width))
         for i in range(self.oct_n):
-            for s in self.octs[i].Segmentation.SegLine:
+            for s in self.bscans[i].Segmentation.SegLine:
                 if s.Name.cdata == name:
                     seg_data = np.array(s.Array.cdata.split(" ")).astype("float")
                     x = np.where(seg_data < 10000)
@@ -64,13 +116,8 @@ class SpectralisXMLReader(object):
 
         return seg
 
-    def get_oct_filenames(self, octs):
+    def get_bscan_filenames(self, octs):
         names = []
         for o in octs:
             names.append(o.ImageData.ExamURL.cdata.split("\\")[-1])
         return names
-
-    def get_localizer_filename(self):
-        images = self.obj.HEDX.BODY.Patient.Study.Series.Image
-        path = [i for i in images if i.ImageType.Type == "LOCALIZER"][0]
-        return path.ImageData.ExamURL.cdata.split("\\")[-1]
