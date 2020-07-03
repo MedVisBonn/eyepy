@@ -1,3 +1,2 @@
 # -*- coding: utf-8 -*-
-from .he_vol import HeyexOct, read_vol
-from .he_xml import read_xml_export
+from .heyex.heyex import read_xml, read_vol, HeyexOct

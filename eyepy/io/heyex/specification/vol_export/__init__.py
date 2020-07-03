@@ -2,11 +2,7 @@ from datetime import datetime
 
 from eyepy.io.utils import _clean_ascii, _get_first, _date_from_seconds
 
-SEG_MAPPING = {"ILM": 0, "BM": 1, "NFL": 2, "GCL": 3, "IPl": 4, "INL": 5,
-               "OPL": 6, "ONL": 7, "ELM": 8, "IOS": 9, "OPT": 10, "CHO": 11,
-               "VIT": 12, "ANT": 13, "EZ/PR1": 14, "IZ/PR2": 15, "RPE": 16}
-
-OCT_HDR_VERSIONS = {
+HEVOL_VERSIONS = {
     "HSF-OCT-103": [
         # Version identifier: HSF-OCT-xxx
         ("Version", "12s", _clean_ascii),
@@ -99,8 +95,7 @@ OCT_HDR_VERSIONS = {
         ("ProgID", "34s", _clean_ascii),
         # Spare bytes for future use. Initialized to 0.
         ("__empty", "1790s", _get_first)], }
-
-BSCAN_HDR_VERSIONS = {
+HEVOL_BSCAN_VERSIONS = {
     "HSF-BS-103": [
         # Version identifier (zero terminated string).
         ("Version", "12s", _clean_ascii),
