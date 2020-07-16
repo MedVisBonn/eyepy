@@ -75,7 +75,7 @@ class Oct(ABC):
 
     def plot_slo_bscan(self, ax=None, n_bscan=0):
         """ Plot Slo with one selected B-Scan """
-        pass
+        raise NotImplementedError()
 
     def plot_bscans(self, bs_range=range(0, 8), cols=4, layers=None,
                     layers_kwargs=None):
