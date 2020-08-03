@@ -116,7 +116,7 @@ class Bscan:
     def segmentation_raw(self):
         raise NotImplementedError()
 
-    def plot(self, ax=None, layers=None, layers_kwargs=None, layers_color=None):
+    def plot(self, ax=None, layers=None, layers_kwargs=None, layers_color=None, layers_only=False):
         """ Plot B-Scan with segmented Layers """
         if ax is None:
             fig, ax = plt.subplots(1, 1)
@@ -137,13 +137,14 @@ class Bscan:
             layers_color = config.layers_color
         else:
             layers_color = {**config.layers_color, **layers_color}
-
-        ax.imshow(self.scan, cmap="gray")
+        
+        if not layers_only:
+            ax.imshow(self.scan, cmap="gray")
         for layer in layers:
             color = layers_color[layer]
             try:
                 segmentation = self.segmentation[layer]
-                ax.plot(segmentation, color=color,
+                ax.plot(segmentation, color=color, label=layer,
                         **layers_kwargs)
             except KeyError:
                 warnings.warn(f"Layer '{layer}' has no Segmentation",
