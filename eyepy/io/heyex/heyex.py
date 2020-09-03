@@ -135,6 +135,10 @@ class HeyexOct(Oct):
         slo = he_xml.get_slo(filepath)
         return cls(bscans, slo, meta)
 
+    @classmethod
+    def from_images(cls, images):
+        pass
+
 
 def read_vol(file_obj: Union[str, Path, IO]):
     """ Return a HeyexOct object for a .vol file at the given file_obj

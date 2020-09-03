@@ -15,6 +15,7 @@ requirements = [
     "imageio",
     "numpy",
     "matplotlib",
+    "seaborn",
     "scikit-image"
 ]
 
