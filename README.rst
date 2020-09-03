@@ -2,34 +2,17 @@
 eyepy
 =====
 
-.. image:: https://img.shields.io/pypi/v/eyepy.svg
-        :target: https://pypi.python.org/pypi/eyepy
-
-.. image:: https://img.shields.io/travis/Oli4/eyepy.svg
-        :target: https://travis-ci.org/Oli4/eyepy
-
-.. image:: https://readthedocs.org/projects/eyepy/badge/?version=latest
-        :target: https://eyepy.readthedocs.io/en/latest/?badge=latest
-        :alt: Documentation Status
 
 
-.. image:: https://pyup.io/repos/github/Oli4/eyepy/shield.svg
-     :target: https://pyup.io/repos/github/Oli4/eyepy/
-     :alt: Updates
-
-
-
-The Python package for working with ophthalmological data.
-
-
-* Free software: MIT license
-* Documentation: https://eyepy.readthedocs.io.
+This software is under active development and can not be considered stable
 
 
 Features
 --------
 
-* TODO
+* Read the HEYEX XML export
+* Read the HEYEX VOL export
+* Plot OCT Scans
 
 Credits
 -------
