@@ -62,6 +62,7 @@ class HeyexOct(Oct):
         slo :
         meta :
         """
+        super().__init__()
         self._bscans = bscans
         self._sloreader = slo
         self._meta = meta
