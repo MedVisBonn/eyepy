@@ -16,7 +16,7 @@ requirements = [
     "numpy",
     "matplotlib",
     "seaborn",
-    "scikit-image"
+    "scikit-image",
     "scipy"
 ]
 
