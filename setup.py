@@ -12,11 +12,11 @@ with open("HISTORY.rst") as history_file:
     history = history_file.read()
 
 requirements = [
-    "imageio==2.6.1",
-    "numpy==1.17.3",
-    "matplotlib==3.3.1",
-    "scikit-image==0.16.2",
-    "untangle==1.1.1",
+    "imageio",
+    "numpy",
+    "matplotlib",
+    "seaborn",
+    "scikit-image"
     "scipy"
 ]
 

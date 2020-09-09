@@ -6,6 +6,7 @@ from pathlib import Path
 
 import imageio
 import numpy as np
+from skimage.color import rgb2gray
 
 from eyepy.core.config import SEG_MAPPING
 from eyepy.core.octbase import Bscan

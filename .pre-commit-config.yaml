@@ -11,7 +11,6 @@ repos:
     -   id: check-added-large-files
     -   id: requirements-txt-fixer
     -   id: fix-encoding-pragma
-    -   id: check-added-large-files
     -   id: check-docstring-first
 -   repo: https://github.com/asottile/blacken-docs
     rev: v1.3.0
