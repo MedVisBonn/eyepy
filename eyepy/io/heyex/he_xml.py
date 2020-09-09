@@ -165,7 +165,7 @@ class HeyexBscan(Bscan):
         self.oct_meta = oct_meta
         self._scan = None
         self._segmentation_raw = None
-        
+
         self.scan_name = self._root.find("./ImageData/ExamURL").text.split("\\")[-1]
 
     @property
@@ -209,7 +209,7 @@ class HeyexBscan(Bscan):
     @property
     def scan(self):
         if self._scan is None:
-            self._scan = imageio.imread(self._xmlfilepath.parent / self.scan_name)
+            self._scan = imageio.imread(self._xmlfilepath.parent / self.scan_name)[..., 0]
         return self._scan
 
     @property

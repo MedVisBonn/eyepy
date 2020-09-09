@@ -55,10 +55,10 @@ class Oct(ABC):
     @property
     def drusen(self):
         if self._drusen is None:
-            self._drusen = np.stack([x.drusen for x in self._bscans], axis=1)
+            self._drusen = np.stack([x.drusen for x in self._bscans], axis=-1)
         return self._drusen
 
-    def plot(self, ax=None, bscan_positions=None, line_kwargs=None):
+    def plot(self, ax=None, bscan_positions=None, line_kwargs={"linewidth": 0.5, "color": "green"}):
         """ Plot Slo with localization of corresponding B-Scans"""
 
         if ax is None:
@@ -80,9 +80,10 @@ class Oct(ABC):
 
         for i in bscan_positions:
             bscan = self[i]
-            ax.plot(np.array([bscan.StartX, bscan.EndX]) / bscan.ScaleXSlo,
-                    np.array([bscan.StartX, bscan.EndX]) / bscan.ScaleXSlo,
-                    **line_kwargs)
+            x = np.array([bscan.StartX, bscan.EndX]) / self.ScaleXSlo
+            y = np.array([bscan.StartY, bscan.EndY]) / self.ScaleYSlo
+
+            ax.plot(x, y, **line_kwargs)
 
     def plot_slo_bscan(self, ax=None, n_bscan=0):
         """ Plot Slo with one selected B-Scan """
@@ -134,7 +135,8 @@ class Bscan:
         return drusen(self.segmentation["RPE"], self.segmentation["BM"],
                       self.scan.shape)
 
-    def plot(self, ax=None, layers=None, layers_kwargs=None, layers_color=None, layers_only=False):
+    def plot(self, ax=None, layers=None, drusen=False, layers_kwargs=None, layers_color=None,
+             annotation_only=False):
         """ Plot B-Scan with segmented Layers """
         if ax is None:
             fig, ax = plt.subplots(1, 1)
@@ -156,8 +158,12 @@ class Bscan:
         else:
             layers_color = {**config.layers_color, **layers_color}
 
-        if not layers_only:
+        if not annotation_only:
             ax.imshow(self.scan, cmap="gray")
+        if drusen:
+            visible = np.zeros(self.drusen.shape)
+            visible[self.drusen] = 1.0
+            ax.imshow(self.drusen, alpha=visible, cmap="Reds")
         for layer in layers:
             color = layers_color[layer]
             try:
