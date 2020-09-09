@@ -16,7 +16,8 @@ requirements = [
     "numpy==1.17.3",
     "matplotlib==3.1.1",
     "scikit-image==0.16.2",
-    "untangle==1.1.1"
+    "untangle==1.1.1",
+    "scipy"
 ]
 
 setup_requirements = ["pytest-runner"]
