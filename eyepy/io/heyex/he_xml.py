@@ -6,7 +6,6 @@ from pathlib import Path
 
 import imageio
 import numpy as np
-from skimage.color import rgb2gray
 
 from eyepy.core.config import SEG_MAPPING
 from eyepy.core.octbase import Bscan
@@ -210,7 +209,10 @@ class HeyexBscan(Bscan):
     @property
     def scan(self):
         if self._scan is None:
-            self._scan = imageio.imread(self._xmlfilepath.parent / self.scan_name)[..., 0]
+            self._scan = imageio.imread(self._xmlfilepath.parent / self.scan_name)
+            # In case 3 arrays (RGB values) are stored instead of a single array
+            if self._scan.ndim == 3:
+                self._scan = self._scan[..., 0]
         return self._scan
 
     @property
