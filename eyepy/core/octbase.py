@@ -5,14 +5,16 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from eyepy.core import config
-from eyepy.core.drusen import drusen
+from eyepy.core.drusen import DefaultDrusenFinder
 
 
 class Oct(ABC):
 
     @abstractmethod
-    def __init__(self):
+    def __init__(self, drusenfinder=DefaultDrusenFinder()):
+        self.drusenfinder = drusenfinder
         self._drusen = None
+        self._drusen_raw = None
 
     @abstractmethod
     def __getitem__(self, key):
@@ -57,6 +59,12 @@ class Oct(ABC):
         if self._drusen is None:
             self._drusen = np.stack([x.drusen for x in self._bscans], axis=-1)
         return self._drusen
+
+    @property
+    def drusen_raw(self):
+        if self._drusen_raw is None:
+            self._drusen_raw = np.stack([x.drusen_raw for x in self._bscans], axis=-1)
+        return self._drusen_raw
 
     def plot(self, ax=None, bscan_positions=None, line_kwargs={"linewidth": 0.5, "color": "green"}):
         """ Plot Slo with localization of corresponding B-Scans"""
@@ -108,6 +116,11 @@ class Oct(ABC):
 
 class Bscan:
 
+    @abstractmethod
+    def __init__(self):
+        self._drusen = None
+        self._drusen_raw = None
+
     @property
     @abstractmethod
     def scan(self):
@@ -130,10 +143,20 @@ class Bscan:
 
     @property
     @abstractmethod
+    def drusen_raw(self):
+        """ Return drusen computed from the RPE and BM layer segmentation, not filtered """
+        if self._drusen_raw is None:
+            self._drusen_raw = self.drusenfinder.find(self.segmentation["RPE"], self.segmentation["BM"],
+                                                      self.scan.shape)
+        return self._drusen_raw
+
+    @property
+    @abstractmethod
     def drusen(self):
-        """Return drusen computed from the RPE and BM layer segmentation"""
-        return drusen(self.segmentation["RPE"], self.segmentation["BM"],
-                      self.scan.shape)
+        """ Return filtered drusen """
+        if self._drusen is None:
+            self._drusen = self.drusenfinder.filter(self.drusen_raw)
+        return self._drusen
 
     def plot(self, ax=None, layers=None, drusen=False, layers_kwargs=None, layers_color=None,
              annotation_only=False):
