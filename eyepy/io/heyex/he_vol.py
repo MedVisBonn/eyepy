@@ -134,7 +134,8 @@ class HeyexBscanMeta:
 
 class HeyexBscan(Bscan):
     def __new__(
-        cls, file_obj, startpos, oct_meta=None, version=None, *args, **kwargs):
+        cls, file_obj, startpos, bscan_index, oct_volume, oct_meta=None,
+        version=None, *args, **kwargs):
         meta = HeyexBscanMeta(file_obj, startpos, version)
         setattr(cls, "meta", meta)
 
@@ -142,7 +143,7 @@ class HeyexBscan(Bscan):
             setattr(cls, meta_attr, _get_meta_attr(meta_attr))
         return object.__new__(cls, *args, **kwargs)
 
-    def __init__(self, file_obj, startpos, oct_meta):
+    def __init__(self, file_obj, startpos, oct_meta, bscan_index, oct_volume):
         """
 
         Parameters
@@ -151,12 +152,17 @@ class HeyexBscan(Bscan):
         startpos :
         oct_meta :
         """
+        super().__init__(bscan_index, oct_volume)
         self._file_obj = file_obj
         self._startpos = startpos
 
         self.oct_meta = oct_meta
         self._scan_raw = None
         self._segmentation_raw = None
+
+    @property
+    def shape(self):
+        return (self.oct_meta.SizeZ, self.oct_meta.SizeX)
 
     @property
     def _segmentation_start(self):
@@ -167,7 +173,7 @@ class HeyexBscan(Bscan):
         return self.oct_meta.SizeX * 17
 
     @property
-    def segmentation_raw(self):
+    def layers_raw(self):
         if self._segmentation_raw is None:
             self._segmentation_raw = np.ndarray(buffer=self._file_obj,
                                                 dtype="float32",
@@ -176,8 +182,8 @@ class HeyexBscan(Bscan):
         return self._segmentation_raw
 
     @property
-    def segmentation(self):
-        data = self.segmentation_raw.copy()
+    def layers(self):
+        data = self.layers_raw.copy()
         empty = np.nonzero(np.logical_or(data < 0, data > self.oct_meta.SizeZ))
         data[empty] = np.nan
         return {name: data[i] for name, i in SEG_MAPPING.items()
@@ -220,6 +226,12 @@ class HeyexBscans:
         self._file_obj = file_obj
         self._hdr_start = None
         self._oct_meta = oct_meta
+        self._oct_volume = None
+
+    def _get_bscan(self, index):
+        self.seek(index)
+        return HeyexBscan(self._file_obj, self.hdr_start, bscan_index=index,
+                          oct_meta=self.oct_meta, oct_volume=self._oct_volume)
 
     @property
     def hdr_start(self):
@@ -249,10 +261,6 @@ class HeyexBscans:
     def hdr_size(self):
         return self.oct_meta.BScanHdrSize
 
-    def _get_current_bscan(self):
-        return HeyexBscan(self._file_obj, self.hdr_start,
-                          oct_meta=self.oct_meta)
-
     def __len__(self):
         return self.oct_meta.NumBScans
 
@@ -262,13 +270,11 @@ class HeyexBscans:
                 index = self.oct_meta.NumBScans + index
             elif index >= self.oct_meta.NumBScans:
                 raise IndexError
-            self.seek(index)
-            return self._get_current_bscan()
+            return self._get_bscan(index)
         elif type(index) == slice:
             bscans = []
             for b in range(*index.indices(self.oct_meta.NumBScans)):
-                self.seek(b)
-                bscans.append(self._get_current_bscan())
+                bscans.append(self._get_bscan(b))
             return bscans
         else:
             raise TypeError("Index has to be of type 'int' or 'slice'")

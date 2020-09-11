@@ -2,9 +2,6 @@ import mmap
 from pathlib import Path, PosixPath
 from typing import Union, IO
 
-import numpy as np
-
-from eyepy.core.config import SEG_MAPPING
 from eyepy.core.octbase import Oct
 from eyepy.io.heyex import he_vol, he_xml
 from eyepy.io.utils import _get_meta_attr
@@ -49,6 +46,7 @@ class HeyexOct(Oct):
     """
 
     def __new__(cls, bscans, slo, meta, *args, **kwargs):
+        # Set all the meta fields as attributes
         for meta_attr in meta._meta_fields:
             setattr(cls, meta_attr, _get_meta_attr(meta_attr))
         return object.__new__(cls, *args, **kwargs)
@@ -62,65 +60,11 @@ class HeyexOct(Oct):
         slo :
         meta :
         """
-        super().__init__()
-        self._bscans = bscans
-        self._sloreader = slo
-        self._meta = meta
-
-        self._slo = None
-        self._segmentation_raw = None
-
-    def __getitem__(self, key):
-        return self._bscans[key]
-
-    def __len__(self):
-        return self.NumBScans
+        super().__init__(bscans, slo, meta)
 
     @property
-    def slo(self):
-        if self._slo is None:
-            self._slo = self._sloreader.data
-        return self._slo
-
-    @property
-    def meta(self):
-        return self._meta
-
-    @property
-    def segmentation_raw(self):
-        """ The segmentation as it is encoded in the .vol file.
-
-        Segmentations for all B-Scans are  stacked such that we get a volume
-        S x B x W where S are different Segmentations, B are the B-Scans and
-        W is the Width of the B-Scans.
-        """
-        if self._segmentation_raw is None:
-            self._segmentation_raw = np.stack([x.segmentation_raw
-                                               for x in self._bscans], axis=1)
-        return self._segmentation_raw
-
-    @property
-    def segmentation(self):
-        """ All segmentations as a dictionary where the key is the layer name
-        and the value is a 2D array holding the respectives layers segmentation
-        height for all B-Scans of the volume. """
-        nans = np.isnan(self.segmentation_raw)
-        empty = np.nonzero(np.logical_or(
-            np.less(self.segmentation_raw, 0, where=~nans),
-            np.greater(self.segmentation_raw, self.meta.SizeZ, where=~nans)))
-
-        data = self.segmentation_raw.copy()
-        data[empty] = np.nan
-        return {name: data[i, ...] for name, i in SEG_MAPPING.items()
-                if np.nansum(data[i, ...]) != 0}
-
-    @property
-    def volume_raw(self):
-        return np.stack([x.scan_raw for x in self._bscans], axis=-1)
-
-    @property
-    def volume(self):
-        return np.stack([x.scan for x in self._bscans], axis=-1)
+    def shape(self):
+        return (self.SizeZ, self.SizeX, self.NumBScans)
 
     @classmethod
     def read_vol(cls, file_obj):
@@ -164,7 +108,7 @@ def read_xml(filepath: Union[str, Path]):
 
     Parameters
     ----------
-    file_obj : Path to the .vol file
+    filepath : Path to the .xml file
 
     Returns
     -------
