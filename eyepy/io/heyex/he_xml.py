@@ -49,7 +49,7 @@ class HeyexOctMeta:
 
         Parameters
         ----------
-        file_obj :
+        filepath :
         """
         self._filepath = filepath
         self._root = get_xml_root(filepath)
@@ -72,7 +72,7 @@ class HeyexSlo:
 
         Parameters
         ----------
-        root :
+        filepath :
         oct_meta :
         """
         self._xmlfilepath = Path(filepath)
@@ -137,8 +137,8 @@ class HeyexBscanMeta:
 
 class HeyexBscan(Bscan):
     def __new__(
-        cls, filepath, bscan_index, oct_meta=None, version=None, *args,
-        **kwargs):
+        cls, filepath, bscan_index, oct_volume, oct_meta=None, version=None,
+        *args, **kwargs):
         meta = HeyexBscanMeta(filepath, bscan_index, version)
         setattr(cls, "meta", meta)
 
@@ -146,7 +146,7 @@ class HeyexBscan(Bscan):
             setattr(cls, meta_attr, _get_meta_attr(meta_attr))
         return object.__new__(cls, *args, **kwargs)
 
-    def __init__(self, filepath, bscan_index, oct_meta):
+    def __init__(self, filepath, bscan_index, oct_volume, oct_meta):
         """
 
         Parameters
@@ -155,29 +155,32 @@ class HeyexBscan(Bscan):
         bscan_index :
         oct_meta :
         """
+        super().__init__(bscan_index, oct_volume)
         self._xmlfilepath = Path(filepath)
-        self._index = bscan_index
         self._root = get_xml_root(filepath)[0].findall(
             ".//ImageType[Type='OCT']..")[self._index]
-
-        self._index = bscan_index
 
         self.oct_meta = oct_meta
         self._scan = None
         self._segmentation_raw = None
 
-        self.scan_name = self._root.find("./ImageData/ExamURL").text.split("\\")[-1]
+        self.scan_name = \
+            self._root.find("./ImageData/ExamURL").text.split("\\")[-1]
 
     @property
-    def _segmentation_start(self):
-        return self._startpos + self.OffSeg
+    def shape(self):
+        return (self.oct_meta.SizeZ, self.oct_meta.SizeX)
+
+    # @property
+    # def _segmentation_start(self):
+    #    return self._startpos + self.OffSeg
 
     @property
     def _segmentation_size(self):
         return self.oct_meta.SizeX * 17
 
     @property
-    def segmentation_raw(self):
+    def layers_raw(self):
         if self._segmentation_raw is None:
             seglines = self._root.findall(".//SegLine")
             self._segmentation_raw = np.full(shape=(17, self.oct_meta.SizeX),
@@ -193,14 +196,13 @@ class HeyexBscan(Bscan):
 
         return self._segmentation_raw
 
-
     @property
-    def segmentation(self):
-        data = self.segmentation_raw.copy()
-        nans = np.isnan(self.segmentation_raw)
+    def layers(self):
+        data = self.layers_raw.copy()
+        nans = np.isnan(self.layers_raw)
         empty = np.nonzero(np.logical_or(
-            np.less(self.segmentation_raw, 0, where=~nans),
-            np.greater(self.segmentation_raw, self.oct_meta.SizeZ, where=~nans)))
+            np.less(self.layers_raw, 0, where=~nans),
+            np.greater(self.layers_raw, self.oct_meta.SizeZ, where=~nans)))
         data[empty] = np.nan
         return {name: data[i] for name, i in SEG_MAPPING.items()
                 if np.nansum(data[i]) != 0}
@@ -237,10 +239,11 @@ class HeyexBscans:
         self._xmlfilepath = Path(filepath)
         self._root = get_xml_root(filepath)
         self._oct_meta = oct_meta
+        self._oct_volume = None
 
     def _get_bscan(self, index):
         return HeyexBscan(self._xmlfilepath, index,
-                          oct_meta=self.oct_meta)
+                          oct_meta=self.oct_meta, oct_volume=self._oct_volume)
 
     def __len__(self):
         return self.oct_meta.NumBScans
