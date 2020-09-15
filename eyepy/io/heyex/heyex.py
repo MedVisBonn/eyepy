@@ -4,7 +4,6 @@ from typing import Union, IO
 
 from eyepy.core.octbase import Oct
 from eyepy.io.heyex import he_vol, he_xml
-from eyepy.io.utils import _get_meta_attr
 
 
 class HeyexOct(Oct):
@@ -45,12 +44,6 @@ class HeyexOct(Oct):
 
     """
 
-    def __new__(cls, bscans, slo, meta, *args, **kwargs):
-        # Set all the meta fields as attributes
-        for meta_attr in meta._meta_fields:
-            setattr(cls, meta_attr, _get_meta_attr(meta_attr))
-        return object.__new__(cls, *args, **kwargs)
-
     def __init__(self, bscans, slo, meta):
         """
 
@@ -65,6 +58,10 @@ class HeyexOct(Oct):
     @property
     def shape(self):
         return (self.SizeZ, self.SizeX, self.NumBScans)
+
+    @property
+    def fovea_pos(self):
+        return self.SizeXSlo / 2, self.SizeYSlo / 2
 
     @classmethod
     def read_vol(cls, file_obj):

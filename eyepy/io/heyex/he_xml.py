@@ -49,7 +49,7 @@ class HeyexOctMeta:
 
         Parameters
         ----------
-        file_obj :
+        filepath :
         """
         self._filepath = filepath
         self._root = get_xml_root(filepath)
@@ -72,7 +72,7 @@ class HeyexSlo:
 
         Parameters
         ----------
-        root :
+        filepath :
         oct_meta :
         """
         self._xmlfilepath = Path(filepath)
@@ -165,15 +165,15 @@ class HeyexBscan(Bscan):
         self._segmentation_raw = None
 
         self.scan_name = \
-        self._root.find("./ImageData/ExamURL").text.split("\\")[-1]
+            self._root.find("./ImageData/ExamURL").text.split("\\")[-1]
 
     @property
     def shape(self):
         return (self.oct_meta.SizeZ, self.oct_meta.SizeX)
 
-    @property
-    def _segmentation_start(self):
-        return self._startpos + self.OffSeg
+    # @property
+    # def _segmentation_start(self):
+    #    return self._startpos + self.OffSeg
 
     @property
     def _segmentation_size(self):
