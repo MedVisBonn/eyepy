@@ -2,11 +2,11 @@ import mmap
 from pathlib import Path, PosixPath
 from typing import Union, IO
 
-from eyepy.core.octbase import Oct
+from eyepy.core.base import OctBase
 from eyepy.io.heyex import he_vol, he_xml
 
 
-class HeyexOct(Oct):
+class HeyexOct(OctBase):
     """
     The HeyexOct object lazy loads the .vol file. It will only read exactly what
     you ask for. This means that no B-Scan image is read from the file if you
@@ -76,10 +76,6 @@ class HeyexOct(Oct):
         bscans = he_xml.get_bscans(filepath)
         slo = he_xml.get_slo(filepath)
         return cls(bscans, slo, meta)
-
-    @classmethod
-    def from_images(cls, images):
-        pass
 
 
 def read_vol(file_obj: Union[str, Path, IO]):
