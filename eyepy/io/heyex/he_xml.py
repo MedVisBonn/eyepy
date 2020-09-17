@@ -83,15 +83,22 @@ class HeyexSlo:
 
         self.shape = (self.oct_meta.SizeXSlo, self.oct_meta.SizeYSlo)
         self._size = self.shape[0] * self.shape[1]
+        self._filename = None
+
+    @property
+    def filename(self):
+        if self._filename is None:
+            localizer_path = self._root[0].find(".//ImageType[Type='LOCALIZER']../ImageData/ExamURL").text
+            self._filename = localizer_path.split("\\")[-1]
+        return self._filename
+		
 
     @property
     def data(self):
         if self._data is None:
-            localizer_path = self._root[0].find(
-                ".//ImageType[Type='LOCALIZER']../ImageData/ExamURL").text
-            localizer_name = localizer_path.split("\\")[-1]
+            
             self._data = imageio.imread(
-                self._xmlfilepath.parent / localizer_name)
+                self._xmlfilepath.parent / self.filename)
         return self._data
 
     @property

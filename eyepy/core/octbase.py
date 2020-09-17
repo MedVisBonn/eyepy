@@ -388,6 +388,7 @@ class Bscan:
     def __init__(self, index, oct_volume):
         self._index = index
         self._oct_volume = oct_volume
+        self._layer_indices = None
         self._drusen = None
         self._drusen_raw = None
 
@@ -416,6 +417,19 @@ class Bscan:
         unprocessed data imported by eyepy.
         """
         raise NotImplementedError()
+
+    @property
+    def layer_indices(self):
+        if self._layer_indices is None:
+            
+            self._layer_indices = {}
+            for key, layer_height in self.layers.items():
+                nan_indices = np.isnan(layer_height)
+                col_indices = np.arange(self.shape[1])[~nan_indices]
+                row_indices = np.rint(layer_height).astype(int)[~nan_indices]
+                self._layer_indices[key] = (row_indices, col_indices)
+                
+        return self._layer_indices
 
     @property
     @abstractmethod
