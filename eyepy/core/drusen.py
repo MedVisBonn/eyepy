@@ -7,7 +7,7 @@ from scipy.ndimage import label
 
 class DrusenFinder(ABC):
     @abstractmethod
-    def find(self, *args, **kwargs):
+    def find(self, oct_obj):
         """ A function which returns a boolean map indicating drusen"""
         raise NotImplementedError()
 
@@ -44,11 +44,18 @@ class DefaultDrusenFinder(DrusenFinder):
         self.voxel_size = voxel_size
 
     def filter(self, drusen_map):
-        return filter_by_height(drusen_map, self.minimum_height)
+        return filter_by_height(drusen_map, self.minimum_height,
+                                self.voxel_size)
 
-    def find(self, rpe_height, bm_height, scan_shape):
-        return drusen(rpe_height, bm_height, scan_shape, degree=self.degree, iterations=self.iterations,
-                      outlier_threshold=self.outlier_threshold, poly_fit_type=self.poly_fit_type)
+    def find(self, oct_obj):
+        drusen_map = np.zeros(oct_obj.shape)
+        for i, scan in enumerate(oct_obj):
+            drusen_map[..., i] = drusen(
+                scan.layers["RPE"], scan.layers["BM"], scan.shape,
+                degree=self.degree, iterations=self.iterations,
+                outlier_threshold=self.outlier_threshold,
+                poly_fit_type=self.poly_fit_type)
+        return drusen_map
 
 
 def drusen(rpe_height, bm_height, scan_shape, degree=3, iterations=5,
@@ -148,16 +155,17 @@ def compute_regularized_fit(x, y, deg):
     return weighted_average
 
 
-def filter_by_height(drusen_map, minimum_height=2):
+def filter_by_height(drusen_map, minimum_height=2, voxel_size=(1, 1, 1)):
     if minimum_height == 0:
         return drusen_map
     connected_component_array, num_drusen = label(drusen_map)
     height_map = np.sum(drusen_map, axis=0)
-    component_height_array = component_max_height(connected_component_array, height_map)
+    component_height_array = component_max_height(connected_component_array,
+                                                  height_map)
 
     filtered_drusen = np.copy(drusen_map)
     filtered_drusen[component_height_array <= minimum_height] = 0
-    return filtered_drusen
+    return filtered_drusen.astype(bool)
 
 
 def component_max_height(connected_component_array, height_map):
