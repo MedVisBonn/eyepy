@@ -7,7 +7,7 @@ from scipy.ndimage import label
 
 class DrusenFinder(ABC):
     @abstractmethod
-    def find(self):
+    def find(self, *args, **kwargs):
         """ A function which returns a boolean map indicating drusen"""
         raise NotImplementedError()
 
@@ -44,7 +44,7 @@ class DefaultDrusenFinder(DrusenFinder):
         self.voxel_size = voxel_size
 
     def filter(self, drusen_map):
-        return filter_by_height(drusen_map, self.minimum_height, self.voxel_size)
+        return filter_by_height(drusen_map, self.minimum_height)
 
     def find(self, rpe_height, bm_height, scan_shape):
         return drusen(rpe_height, bm_height, scan_shape, degree=self.degree, iterations=self.iterations,
@@ -168,6 +168,18 @@ def component_max_height(connected_component_array, height_map):
         max_heights[region] = np.max(height_map[np.sum(region, axis=0) > 0])
     return max_heights
 
+
+def filter_by_depth(drusen_map, minimum_depth=2):
+    # Todo: test this
+    filtered_drusen = np.copy(drusen_map)
+    if minimum_depth == 0:
+        return drusen_map
+    connected_component_array, num_drusen = label(drusen_map)
+    for l in np.unique(connected_component_array):
+        drusen_depth = np.sum(connected_component_array[connected_component_array == l], axis=2)
+        if np.max(drusen_depth) <= minimum_depth:
+            filtered_drusen[connected_component_array == l] = False
+    return filtered_drusen
 
 def filter_by_area():
     pass
