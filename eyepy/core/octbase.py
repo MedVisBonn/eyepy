@@ -1,5 +1,7 @@
+import hashlib
 import warnings
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 import numpy as np
 from matplotlib import cm, colors, patches
@@ -15,14 +17,14 @@ from eyepy.io.utils import _get_meta_attr
 
 class Oct(ABC):
 
-    def __new__(cls, bscans, slo, meta, *args, **kwargs):
+    def __new__(cls, bscans, slo, meta, data_path, *args, **kwargs):
         # Set all the meta fields as attributes
         for meta_attr in meta._meta_fields:
             setattr(cls, meta_attr, _get_meta_attr(meta_attr))
         return object.__new__(cls, *args, **kwargs)
 
     @abstractmethod
-    def __init__(self, bscans, enfacereader, meta,
+    def __init__(self, bscans, enfacereader, meta, data_path,
                  drusenfinder=DefaultDrusenFinder(),
                  eyequantifier=DefaultEyeQuantifier()):
         """
@@ -41,6 +43,10 @@ class Oct(ABC):
         self._drusenfinder = drusenfinder
         self._eyequantifier = eyequantifier
 
+        # Create a visit_id for saving visit related files
+        self._eyepy_id = None
+        self.data_path = Path(data_path)
+        self.drusen_path = self.data_path / ".eyepy" / f"{self.eyepy_id}_drusen_map.npy"
         self._drusen = None
         self._drusen_raw = None
         self._segmentation_raw = None
@@ -65,6 +71,15 @@ class Oct(ABC):
     def __len__(self):
         """ The number of B-Scans """
         return len(self._bscans)
+
+    @property
+    def eyepy_id(self):
+        if self._eyepy_id is None:
+            # Compute a hash of the first B-Scan as ID
+            sha1 = hashlib.sha1()
+            sha1.update(self[0].scan.tobytes())
+            self._eyepy_id = sha1.hexdigest()
+        return self._eyepy_id
 
     @property
     @abstractmethod
@@ -148,7 +163,25 @@ class Oct(ABC):
         Here the `filter` function of the DrusenFinder has been applied
         """
         if self._drusen is None:
-            self._drusen = self._drusenfinder.filter(self.drusen_raw)
+            # Try to load the drusen from the default location
+            try:
+                self._drusen = np.load(self.drusen_path)
+            except FileNotFoundError:
+                self._drusen = self._drusenfinder.filter(self.drusen_raw)
+                self.drusen_path.parent.mkdir(parents=True, exist_ok=True)
+                np.save(self.drusen_path, self._drusen)
+        return self._drusen
+
+    def drusen_recompute(self, drusenfinder=None):
+        """ Recompute Drusen optionally with a custom DrusenFinder
+
+        Use this if you do not like the computed / loaded drusen
+        """
+        if drusenfinder is not None:
+            self._drusenfinder = drusenfinder
+
+        self._drusen_raw = self._drusenfinder.find(self)
+        self._drusen = self._drusenfinder.filter(self.drusen_raw)
         return self._drusen
 
     @property
