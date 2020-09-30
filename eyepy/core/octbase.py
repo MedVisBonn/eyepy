@@ -260,7 +260,8 @@ class Oct(ABC):
         self._drusenfinder = drusenfinder
 
     def plot(self, ax=None, slo=True, drusen=False, bscan_region=False,
-             bscan_positions=None, masks=False, region=np.s_[...], alpha=1):
+             bscan_positions=None, masks=False, region=np.s_[...],
+             drusen_kwargs={}):
         """
 
         Parameters
@@ -284,7 +285,7 @@ class Oct(ABC):
         if slo:
             self.plot_enface(ax=ax, region=region)
         if drusen:
-            self.plot_drusen(ax=ax, region=region, alpha=alpha)
+            self.plot_drusen(ax=ax, region=region, **drusen_kwargs)
         if bscan_positions is not None:
             self.plot_bscan_positions(ax=ax, bscan_positions=bscan_positions,
                                       region=region,
@@ -381,8 +382,7 @@ class Oct(ABC):
             vmin = 1
 
         visible = np.zeros(drusen[region].shape)
-        visible[np.logical_and(vmin < drusen[region],
-                               drusen[region] < vmax)] = 1
+        visible[vmin < drusen[region]] = 1
 
         if cbar:
             divider = make_axes_locatable(ax)
@@ -391,7 +391,7 @@ class Oct(ABC):
                 cm.ScalarMappable(colors.Normalize(vmin=vmin, vmax=vmax),
                                   cmap=cmap), cax=cax)
 
-        ax.imshow(drusen[region], alpha=visible * alpha, cmap=cmap, vmin=vmin,
+        ax.imshow(drusen[region], alpha=visible[region] * alpha, cmap=cmap, vmin=vmin,
                   vmax=vmax)
 
     def plot_enface_bscan(self, ax=None, n_bscan=0):
@@ -520,7 +520,7 @@ class Bscan:
         if drusen:
             visible = np.zeros(self.drusen.shape)
             visible[self.drusen] = 1.0
-            ax.imshow(self.drusen, alpha=visible, cmap="Reds")
+            ax.imshow(self.drusen[region], alpha=visible[region], cmap="Reds")
         for layer in layers:
             color = layers_color[layer]
             try:
