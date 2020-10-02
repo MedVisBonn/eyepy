@@ -182,6 +182,7 @@ class Oct(ABC):
 
         self._drusen_raw = self._drusenfinder.find(self)
         self._drusen = self._drusenfinder.filter(self.drusen_raw)
+        np.save(self.drusen_path, self._drusen)
         return self._drusen
 
     @property
