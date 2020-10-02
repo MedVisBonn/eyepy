@@ -85,13 +85,16 @@ class HeyexSlo:
         self._size = self.shape[0] * self.shape[1]
 
     @property
+    def localizer_name(self):
+        localizer_path = self._root[0].find(
+            ".//ImageType[Type='LOCALIZER']../ImageData/ExamURL").text
+        return localizer_path.split("\\")[-1]
+
+    @property
     def data(self):
         if self._data is None:
-            localizer_path = self._root[0].find(
-                ".//ImageType[Type='LOCALIZER']../ImageData/ExamURL").text
-            localizer_name = localizer_path.split("\\")[-1]
             self._data = imageio.imread(
-                self._xmlfilepath.parent / localizer_name)
+                self._xmlfilepath.parent / self.localizer_name)
         return self._data
 
     @property
@@ -170,10 +173,6 @@ class HeyexBscan(Bscan):
     @property
     def shape(self):
         return (self.oct_meta.SizeZ, self.oct_meta.SizeX)
-
-    # @property
-    # def _segmentation_start(self):
-    #    return self._startpos + self.OffSeg
 
     @property
     def _segmentation_size(self):
