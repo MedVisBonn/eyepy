@@ -44,7 +44,7 @@ class HeyexOct(OctBase):
 
     """
 
-    def __init__(self, bscans, slo, meta):
+    def __init__(self, bscans, slo, meta, data_path):
         """
 
         Parameters
@@ -53,7 +53,7 @@ class HeyexOct(OctBase):
         slo :
         meta :
         """
-        super().__init__(bscans, slo, meta)
+        super().__init__(bscans, slo, meta, data_path)
 
     @property
     def shape(self):
@@ -64,18 +64,26 @@ class HeyexOct(OctBase):
         return self.SizeXSlo / 2, self.SizeYSlo / 2
 
     @classmethod
-    def read_vol(cls, file_obj):
+    def read_vol(cls, file_obj, data_path):
         meta = he_vol.get_octmeta(file_obj)
         bscans = he_vol.get_bscans(file_obj, meta)
         slo = he_vol.get_slo(file_obj, meta)
-        return cls(bscans, slo, meta)
+        return cls(bscans, slo, meta, data_path=data_path)
 
     @classmethod
     def read_xml(cls, filepath):
-        meta = he_xml.get_octmeta(filepath)
-        bscans = he_xml.get_bscans(filepath)
-        slo = he_xml.get_slo(filepath)
-        return cls(bscans, slo, meta)
+        path = Path(filepath)
+        if not path.suffix == ".xml":
+            xmls = list(path.glob("*.xml"))
+            if len(xmls) == 0:
+                raise FileNotFoundError("There is no .xml file under the given filepath")
+            elif len(xmls) > 1:
+                raise ValueError("There is more than one .xml file under the given filepath.")
+            path = xmls[0]
+        meta = he_xml.get_octmeta(path)
+        bscans = he_xml.get_bscans(path)
+        slo = he_xml.get_slo(path)
+        return cls(bscans, slo, meta, data_path=path.parent)
 
 
 def read_vol(file_obj: Union[str, Path, IO]):
@@ -93,10 +101,10 @@ def read_vol(file_obj: Union[str, Path, IO]):
     if type(file_obj) is str or type(file_obj) is PosixPath:
         with open(file_obj, "rb") as myfile:
             mm = mmap.mmap(myfile.fileno(), 0, access=mmap.ACCESS_READ)
-            return HeyexOct.read_vol(mm)
+            return HeyexOct.read_vol(mm, data_path=Path(file_obj).parent)
     else:
         mm = mmap.mmap(file_obj.fileno(), 0, access=mmap.ACCESS_READ)
-        return HeyexOct.read_vol(mm)
+        return HeyexOct.read_vol(mm, data_path=Path(file_obj.name).parent)
 
 
 def read_xml(filepath: Union[str, Path]):

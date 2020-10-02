@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 from scipy.interpolate import interp1d
-from scipy.ndimage import label
+import scipy.ndimage as ndimage
 
 
 class DrusenFinder(ABC):
@@ -158,7 +158,7 @@ def compute_regularized_fit(x, y, deg):
 def filter_by_height(drusen_map, minimum_height=2, voxel_size=(1, 1, 1)):
     if minimum_height == 0:
         return drusen_map
-    connected_component_array, num_drusen = label(drusen_map)
+    connected_component_array, num_drusen = ndimage.label(drusen_map)
     height_map = np.sum(drusen_map, axis=0)
     component_height_array = component_max_height(connected_component_array,
                                                   height_map)
@@ -166,6 +166,26 @@ def filter_by_height(drusen_map, minimum_height=2, voxel_size=(1, 1, 1)):
     filtered_drusen = np.copy(drusen_map)
     filtered_drusen[component_height_array <= minimum_height] = 0
     return filtered_drusen.astype(bool)
+
+
+def filter_by_depth(drusen_map, minimum_depth=2):
+    filtered_drusen = np.copy(drusen_map)
+    if minimum_depth == 0:
+        return drusen_map
+    # get array where connected components get same label
+    connected_component_array, num_drusen = ndimage.label(drusen_map)
+    drusen_positions = ndimage.find_objects(connected_component_array)
+    # Go through each component, sum it along 2 axis and check max depth against threshold
+    for i, label in enumerate(range(1, num_drusen+1)):
+        druse = connected_component_array[drusen_positions[i]]
+        druse[druse==label] = 1
+        druse[druse!=label] = 0
+        drusen_depth = np.sum(druse, axis=2)
+        if np.max(drusen_depth) <= minimum_depth:
+            # Remove drusen for this label
+            filtered_drusen[connected_component_array==label] = False
+    return filtered_drusen
+
 
 
 def component_max_height(connected_component_array, height_map):

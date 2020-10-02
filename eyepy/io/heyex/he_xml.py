@@ -174,6 +174,10 @@ class HeyexBscan(Bscan):
     def shape(self):
         return (self.oct_meta.SizeZ, self.oct_meta.SizeX)
 
+    # @property
+    # def _segmentation_start(self):
+    #    return self._startpos + self.OffSeg
+
     @property
     def _segmentation_size(self):
         return self.oct_meta.SizeX * 17

@@ -1,7 +1,9 @@
 import numpy as np
 
+import imageio
 from eyepy.core.base import OctBase, BscanBase, OctMetaBase, BscansBase, \
     BscanMetaBase
+from eyepy.core.config import SEG_MAPPING
 
 
 class Oct(OctBase):
