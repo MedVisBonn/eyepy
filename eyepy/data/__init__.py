@@ -2,11 +2,11 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-import eyepy as ep
+from eyepy.core.base import Oct
 
 SAMPLE_DATA = {"drusen_patient":
                    ('https://uni-bonn.sciebo.de/s/VD8CPAgDKp2EYlm/download',
-                    ep.Oct.from_heyex_xml)}
+                    Oct.from_heyex_xml)}
 
 EYEPY_DATA_DIR = Path("~/.eyepy/data").expanduser()
 if not EYEPY_DATA_DIR.is_dir():
