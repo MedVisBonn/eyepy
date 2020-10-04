@@ -480,7 +480,26 @@ class Oct:
         Here the `filter` function of the DrusenFinder has been applied
         """
         if self._drusen is None:
-            self._drusen = self._drusenfinder.filter(self.drusen_raw)
+            # Try to load the drusen from the default location
+            try:
+                self._drusen = np.load(self.drusen_path)
+            except FileNotFoundError:
+                self._drusen = self._drusenfinder.filter(self.drusen_raw)
+                self.drusen_path.parent.mkdir(parents=True, exist_ok=True)
+                np.save(self.drusen_path, self._drusen)
+        return self._drusen
+
+    def drusen_recompute(self, drusenfinder=None):
+        """ Recompute Drusen optionally with a custom DrusenFinder
+
+        Use this if you do not like the computed / loaded drusen
+        """
+        if drusenfinder is not None:
+            self._drusenfinder = drusenfinder
+
+        self._drusen_raw = self._drusenfinder.find(self)
+        self._drusen = self._drusenfinder.filter(self.drusen_raw)
+        np.save(self.drusen_path, self._drusen)
         return self._drusen
 
     @property
