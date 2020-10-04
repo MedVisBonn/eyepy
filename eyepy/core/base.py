@@ -1,32 +1,339 @@
 import os
 import warnings
-from abc import ABC, abstractmethod
+from collections.abc import MutableMapping
 from pathlib import Path
+from typing import List, Dict, Union, Callable, Optional
 
+import imageio
 import numpy as np
 from matplotlib import pyplot as plt, patches, cm, colors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from skimage import transform
 
 from eyepy.core import config
-from eyepy.core.drusen import DefaultDrusenFinder
-from eyepy.core.octbase import Bscan
-from eyepy.core.quantifier import DefaultEyeQuantifier
-from eyepy.io.utils import _get_meta_attr
+from eyepy.core.drusen import DefaultDrusenFinder, DrusenFinder
+from eyepy.core.quantifier import DefaultEyeQuantifier, EyeQuantifier
 
 
-class OctBase(ABC):
+class Meta(MutableMapping):
 
-    def __new__(cls, bscans, slo, meta, *args, **kwargs):
-        # Set all the meta fields as attributes
-        for meta_attr in meta._meta_fields:
-            setattr(cls, meta_attr, _get_meta_attr(meta_attr))
+    def __init__(self, *args, **kwargs):
+        self._store = dict()
+        self.update(dict(*args, **kwargs))  # use the free update to set keys
+
+    def __getitem__(self, key):
+        value = self._store[key]
+        if callable(value):
+            self[key] = value()
+        return self._store[key]
+
+    def __setitem__(self, key, value):
+        self._store[key] = value
+
+    def __delitem__(self, key):
+        del self._store[key]
+
+    def __iter__(self):
+        return iter(self._store)
+
+    def __len__(self):
+        return len(self._store)
+
+    def __str__(self):
+        return f"{os.linesep}".join(
+            [f"{f}: {self[f]}" for f in self if f != "__empty"])
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class EnfaceImage:
+    def __init__(self, data):
+        self._data = data
+
+    @property
+    def data(self):
+        """ Return the enface image as numpy array """
+        if callable(self._data):
+            self._data = self._data()
+        return self._data
+
+
+class Annotation(MutableMapping):
+
+    def __init__(self, *args, **kwargs):
+        self._store = dict()
+        self.update(dict(*args, **kwargs))  # use the free update to set keys
+        self._bscan = None
+
+    def __getitem__(self, key):
+        value = self._store[key]
+        if callable(value):
+            self[key] = value(self.bscan)
+        return self._store[key]
+
+    def __setitem__(self, key, value):
+        self._store[key] = value
+
+    def __delitem__(self, key):
+        del self._store[key]
+
+    def __iter__(self):
+        return iter(self._store)
+
+    def __len__(self):
+        return len(self._store)
+
+    # TODO: Make the annotation printable to get an overview
+    # def __str__(self):
+    #     return f"{os.linesep}".join(
+    #         [f"{f}: {self[f]}" for f in self if f != "__empty"])
+
+    # def __repr__(self):
+    #     return self.__str__()
+
+    @property
+    def bscan(self):
+        if self._bscan is None:
+            raise AttributeError("bscan is not set for this Annotation.")
+        return self._bscan
+
+    @bscan.setter
+    def bscan(self, value: "Bscan"):
+        self._bscan = value
+
+
+class Bscan:
+    def __new__(cls, data, annotation=None, meta=None, data_processing=None,
+                oct_obj=None, *args, **kwargs):
+
+        def annotation_func_builder(x):
+            return lambda self: self.annotation[x]
+
+        if annotation is not None:
+            for key in annotation:
+                setattr(cls, key, property(annotation_func_builder(key)))
+
+        # Make all meta fields accessible as attributes of the BScan without
+        # reading them. Set a property instead
+        def meta_func_builder(x):
+            return lambda self: self.meta[x]
+
+        if meta is not None:
+            for key in meta:
+                setattr(cls, key, property(meta_func_builder(key)))
         return object.__new__(cls, *args, **kwargs)
 
-    @abstractmethod
-    def __init__(self, bscans, enfacereader, meta,
-                 drusenfinder=DefaultDrusenFinder(),
-                 eyequantifier=DefaultEyeQuantifier()):
+    def __init__(self,
+                 data: Union[np.ndarray, Callable],
+                 annotation: Optional[Annotation] = None,
+                 meta: Optional[Union[Dict, Meta]] = None,
+                 data_processing: Optional[Callable] = None,
+                 oct_obj: Optional["Oct"] = None):
+        """
+
+        Parameters
+        ----------
+        data : A numpy array holding the raw B-Scan data or a callable which
+            returns a raw B-Scan. Raw means that it represents the unprocessed
+            stored data. The actual dtype and value range depends on the storage
+            format.
+        annotation: Dict holding B-Scan annotations
+        meta : A dictionary holding the B-Scans meta informations or
+        oct_obj : Reference to the OCT Volume holding the B-Scan
+        """
+        self._scan_raw = data
+        self._scan = None
+        self._meta = meta
+        self._oct_obj = oct_obj
+
+        self._annotation = annotation
+        if self._annotation is not None:
+            self._annotation.bscan = self
+
+        if data_processing is None:
+            self._data_processing = lambda x: x
+        else:
+            self._data_processing = data_processing
+
+    @property
+    def oct_obj(self):
+        if self._oct_obj is None:
+            raise AttributeError("oct_obj is not set for this Bscan object")
+        return self._oct_obj
+
+    @oct_obj.setter
+    def oct_obj(self, value):
+        self._oct_obj = value
+
+    @property
+    def index(self):
+        return self.oct_obj.bscans.index(self)
+
+    @property
+    def meta(self):
+        """ A dict holding all Bscan meta data """
+        return self._meta
+
+    @property
+    def annotation(self):
+        """ A dict holding all Bscan annotation data """
+        return self._annotation
+
+    @property
+    def scan_raw(self):
+        """ An array holding a single raw B-Scan
+
+        The dtype is not changed after the import. If available this is the
+        unprocessed output of the OCT device. In any case this is the
+        unprocessed data imported by eyepy.
+        """
+        if callable(self._scan_raw):
+            self._scan_raw = self._scan_raw()
+        return self._scan_raw
+
+    @property
+    def scan(self):
+        """ An array holding a single B-Scan with the commonly used contrast
+
+        The array is of dtype <ubyte> and encodes the intensities as values
+        between 0 and 255.
+        """
+        if self._scan is None:
+            self._scan = self._data_processing(self.scan_raw)
+        return self._scan
+
+    @property
+    def shape(self):
+        return self.scan.shape
+
+    @property
+    def layers(self):
+        data = self.layers_raw.copy()
+        nans = np.isnan(self.layers_raw)
+        empty = np.nonzero(np.logical_or(
+            np.less(self.layers_raw, 0, where=~nans),
+            np.greater(self.layers_raw, self.oct_obj.SizeZ, where=~nans)))
+        data[empty] = np.nan
+        return {name: data[i] for name, i in config.SEG_MAPPING.items()
+                if np.nansum(data[i]) != 0}
+
+    @property
+    def layers_raw(self):
+        if callable(self._layers_raw):
+            self._layers_raw = self._layers_raw(self)
+        return self._layers_raw
+
+    @property
+    def drusen_raw(self):
+        """ Return drusen computed from the RPE and BM layer segmentation
+
+        The raw drusen are computed based on single B-Scans
+        """
+        return self._oct_obj.drusen_raw[..., self.index]
+
+    @property
+    def drusen(self):
+        """ Return filtered drusen
+
+        Drusen are filtered based on the complete volume
+        """
+        return self._oct_obj.drusen[..., self.index]
+
+    def plot(self, ax=None, layers=None, drusen=False, layers_kwargs=None,
+             layers_color=None, annotation_only=False, region=np.s_[...]):
+        """ Plot B-Scan with segmented Layers """
+        if ax is None:
+            fig, ax = plt.subplots(1, 1)
+        else:
+            fig = plt.gcf()
+
+        if layers is None:
+            layers = []
+        elif layers == "all":
+            layers = config.SEG_MAPPING.keys()
+
+        if layers_kwargs is None:
+            layers_kwargs = config.layers_kwargs
+        else:
+            layers_kwargs = {**config.layers_kwargs, **layers_kwargs}
+
+        if layers_color is None:
+            layers_color = config.layers_color
+        else:
+            layers_color = {**config.layers_color, **layers_color}
+
+        if not annotation_only:
+            ax.imshow(self.scan[region], cmap="gray")
+        if drusen:
+            visible = np.zeros(self.drusen.shape)
+            visible[self.drusen] = 1.0
+            ax.imshow(self.drusen, alpha=visible, cmap="Reds")
+        for layer in layers:
+            color = layers_color[layer]
+            try:
+                segmentation = self.layers[layer]
+                ax.plot(segmentation, color=color, label=layer,
+                        **layers_kwargs)
+            except KeyError:
+                warnings.warn(f"Layer '{layer}' has no Segmentation",
+                              UserWarning)
+
+
+class Oct:
+    """.vol header
+    -----------
+    All fields from the .vol header (the oct meta data) can be accessed as attributes of the
+    HeyexOct object.
+
+    SLO
+    ---
+    The attribute `slo` of the HeyexOct object gives access to the IR SLO image
+    and returns it as a numpy.ndarray of dtype `uint8`.
+
+    B-Scans
+    -------
+    Individual B-Scans can be accessed using `oct_scan[index]`. The returned
+    HeyexBscan object exposes all B-Scan header fields as attributes and the
+    raw B-Scan image as `numpy.ndarray` of type `float32` under the attribute
+    `scan_raw`. A transformed version of the raw B-Scan which is more similar to
+    the Heyex experience can be accessed with the attribute `scan` and returns
+    the 4th root of the raw B-Scan scaled to [0,255] as `uint8`.
+
+    Segmentations
+    -------------
+    B-Scan segmentations can be accessed for individual B-Scans like
+    `bscan.segmentation`. This return a numpy.ndarray of shape (NumSeg, SizeX)
+    The `segmentation` attribute of the HeyexOct object returns a dictionary,
+    where the key is a number and the value is a numpy.ndarray of shape
+    (NumBScans, SizeX)."""
+
+    def __new__(cls, bscans: List[Bscan],
+                localizer=None,
+                meta=None, *args, **kwargs):
+        # Set all the meta fields as attributes
+
+        if meta is not None:
+            def meta_func_builder(x):
+                return lambda self: self.meta[x]
+
+            for key in meta:
+                # Every key in meta becomes a property for the new class. The
+                # property calls self.meta[key] to retrieve the keys value
+
+                # This lambda func returns a lambda func which accesses the meta
+                # object for the key specified in the first lambda. Like this we
+                # read the file only on access.
+                setattr(cls, key, property(meta_func_builder(key)))
+
+        return object.__new__(cls, *args, **kwargs)
+
+    def __init__(self,
+                 bscans: List[Union[Callable, Bscan]],
+                 localizer: Optional[Union[Callable, EnfaceImage]] = None,
+                 meta: Optional[Meta] = None,
+                 drusenfinder: DrusenFinder = DefaultDrusenFinder(),
+                 eyequantifier: EyeQuantifier = DefaultEyeQuantifier()):
         """
 
         Parameters
@@ -36,59 +343,82 @@ class OctBase(ABC):
         meta :
         drusenfinder :
         """
-        self._bscans = bscans
-        self._enfacereader = enfacereader
+        self.bscans = bscans
+        self._localizer = localizer
         self._enface = None
         self._meta = meta
         self._drusenfinder = drusenfinder
         self._eyequantifier = eyequantifier
+        self._tform_enface_to_oct = None
 
         self._drusen = None
         self._drusen_raw = None
         self._segmentation_raw = None
-        self._tform_enface_to_oct = None
 
-        # Set the oct volume in the Bscans object to self such that every
-        # loaded B-Scan can refer to the volume
-        self._bscans._oct_volume = self
-
-        # Try to estimate B-Scan distances if not given
-        if self.Distance is None:
-            # Pythagoras in case B-Scans are rotated with respect to the enface
-            a = self[-1].StartY - self[0].StartY
-            b = self[-1].StartX - self[0].StartX
-            self.meta._Distance = np.sqrt(a ** 2 + b ** 2) / (
-                    self.NumBScans - 1)
-
-    def __getitem__(self, key):
-        """ The B-Scan at the given index """
-        return self._bscans[key]
+    def __getitem__(self, index) -> Bscan:
+        """ The B-Scan at the given index"""
+        x = self.bscans[index]
+        if callable(x):
+            self.bscans[index] = x()
+            self.bscans[index].oct_obj = self
+        return self.bscans[index]
 
     def __len__(self):
         """ The number of B-Scans """
-        return len(self._bscans)
+        return len(self.bscans)
+
+    @classmethod
+    def from_heyex_xml(cls, path):
+        from eyepy.io.heyex import HeyexXmlReader
+        reader = HeyexXmlReader(path)
+        return cls(bscans=reader.bscans,
+                   localizer=reader.localizer,
+                   meta=reader.oct_meta)
+
+    @classmethod
+    def from_heyex_vol(cls, path):
+        from eyepy.io.heyex import HeyexVolReader
+        reader = HeyexVolReader(path)
+        return cls(bscans=reader.bscans,
+                   localizer=reader.localizer,
+                   meta=reader.oct_meta)
+
+    @classmethod
+    def from_folder(cls, path):
+        path = Path(path)
+        img_paths = sorted(list(path.iterdir()))
+
+        def read_func(p):
+            return lambda: imageio.imread(p)
+
+        bscans = [Bscan(read_func(p)) for p in img_paths]
+        return cls(bscans=bscans)
+
+    def estimate_bscan_distance(self):
+        # Try to estimate B-Scan distances. Can be used if Bscan Positions
+        # but not their distance is in the meta information
+
+        # Pythagoras in case B-Scans are rotated with respect to the enface
+        a = self[-1].StartY - self[0].StartY
+        b = self[-1].StartX - self[0].StartX
+        self.meta["Distance"] = np.sqrt(a ** 2 + b ** 2) / (
+                len(self.bscans) - 1)
+        return self.Distance
 
     @property
-    @abstractmethod
     def shape(self):
-        raise NotImplementedError()
-
-    @property
-    @abstractmethod
-    def fovea_pos(self):
-        """ Position of the Fovea on the localizer image """
-        raise NotImplementedError()
+        try:
+            return (self.sizeZ, self.SizeX, self.NumBScans)
+        except AttributeError:
+            return self[0].shape + (len(self),)
 
     @property
     def enface(self):
         """ A numpy array holding the OCTs localizer enface if available """
-        if self._enface is None:
-            if not self._enfacereader is None:
-                self._enface = self._enfacereader.data
-            else:
-                raise ValueError("There is no localizer enface available"
-                                 " for this OCT")
-        return self._enface
+        try:
+            return self._localizer.data
+        except AttributeError:
+            raise AttributeError("This OCT object has not localizer image.")
 
     @property
     def volume_raw(self):
@@ -98,16 +428,16 @@ class OctBase(ABC):
         unprocessed output of the OCT device. In any case this is the
         unprocessed data imported by eyepy.
         """
-        return np.stack([x.scan_raw for x in self._bscans], axis=-1)
+        return np.stack([x.scan_raw for x in self.bscans], axis=-1)
 
     @property
     def volume(self):
-        """ An array holding a single B-Scan with the commonly used contrast
+        """ An array holding the OCT volume with the commonly used contrast
 
         The array is of dtype <ubyte> and encodes the intensities as values
         between 0 and 255.
         """
-        return np.stack([x.scan for x in self._bscans], axis=-1)
+        return np.stack([x.scan for x in self.bscans], axis=-1)
 
     @property
     def layers_raw(self):
@@ -119,7 +449,7 @@ class OctBase(ABC):
         """
         if self._segmentation_raw is None:
             self._segmentation_raw = np.stack([x.layers_raw
-                                               for x in self._bscans], axis=1)
+                                               for x in self.bscans], axis=1)
         return self._segmentation_raw
 
     @property
@@ -128,7 +458,7 @@ class OctBase(ABC):
         nans = np.isnan(self.layers_raw)
         empty = np.nonzero(np.logical_or(
             np.less(self.layers_raw, 0, where=~nans),
-            np.greater(self.layers_raw, self.meta.SizeZ, where=~nans)))
+            np.greater(self.layers_raw, self.SizeZ, where=~nans)))
 
         data = self.layers_raw.copy()
         data[empty] = np.nan
@@ -137,7 +467,7 @@ class OctBase(ABC):
 
     @property
     def meta(self):
-        """ A python object holding all OCT meta data as attributes
+        """ A dict holding all OCT meta data
 
         The object can be printed to see all available meta data.
         """
@@ -241,6 +571,7 @@ class OctBase(ABC):
         bscan_positions :
         masks :
         region : slice object
+        alpha :
 
         Returns
         -------
@@ -306,7 +637,7 @@ class OctBase(ABC):
                              region=np.s_[...], line_kwargs=None):
         if bscan_positions is None:
             bscan_positions = []
-        elif bscan_positions == "all" or bscan_positions == True:
+        elif bscan_positions == "all" or bscan_positions is True:
             bscan_positions = range(0, len(self))
 
         if line_kwargs is None:
@@ -382,262 +713,3 @@ class OctBase(ABC):
                 bscan = self[i]
                 ax = axes.flatten()[i]
                 bscan.plot(ax=ax, layers=layers, layers_kwargs=layers_kwargs)
-
-
-class BscansBase(ABC):
-    def __init__(self, folderpath, suffix=".tif"):
-        """
-
-        Parameters
-        ----------
-        folderpath : Path to the folder containing the B-Scans
-        suffix : B-Scan file ending.
-        """
-        self._folderpath = Path(folderpath)
-        self._bscan_paths = [p for p in self._folderpath.iterdir()
-                             if p.suffix == suffix]
-        self._oct_volume = None
-
-    @abstractmethod
-    def _get_bscan(self, index):
-        """ Return a BScan object for the Bscan at the given index """
-        raise NotImplementedError()
-        return Bscan(self._bscan_paths[index], index,
-                     oct_volume=self._oct_volume)
-
-    def __len__(self):
-        return self._oct_volume.NumBScans
-
-    def __getitem__(self, index):
-        if type(index) == int:
-            if index < 0:
-                index = self._oct_volume.NumBScans + index
-            elif index >= self._oct_volume.NumBScans:
-                raise IndexError
-            return self._get_bscan(index)
-        elif type(index) == slice:
-            bscans = []
-            for i in range(*index.indices(self._oct_volume.NumBScans)):
-                bscans.append(self._get_bscan(i))
-            return bscans
-        else:
-            raise TypeError("Index has to be of type 'int' or 'slice'")
-
-
-class BscanBase:
-    def __new__(cls, filepath, index, oct_volume=None, *args, **kwargs):
-        meta = BscanMetaBase(filepath, index)
-        setattr(cls, "meta", meta)
-
-        # Make all meta fields accessible as attributes of the BScan without
-        # reading them. Set a property instead
-        for meta_attr in meta._meta_fields:
-            setattr(cls, meta_attr, _get_meta_attr(meta_attr))
-        return object.__new__(cls, *args, **kwargs)
-
-    @abstractmethod
-    def __init__(self, filepath, index, oct_volume=None):
-        """
-
-        Parameters
-        ----------
-        filepath : Path to the folder/archive containing the B-Scan
-        index : Index of the B-Scan
-        oct_volume : Reference to the Volume holding the B-Scan
-        """
-        self.filepath = filepath
-        self._index = index
-        self._oct_volume = oct_volume
-        self._drusen = None
-        self._drusen_raw = None
-
-    @property
-    @abstractmethod
-    def shape(self):
-        raise NotImplementedError()
-
-    @property
-    @abstractmethod
-    def scan(self):
-        """ An array holding a single B-Scan with the commonly used contrast
-
-        The array is of dtype <ubyte> and encodes the intensities as values
-        between 0 and 255.
-        """
-        raise NotImplementedError()
-
-    @property
-    @abstractmethod
-    def scan_raw(self):
-        """ An array holding a single raw B-Scan
-
-        The dtype is not changed after the importIf available this is the
-        unprocessed output of the OCT device. In any case this is the
-        unprocessed data imported by eyepy.
-        """
-        raise NotImplementedError()
-
-    @property
-    @abstractmethod
-    def layers(self):
-        raise NotImplementedError()
-
-    @property
-    @abstractmethod
-    def layers_raw(self):
-        raise NotImplementedError()
-
-    @property
-    def drusen_raw(self):
-        """ Return drusen computed from the RPE and BM layer segmentation
-
-        The raw drusen are computed based on single B-Scans
-        """
-        return self._oct_volume.drusen_raw[..., self._index]
-
-    @property
-    def drusen(self):
-        """ Return filtered drusen
-
-        Drusen are filtered based on the complete volume
-        """
-        return self._oct_volume.drusen[..., self._index]
-
-    def plot(self, ax=None, layers=None, drusen=False, layers_kwargs=None,
-             layers_color=None, annotation_only=False, region=np.s_[...]):
-        """ Plot B-Scan with segmented Layers """
-        if ax is None:
-            fig, ax = plt.subplots(1, 1)
-        else:
-            fig = plt.gcf()
-
-        if layers is None:
-            layers = []
-        elif layers == "all":
-            layers = config.SEG_MAPPING.keys()
-
-        if layers_kwargs is None:
-            layers_kwargs = config.layers_kwargs
-        else:
-            layers_kwargs = {**config.layers_kwargs, **layers_kwargs}
-
-        if layers_color is None:
-            layers_color = config.layers_color
-        else:
-            layers_color = {**config.layers_color, **layers_color}
-
-        if not annotation_only:
-            ax.imshow(self.scan[region], cmap="gray")
-        if drusen:
-            visible = np.zeros(self.drusen.shape)
-            visible[self.drusen] = 1.0
-            ax.imshow(self.drusen, alpha=visible, cmap="Reds")
-        for layer in layers:
-            color = layers_color[layer]
-            try:
-                segmentation = self.layers[layer]
-                ax.plot(segmentation, color=color, label=layer,
-                        **layers_kwargs)
-            except KeyError:
-                warnings.warn(f"Layer '{layer}' has no Segmentation",
-                              UserWarning)
-
-
-class BscanMetaBase(ABC):
-    def __new__(cls, filepath, bscan_index, version=None, *args, **kwargs):
-        """ Create properties for all meta attributes
-
-        Parameters
-        ----------
-        filepath :
-        bscan_index :
-        version :
-        """
-        attribute_dict = cls._get_meta_attributes(filepath, bscan_index,
-                                                  version, **kwargs)
-
-        # Set for all metafields properties reading the respective metafield
-        for k, v in attribute_dict.items():
-            setattr(cls, k, v)
-
-        # Set all _metafields to None to read the respective metafield on first
-        # access.
-        for key in attribute_dict["_meta_fields"]:
-            setattr(cls, f"_{key}", None)
-        return object.__new__(cls, *args, **kwargs)
-
-    def __init__(self, filepath, index, *args, **kwargs):
-        """
-
-        Parameters
-        ----------
-        filepath :
-        startpos :
-        """
-        self._index = index
-
-    def __str__(self):
-        return f"{os.linesep}".join(
-            [f"{f}: {getattr(self, f)}" for f in self._meta_fields
-             if f != "__empty"])
-
-    def __repr__(self):
-        return self.__str__()
-
-    @staticmethod
-    @abstractmethod
-    def _get_meta_attributes(filepath, bscan_index, version, **kwargs):
-        """ Return a dictionary meta_name:meta_value
-
-        Instead of returning the meta_value directly you can also return a
-        property which reads the field on first access.
-
-        The returned dictionary needs a key _meta_fields refering to a list of
-        all available meta_values.
-        """
-        raise NotImplementedError()
-
-
-class OctMetaBase(ABC):
-    def __new__(cls, filepath, version=None, *args, **kwargs):
-        attribute_dict = cls._get_meta_attributes(filepath, version, **kwargs)
-
-        # Set for all metafields properties reading the respective metafield
-        for k, v in attribute_dict.items():
-            setattr(cls, k, v)
-
-        # Set all _metafields to None to read the respective metafield on first
-        # access.
-        for key in attribute_dict["_meta_fields"]:
-            setattr(cls, f"_{key}", None)
-        return object.__new__(cls, *args, **kwargs)
-
-    def __init__(self, filepath):
-        """
-
-        Parameters
-        ----------
-        filepath :
-        """
-        self._filepath = filepath
-
-    def __str__(self):
-        return f"{os.linesep}".join(
-            [f"{f}: {getattr(self, f)}" for f in self._meta_fields
-             if f != "__empty"])
-
-    def __repr__(self):
-        return self.__str__()
-
-    @staticmethod
-    @abstractmethod
-    def _get_meta_attributes(filepath, version, **kwargs):
-        """ Return a dictionary meta_name:meta_value
-
-        Instead of returning the meta_value directly you can also return a
-        property which reads the field on first access.
-
-        The returned dictionary needs a key _meta_fields refering to a list of
-        all available meta_values.
-        """
-        raise NotImplementedError()

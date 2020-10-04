@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
 import numpy as np
-from scipy.interpolate import interp1d
 import scipy.ndimage as ndimage
+from scipy.interpolate import interp1d
 
 
 class DrusenFinder(ABC):
@@ -178,12 +178,12 @@ def filter_by_depth(drusen_map, minimum_depth=2):
     # Go through each component, sum it along 2 axis and check max depth against threshold
     for i, label in enumerate(range(1, num_drusen+1)):
         druse = connected_component_array[drusen_positions[i]]
-        druse[druse==label] = 1
-        druse[druse!=label] = 0
+        druse[druse == label] = 1
+        druse[druse != label] = 0
         drusen_depth = np.sum(druse, axis=2)
         if np.max(drusen_depth) <= minimum_depth:
             # Remove drusen for this label
-            filtered_drusen[connected_component_array==label] = False
+            filtered_drusen[connected_component_array == label] = False
     return filtered_drusen
 
 
