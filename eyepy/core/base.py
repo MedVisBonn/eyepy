@@ -200,14 +200,10 @@ class Bscan:
         self._scan = None
         self._meta = meta
         self._oct_obj = oct_obj
-
-        if annotation is None:
-            n_layers = np.zeros((max(config.SEG_MAPPING.values()) + 1))
-            l_annotation = LayerAnnotation(n_layers, self.oct_obj.SizeX)
-            annotation = {"layers": l_annotation}
-
+        
         self._annotation = annotation
-        self._annotation.bscan = self
+        if self._annotation is not None:
+            self._annotation.bscan = self
 
         if data_processing is None:
             self._data_processing = lambda x: x
@@ -244,6 +240,11 @@ class Bscan:
     @property
     def annotation(self):
         """ A dict holding all Bscan annotation data """
+        if self._annotation is None:
+            empty_layers = np.zeros((max(config.SEG_MAPPING.values()) + 1, self.shape[1]))
+            l_annotation = LayerAnnotation(empty_layers)
+            self._annotation = Annotation({"layers": l_annotation})
+            self._annotation.bscan = self
         return self._annotation
 
     @property
@@ -271,7 +272,10 @@ class Bscan:
 
     @property
     def shape(self):
-        return self.scan.shape
+        try:
+            return (self.oct_obj.SizeZ, self.oct_obj.SizeX)
+        except AttributeError:
+            return self.scan.shape
 
     @property
     def layers(self):
@@ -422,7 +426,7 @@ class Oct:
         x = self.bscans[index]
         if callable(x):
             self.bscans[index] = x()
-            self.bscans[index].oct_obj = self
+        self.bscans[index].oct_obj = self
         return self.bscans[index]
 
     def __len__(self):
@@ -455,7 +459,7 @@ class Oct:
         def read_func(p):
             return lambda: imageio.imread(p)
 
-        bscans = [Bscan(read_func(p), name=p.name) for p in img_paths]
+        bscans = [lambda: Bscan(read_func(p), name=p.name) for p in img_paths]
         return cls(bscans=bscans, data_path=path)
 
     def estimate_bscan_distance(self):
