@@ -470,7 +470,7 @@ class Oct:
         a = self[-1].StartY - self[0].StartY
         b = self[-1].StartX - self[0].StartX
         self.meta["Distance"] = np.sqrt(a ** 2 + b ** 2) / (
-                len(self.bscans) - 1)
+                len(self) - 1)
         return self.Distance
 
     @property
@@ -485,10 +485,28 @@ class Oct:
 
     @property
     def shape(self):
+        return (self.SizeZ, self.SizeX, self.NumBScans)
+    
+    @property
+    def SizeZ(self):
         try:
-            return (self.sizeZ, self.SizeX, self.NumBScans)
-        except AttributeError:
-            return self[0].shape + (len(self),)
+            return self.meta["SizeZ"]
+        except (AttributeError, KeyError, TypeError):
+            return self[0].scan.shape[0]
+    
+    @property    
+    def SizeX(self):
+        try:
+            return self.meta["SizeX"]
+        except (AttributeError, KeyError, TypeError):
+            return self[0].scan.shape[1]
+
+    @property    
+    def NumBScans(self):
+        try:
+            return self.meta["NumBScans"]
+        except (AttributeError, KeyError, TypeError):
+            return len(self)
 
     @property
     def enface(self):
@@ -561,7 +579,7 @@ class Oct:
             # Try to load the drusen from the default location
             try:
                 self._drusen = np.load(self.drusen_path)
-            except NotADirectoryError:
+            except (NotADirectoryError, FileNotFoundError):
                 self._drusen = self._drusenfinder.filter(self.drusen_raw)
                 self.drusen_path.parent.mkdir(parents=True, exist_ok=True)
                 np.save(self.drusen_path, self._drusen)
@@ -603,6 +621,13 @@ class Oct:
     @property
     def tform_oct_to_enface(self):
         return self.tform_enface_to_oct.inverse
+    
+    @property
+    def enface_shape(self):
+        try:
+            return self.enface.shape
+        except:
+            return (self.SizeX, self.SizeX)
 
     def _estimate_enface_to_oct_tform(self):
         oct_projection_shape = (self.NumBScans, self.SizeX)
@@ -621,7 +646,7 @@ class Oct:
                  self[0].StartY / self.ScaleXSlo, self[0].StartX / self.ScaleYSlo,
                  self[0].EndY / self.ScaleXSlo, self[0].EndX / self.ScaleYSlo
                  ]).reshape((-1, 2))
-        except AttributeError():
+        except AttributeError:
             # Map the oct projection to a square area of shape (bscan_width, bscan_width)
             warnings.warn(f"Bscan positions on enface image or the scale of the "
                           f"enface image is missing. We assume that the B-Scans cover "
@@ -654,7 +679,7 @@ class Oct:
         """ Drusen projection warped into the enface space """
         return transform.warp(self.drusen_projection.astype(float),
                               self.tform_oct_to_enface,
-                              output_shape=self.enface.shape)
+                              output_shape=self.enface_shape)
 
     @property
     def drusenfinder(self):
@@ -670,7 +695,7 @@ class Oct:
         self._drusen_raw = None
         self._drusenfinder = drusenfinder
 
-    def plot(self, ax=None, slo=True, drusen=False, bscan_region=False,
+    def plot(self, ax=None, enface=True, drusen=False, bscan_region=False,
              bscan_positions=None, masks=False, region=np.s_[...], alpha=1):
         """
 
@@ -693,7 +718,7 @@ class Oct:
         if ax is None:
             ax = plt.gca()
 
-        if slo:
+        if enface:
             self.plot_enface(ax=ax, region=region)
         if drusen:
             self.plot_drusen(ax=ax, region=region, alpha=alpha)
@@ -710,6 +735,21 @@ class Oct:
         # if quantification:
         #    self.plot_quantification(space=space, region=region, ax=ax,
         #    q_kwargs=q_kwargs)
+
+    def plot_layer_distance(self, region=np.s_[...], ax=None, top_layer="RPE", bot_layer="BM"):
+        if ax is None:
+            ax = plt.gca()
+        
+        bot = self.layers[bot_layer]
+        top = self.layers[top_layer]
+
+        distance = bot-top
+        img = transform.warp(distance.astype(float),
+                             self.tform_oct_to_enface,
+                             output_shape=self.enface_shape)
+        ax.imshow(img[region], cmap="gray")
+        
+        
 
     def plot_masks(self, region=np.s_[...], ax=None, color="r", linewidth=0.5):
         """
