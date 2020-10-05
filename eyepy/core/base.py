@@ -156,6 +156,8 @@ class Bscan:
         else:
             self._data_processing = data_processing
 
+        self._layer_indices = None
+
     @property
     def oct_obj(self):
         if self._oct_obj is None:
@@ -206,6 +208,19 @@ class Bscan:
     @property
     def shape(self):
         return self.scan.shape
+
+    @property
+    def layer_indices(self):
+        if self._layer_indices is None:
+            
+            self._layer_indices = {}
+            for key, layer_height in self.layers.items():
+                nan_indices = np.isnan(layer_height)
+                col_indices = np.arange(self.shape[1])[~nan_indices]
+                row_indices = np.rint(layer_height).astype(int)[~nan_indices]
+                self._layer_indices[key] = (row_indices, col_indices)
+                
+        return self._layer_indices
 
     @property
     def layers(self):
