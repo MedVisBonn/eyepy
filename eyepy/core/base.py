@@ -158,12 +158,19 @@ class Bscan:
     def __new__(cls, data, annotation=None, meta=None, data_processing=None,
                 oct_obj=None, name=None, *args, **kwargs):
 
+        if annotation is None:
+            def new_layer_annotation():
+                n_layers = np.zeros((max(config.SEG_MAPPING.values()) + 1))
+                return lambda self: LayerAnnotation(n_layers,
+                                                    self.oct_obj.SizeX)
+
+            annotation = {"layers": new_layer_annotation()}
+
         def annotation_func_builder(x):
             return lambda self: self.annotation[x]
 
-        if annotation is not None:
-            for key in annotation:
-                setattr(cls, key, property(annotation_func_builder(key)))
+        for key in annotation:
+            setattr(cls, f"_{key}", property(annotation_func_builder(key)))
 
         # Make all meta fields accessible as attributes of the BScan without
         # reading them. Set a property instead
@@ -403,7 +410,7 @@ class Oct:
 
         self._drusen = None
         self._drusen_raw = None
-        self._segmentation_raw = None
+        self._layers_raw = None
 
         self._eyepy_id = None
         if data_path is None:
@@ -439,7 +446,7 @@ class Oct:
         return cls(bscans=reader.bscans,
                    localizer=reader.localizer,
                    meta=reader.oct_meta,
-                   data_path=path.parent)
+                   data_path=Path(path).parent)
 
     @classmethod
     def from_folder(cls, path):
@@ -515,10 +522,10 @@ class Oct:
         where L are different Layers, B are the B-Scans and W is the Width of
         the B-Scans.
         """
-        if self._segmentation_raw is None:
-            self._segmentation_raw = np.stack([x.layers_raw
-                                               for x in self.bscans], axis=1)
-        return self._segmentation_raw
+        if self._layers_raw is None:
+            self._layers_raw = np.stack([x.layers.data
+                                         for x in self], axis=1)
+        return self._layers_raw
 
     @property
     def layers(self):
