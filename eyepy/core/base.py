@@ -159,12 +159,7 @@ class Bscan:
                 oct_obj=None, name=None, *args, **kwargs):
 
         if annotation is None:
-            def new_layer_annotation():
-                n_layers = np.zeros((max(config.SEG_MAPPING.values()) + 1))
-                return lambda self: LayerAnnotation(n_layers,
-                                                    self.oct_obj.SizeX)
-
-            annotation = {"layers": new_layer_annotation()}
+            annotation = {"layers": None}
 
         def annotation_func_builder(x):
             return lambda self: self.annotation[x]
@@ -206,9 +201,13 @@ class Bscan:
         self._meta = meta
         self._oct_obj = oct_obj
 
+        if annotation is None:
+            n_layers = np.zeros((max(config.SEG_MAPPING.values()) + 1))
+            l_annotation = LayerAnnotation(n_layers, self.oct_obj.SizeX)
+            annotation = {"layers": l_annotation}
+
         self._annotation = annotation
-        if self._annotation is not None:
-            self._annotation.bscan = self
+        self._annotation.bscan = self
 
         if data_processing is None:
             self._data_processing = lambda x: x
