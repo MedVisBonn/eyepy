@@ -12,7 +12,7 @@ from typing import Union, IO
 import numpy as np
 from skimage import img_as_ubyte
 
-from eyepy.core.base import Bscan, Meta, EnfaceImage, Annotation
+from eyepy.core.base import Bscan, Meta, EnfaceImage, Annotation, LayerAnnotation
 from eyepy.io.utils import _clean_ascii
 from .specification.vol_export import HEVOL_VERSIONS, HEVOL_BSCAN_VERSIONS
 
@@ -120,9 +120,9 @@ class HeyexVolReader:
                               dtype="float32",
                               offset=startpos + bscan_obj.OffSeg,
                               shape=(17, bscan_obj.oct_obj.SizeX))
-            return data
+            return LayerAnnotation(data, max_height=bscan_obj.oct_obj.SizeZ)
 
-        return {"layers_raw": layers_dict, }
+        return {"layers": layers_dict, }
 
     def create_meta_retrieve_funcs_heyex_vol(self, specification, offset=0):
         """ For every meta field, create a function to read it from the file

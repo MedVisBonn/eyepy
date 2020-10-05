@@ -1,3 +1,4 @@
+import hashlib
 import os
 import warnings
 from collections.abc import MutableMapping
@@ -103,6 +104,56 @@ class Annotation(MutableMapping):
         self._bscan = value
 
 
+class LayerAnnotation(MutableMapping):
+
+    def __init__(self, data, layername_mapping=None, max_height=2000):
+        self._data = data
+        self.max_height = max_height
+        if layername_mapping is None:
+            self.mapping = config.SEG_MAPPING
+        else:
+            self.mapping = layername_mapping
+
+    @property
+    def data(self):
+        if callable(self._data):
+            self._data = self._data()
+        return self._data
+
+    def __getitem__(self, key):
+        data = self.data[self.mapping[key]]
+        nans = np.isnan(data)
+        empty = np.nonzero(np.logical_or(
+            np.less(data, 0, where=~nans),
+            np.greater(data, self.max_height, where=~nans)))
+        data[empty] = np.nan
+        if np.nansum(data) > 0:
+            return data
+        else:
+            raise KeyError(f"There is no data given for the {key} layer")
+
+    def __setitem__(self, key, value):
+        self.data[self.mapping[key]] = value
+
+    def __delitem__(self, key):
+        self.data[self.mapping[key], :] = np.nan
+
+    def __iter__(self):
+        inv_map = {v: k for k, v in self.mapping.items()}
+        return iter(inv_map.values())
+
+    def __len__(self):
+        return len(self.data.shape[0])
+
+    def layer_indices(self, key):
+        layer = self[key]
+        nan_indices = np.isnan(layer)
+        col_indices = np.arange(len(layer))[~nan_indices]
+        row_indices = np.rint(layer).astype(int)[~nan_indices]
+
+        return (row_indices, col_indices)
+
+
 class Bscan:
     def __new__(cls, data, annotation=None, meta=None, data_processing=None,
                 oct_obj=None, name=None, *args, **kwargs):
@@ -158,7 +209,6 @@ class Bscan:
             self._data_processing = data_processing
 
         self._name = name
-        self._layer_indices = None
 
     @property
     def oct_obj(self):
@@ -218,34 +268,10 @@ class Bscan:
         return self.scan.shape
 
     @property
-    def layer_indices(self):
-        if self._layer_indices is None:
-            
-            self._layer_indices = {}
-            for key, layer_height in self.layers.items():
-                nan_indices = np.isnan(layer_height)
-                col_indices = np.arange(self.shape[1])[~nan_indices]
-                row_indices = np.rint(layer_height).astype(int)[~nan_indices]
-                self._layer_indices[key] = (row_indices, col_indices)
-                
-        return self._layer_indices
-
-    @property
     def layers(self):
-        data = self.layers_raw.copy()
-        nans = np.isnan(self.layers_raw)
-        empty = np.nonzero(np.logical_or(
-            np.less(self.layers_raw, 0, where=~nans),
-            np.greater(self.layers_raw, self.oct_obj.SizeZ, where=~nans)))
-        data[empty] = np.nan
-        return {name: data[i] for name, i in config.SEG_MAPPING.items()
-                if np.nansum(data[i]) != 0}
-
-    @property
-    def layers_raw(self):
-        if callable(self._layers_raw):
-            self._layers_raw = self._layers_raw(self)
-        return self._layers_raw
+        if callable(self._layers):
+            self._layers = self._layers(self)
+        return self._layers
 
     @property
     def drusen_raw(self):
@@ -333,7 +359,7 @@ class Oct:
 
     def __new__(cls, bscans: List[Bscan],
                 localizer=None,
-                meta=None, *args, **kwargs):
+                meta=None, data_path=None, *args, **kwargs):
         # Set all the meta fields as attributes
 
         if meta is not None:
@@ -356,7 +382,8 @@ class Oct:
                  localizer: Optional[Union[Callable, EnfaceImage]] = None,
                  meta: Optional[Meta] = None,
                  drusenfinder: DrusenFinder = DefaultDrusenFinder(),
-                 eyequantifier: EyeQuantifier = DefaultEyeQuantifier()):
+                 eyequantifier: EyeQuantifier = DefaultEyeQuantifier(),
+                 data_path: Optional[str] = None):
         """
 
         Parameters
@@ -378,6 +405,12 @@ class Oct:
         self._drusen_raw = None
         self._segmentation_raw = None
 
+        self._eyepy_id = None
+        if data_path is None:
+            self.data_path = Path.home() / ".eyepy"
+        self.data_path = Path(data_path)
+        self.drusen_path = self.data_path / ".eyepy" / f"{self.eyepy_id}_drusen_map.npy"
+
     def __getitem__(self, index) -> Bscan:
         """ The B-Scan at the given index"""
         x = self.bscans[index]
@@ -396,7 +429,8 @@ class Oct:
         reader = HeyexXmlReader(path)
         return cls(bscans=reader.bscans,
                    localizer=reader.localizer,
-                   meta=reader.oct_meta)
+                   meta=reader.oct_meta,
+                   data_path=reader.path)
 
     @classmethod
     def from_heyex_vol(cls, path):
@@ -404,7 +438,8 @@ class Oct:
         reader = HeyexVolReader(path)
         return cls(bscans=reader.bscans,
                    localizer=reader.localizer,
-                   meta=reader.oct_meta)
+                   meta=reader.oct_meta,
+                   data_path=path.parent)
 
     @classmethod
     def from_folder(cls, path):
@@ -415,7 +450,7 @@ class Oct:
             return lambda: imageio.imread(p)
 
         bscans = [Bscan(read_func(p), name=p.name) for p in img_paths]
-        return cls(bscans=bscans)
+        return cls(bscans=bscans, data_path=path)
 
     def estimate_bscan_distance(self):
         # Try to estimate B-Scan distances. Can be used if Bscan Positions
@@ -427,6 +462,16 @@ class Oct:
         self.meta["Distance"] = np.sqrt(a ** 2 + b ** 2) / (
                 len(self.bscans) - 1)
         return self.Distance
+
+    @property
+    def eyepy_id(self):
+        """ Visit ID for saving visit related files """
+        if self._eyepy_id is None:
+            # Compute a hash of the first B-Scan as ID
+            sha1 = hashlib.sha1()
+            sha1.update(self[0].scan.tobytes())
+            self._eyepy_id = sha1.hexdigest()
+        return self._eyepy_id
 
     @property
     def shape(self):
@@ -506,7 +551,7 @@ class Oct:
             # Try to load the drusen from the default location
             try:
                 self._drusen = np.load(self.drusen_path)
-            except FileNotFoundError:
+            except NotADirectoryError:
                 self._drusen = self._drusenfinder.filter(self.drusen_raw)
                 self.drusen_path.parent.mkdir(parents=True, exist_ok=True)
                 np.save(self.drusen_path, self._drusen)
@@ -550,27 +595,42 @@ class Oct:
         return self.tform_enface_to_oct.inverse
 
     def _estimate_enface_to_oct_tform(self):
-        dren_shape = self.drusen_projection.shape
+        oct_projection_shape = (self.NumBScans, self.SizeX)
         src = np.array(
-            [dren_shape[0] - 1, 0,  # Top left
-             dren_shape[0] - 1, dren_shape[1] - 1,  # Top right
+            [oct_projection_shape[0] - 1, 0,  # Top left
+             oct_projection_shape[0] - 1, oct_projection_shape[1] - 1,  # Top right
              0, 0,  # Bottom left
-             0, dren_shape[1] - 1  # Bottom right
+             0, oct_projection_shape[1] - 1  # Bottom right
              ]).reshape((-1, 2))
 
-        dst = np.array(
-            [self[-1].StartY / self.ScaleXSlo, self[-1].StartX / self.ScaleYSlo,
-             self[-1].EndY / self.ScaleXSlo, self[-1].EndX / self.ScaleYSlo,
-             self[0].StartY / self.ScaleXSlo, self[0].StartX / self.ScaleYSlo,
-             self[0].EndY / self.ScaleXSlo, self[0].EndX / self.ScaleYSlo
-             ]).reshape((-1, 2))
+        try:
+            # Try to map the oct projection to the enface image
+            dst = np.array(
+                [self[-1].StartY / self.ScaleXSlo, self[-1].StartX / self.ScaleYSlo,
+                 self[-1].EndY / self.ScaleXSlo, self[-1].EndX / self.ScaleYSlo,
+                 self[0].StartY / self.ScaleXSlo, self[0].StartX / self.ScaleYSlo,
+                 self[0].EndY / self.ScaleXSlo, self[0].EndX / self.ScaleYSlo
+                 ]).reshape((-1, 2))
+        except AttributeError():
+            # Map the oct projection to a square area of shape (bscan_width, bscan_width)
+            warnings.warn(f"Bscan positions on enface image or the scale of the "
+                          f"enface image is missing. We assume that the B-Scans cover "
+                          f"a square area and are equally spaced.",
+                          UserWarning)
+            b_width = self[0].shape[1]
+            dst = np.array(
+                [b_width - 1, 0,  # Top left
+                 b_width - 1, b_width - 1,  # Top right
+                 0, 0,  # Bottom left
+                 0, b_width - 1  # Bottom right
+                 ]).reshape((-1, 2))
 
         src = src[:, [1, 0]]
         dst = dst[:, [1, 0]]
         tform = transform.estimate_transform("affine", src, dst)
 
         if not np.allclose(tform.inverse(tform(src)), src):
-            msg = f"Problem with transformation of OCT Projection to SLO space."
+            msg = f"Problem with transformation of OCT Projection to the enface image space."
             raise ValueError(msg)
 
         return tform

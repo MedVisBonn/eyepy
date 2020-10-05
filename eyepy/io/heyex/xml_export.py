@@ -8,7 +8,7 @@ import numpy as np
 from skimage import img_as_ubyte
 
 from eyepy.core import config
-from eyepy.core.base import Bscan, Meta, EnfaceImage, Annotation
+from eyepy.core.base import Bscan, Meta, EnfaceImage, Annotation, LayerAnnotation
 from eyepy.io.heyex.specification.xml_export import \
     HEXML_VERSIONS, HEXML_BSCAN_VERSIONS
 
@@ -138,9 +138,9 @@ class HeyexXmlReader:
                     name = segline.find("./Name").text
                     data[config.SEG_MAPPING[name], :] = \
                         [float(x) for x in segline.find("./Array").text.split()]
-                return data
+                return LayerAnnotation(data, max_height=bscan_obj.oct_obj.SizeZ)
 
             warnings.warn(
                 f"{bscan_obj} contains no segmentation", UserWarning)
 
-        return {"layers_raw": layers_dict, }
+        return {"layers": layers_dict, }
