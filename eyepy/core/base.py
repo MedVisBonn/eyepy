@@ -157,16 +157,6 @@ class LayerAnnotation(MutableMapping):
 class Bscan:
     def __new__(cls, data, annotation=None, meta=None, data_processing=None,
                 oct_obj=None, name=None, *args, **kwargs):
-
-        if annotation is None:
-            annotation = {"layers": None}
-
-        def annotation_func_builder(x):
-            return lambda self: self.annotation[x]
-
-        for key in annotation:
-            setattr(cls, f"_{key}", property(annotation_func_builder(key)))
-
         # Make all meta fields accessible as attributes of the BScan without
         # reading them. Set a property instead
         def meta_func_builder(x):
@@ -200,10 +190,8 @@ class Bscan:
         self._scan = None
         self._meta = meta
         self._oct_obj = oct_obj
-        
+
         self._annotation = annotation
-        if self._annotation is not None:
-            self._annotation.bscan = self
 
         if data_processing is None:
             self._data_processing = lambda x: x
@@ -241,10 +229,9 @@ class Bscan:
     def annotation(self):
         """ A dict holding all Bscan annotation data """
         if self._annotation is None:
-            empty_layers = np.zeros((max(config.SEG_MAPPING.values()) + 1, self.shape[1]))
-            l_annotation = LayerAnnotation(empty_layers)
-            self._annotation = Annotation({"layers": l_annotation})
-            self._annotation.bscan = self
+            self._annotation = Annotation({})
+        elif callable(self._annotation)
+            self._annotation = self._annotation()
         return self._annotation
 
     @property
@@ -272,16 +259,17 @@ class Bscan:
 
     @property
     def shape(self):
-        try:
-            return (self.oct_obj.SizeZ, self.oct_obj.SizeX)
-        except AttributeError:
-            return self.scan.shape
+        return self.scan.shape
 
     @property
     def layers(self):
-        if callable(self._layers):
-            self._layers = self._layers(self)
-        return self._layers
+        if callable(self.annotation["layers"]):
+            self.annotation["layers"] = self.annotation["layers"]()
+        elif "layers" not in self.annotation:
+            l_shape = np.zeros((max(config.SEG_MAPPING.values()) + 1),
+                               self.oct_obj.SizeX)
+            self.annotation["layers"] = LayerAnnotation(l_shape)
+        return self.annotation["layers"]
 
     @property
     def drusen_raw(self):
@@ -426,7 +414,7 @@ class Oct:
         x = self.bscans[index]
         if callable(x):
             self.bscans[index] = x()
-        self.bscans[index].oct_obj = self
+            self.bscans[index].oct_obj = self
         return self.bscans[index]
 
     def __len__(self):
@@ -459,7 +447,7 @@ class Oct:
         def read_func(p):
             return lambda: imageio.imread(p)
 
-        bscans = [lambda: Bscan(read_func(p), name=p.name) for p in img_paths]
+        bscans = [Bscan(read_func(p), name=p.name) for p in img_paths]
         return cls(bscans=bscans, data_path=path)
 
     def estimate_bscan_distance(self):
@@ -470,7 +458,7 @@ class Oct:
         a = self[-1].StartY - self[0].StartY
         b = self[-1].StartX - self[0].StartX
         self.meta["Distance"] = np.sqrt(a ** 2 + b ** 2) / (
-                len(self) - 1)
+                len(self.bscans) - 1)
         return self.Distance
 
     @property
@@ -485,28 +473,10 @@ class Oct:
 
     @property
     def shape(self):
-        return (self.SizeZ, self.SizeX, self.NumBScans)
-    
-    @property
-    def SizeZ(self):
         try:
-            return self.meta["SizeZ"]
-        except (AttributeError, KeyError, TypeError):
-            return self[0].scan.shape[0]
-    
-    @property    
-    def SizeX(self):
-        try:
-            return self.meta["SizeX"]
-        except (AttributeError, KeyError, TypeError):
-            return self[0].scan.shape[1]
-
-    @property    
-    def NumBScans(self):
-        try:
-            return self.meta["NumBScans"]
-        except (AttributeError, KeyError, TypeError):
-            return len(self)
+            return (self.sizeZ, self.SizeX, self.NumBScans)
+        except AttributeError:
+            return self[0].shape + (len(self),)
 
     @property
     def enface(self):
@@ -579,7 +549,7 @@ class Oct:
             # Try to load the drusen from the default location
             try:
                 self._drusen = np.load(self.drusen_path)
-            except (NotADirectoryError, FileNotFoundError):
+            except NotADirectoryError:
                 self._drusen = self._drusenfinder.filter(self.drusen_raw)
                 self.drusen_path.parent.mkdir(parents=True, exist_ok=True)
                 np.save(self.drusen_path, self._drusen)
@@ -621,13 +591,6 @@ class Oct:
     @property
     def tform_oct_to_enface(self):
         return self.tform_enface_to_oct.inverse
-    
-    @property
-    def enface_shape(self):
-        try:
-            return self.enface.shape
-        except:
-            return (self.SizeX, self.SizeX)
 
     def _estimate_enface_to_oct_tform(self):
         oct_projection_shape = (self.NumBScans, self.SizeX)
@@ -646,12 +609,13 @@ class Oct:
                  self[0].StartY / self.ScaleXSlo, self[0].StartX / self.ScaleYSlo,
                  self[0].EndY / self.ScaleXSlo, self[0].EndX / self.ScaleYSlo
                  ]).reshape((-1, 2))
-        except AttributeError:
+        except AttributeError():
             # Map the oct projection to a square area of shape (bscan_width, bscan_width)
-            warnings.warn(f"Bscan positions on enface image or the scale of the "
-                          f"enface image is missing. We assume that the B-Scans cover "
-                          f"a square area and are equally spaced.",
-                          UserWarning)
+            warnings.warn(
+                f"Bscan positions on enface image or the scale of the "
+                f"enface image is missing. We assume that the B-Scans cover "
+                f"a square area and are equally spaced.",
+                UserWarning)
             b_width = self[0].shape[1]
             dst = np.array(
                 [b_width - 1, 0,  # Top left
@@ -679,7 +643,7 @@ class Oct:
         """ Drusen projection warped into the enface space """
         return transform.warp(self.drusen_projection.astype(float),
                               self.tform_oct_to_enface,
-                              output_shape=self.enface_shape)
+                              output_shape=self.enface.shape)
 
     @property
     def drusenfinder(self):
@@ -695,7 +659,7 @@ class Oct:
         self._drusen_raw = None
         self._drusenfinder = drusenfinder
 
-    def plot(self, ax=None, enface=True, drusen=False, bscan_region=False,
+    def plot(self, ax=None, slo=True, drusen=False, bscan_region=False,
              bscan_positions=None, masks=False, region=np.s_[...], alpha=1):
         """
 
@@ -718,7 +682,7 @@ class Oct:
         if ax is None:
             ax = plt.gca()
 
-        if enface:
+        if slo:
             self.plot_enface(ax=ax, region=region)
         if drusen:
             self.plot_drusen(ax=ax, region=region, alpha=alpha)
@@ -735,21 +699,6 @@ class Oct:
         # if quantification:
         #    self.plot_quantification(space=space, region=region, ax=ax,
         #    q_kwargs=q_kwargs)
-
-    def plot_layer_distance(self, region=np.s_[...], ax=None, top_layer="RPE", bot_layer="BM"):
-        if ax is None:
-            ax = plt.gca()
-        
-        bot = self.layers[bot_layer]
-        top = self.layers[top_layer]
-
-        distance = bot-top
-        img = transform.warp(distance.astype(float),
-                             self.tform_oct_to_enface,
-                             output_shape=self.enface_shape)
-        ax.imshow(img[region], cmap="gray")
-        
-        
 
     def plot_masks(self, region=np.s_[...], ax=None, color="r", linewidth=0.5):
         """
