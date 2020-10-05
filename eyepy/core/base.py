@@ -263,12 +263,11 @@ class Bscan:
 
     @property
     def layers(self):
+        if "layers" not in self.annotation:
+            l_shape = np.zeros((max(config.SEG_MAPPING.values()) + 1, self.oct_obj.SizeX))
+            self.annotation["layers"] = LayerAnnotation(l_shape)
         if callable(self.annotation["layers"]):
             self.annotation["layers"] = self.annotation["layers"]()
-        elif "layers" not in self.annotation:
-            l_shape = np.zeros((max(config.SEG_MAPPING.values()) + 1),
-                               self.oct_obj.SizeX)
-            self.annotation["layers"] = LayerAnnotation(l_shape)
         return self.annotation["layers"]
 
     @property
@@ -319,8 +318,9 @@ class Bscan:
         for layer in layers:
             color = layers_color[layer]
             try:
-                segmentation = self.layers[layer]
-                ax.plot(segmentation, color=color, label=layer,
+                layer_data = self.layers[layer]
+                layer_data -= region[0].start
+                ax.plot(layer_data, color=color, label=layer,
                         **layers_kwargs)
             except KeyError:
                 warnings.warn(f"Layer '{layer}' has no Segmentation",
@@ -414,7 +414,7 @@ class Oct:
         x = self.bscans[index]
         if callable(x):
             self.bscans[index] = x()
-            self.bscans[index].oct_obj = self
+        self.bscans[index].oct_obj = self
         return self.bscans[index]
 
     def __len__(self):
@@ -473,11 +473,29 @@ class Oct:
 
     @property
     def shape(self):
+        return (self.sizeZ, self.SizeX, self.NumBScans)
+    
+    @property
+    def SizeX(self):
         try:
-            return (self.sizeZ, self.SizeX, self.NumBScans)
-        except AttributeError:
-            return self[0].shape + (len(self),)
+            return self.meta["SizeX"]
+        except:
+            return self[0].scan.shape[1]
 
+    @property
+    def SizeZ(self):
+        try:
+            return self.meta["SizeX"]
+        except:
+            return self[0].scan.shape[1]
+
+    @property
+    def NumBScans(self):
+        try:
+            return self.meta["NumBScans"]
+        except:
+            return len(self)
+    
     @property
     def enface(self):
         """ A numpy array holding the OCTs localizer enface if available """
@@ -591,7 +609,14 @@ class Oct:
     @property
     def tform_oct_to_enface(self):
         return self.tform_enface_to_oct.inverse
-
+    
+    @property
+    def enface_shape(self):
+        try:
+            return self.enface.shape
+        except:
+            return (self.SizeX, self.SizeX)    
+    
     def _estimate_enface_to_oct_tform(self):
         oct_projection_shape = (self.NumBScans, self.SizeX)
         src = np.array(
@@ -609,7 +634,7 @@ class Oct:
                  self[0].StartY / self.ScaleXSlo, self[0].StartX / self.ScaleYSlo,
                  self[0].EndY / self.ScaleXSlo, self[0].EndX / self.ScaleYSlo
                  ]).reshape((-1, 2))
-        except AttributeError():
+        except AttributeError:
             # Map the oct projection to a square area of shape (bscan_width, bscan_width)
             warnings.warn(
                 f"Bscan positions on enface image or the scale of the "
@@ -643,7 +668,7 @@ class Oct:
         """ Drusen projection warped into the enface space """
         return transform.warp(self.drusen_projection.astype(float),
                               self.tform_oct_to_enface,
-                              output_shape=self.enface.shape)
+                              output_shape=self.enface_shape)
 
     @property
     def drusenfinder(self):
@@ -699,6 +724,16 @@ class Oct:
         # if quantification:
         #    self.plot_quantification(space=space, region=region, ax=ax,
         #    q_kwargs=q_kwargs)
+
+    def plot_layer_distance(self, region=np.s_[...], ax=None, bot_layer="BM", top_layer="RPE", vmin=None, vmax=None):
+        if ax is None:
+            ax = plt.gca()
+
+        dist = self.layers["BM"] - self.layers["RPE"]
+        img = transform.warp(dist.astype(float),
+                             self.tform_oct_to_enface,
+                             output_shape=self.enface_shape)
+        ax.imshow(img[region], cmap="gray", vmin=vmin, vmax=vmax)
 
     def plot_masks(self, region=np.s_[...], ax=None, color="r", linewidth=0.5):
         """
