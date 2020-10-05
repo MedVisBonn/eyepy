@@ -56,8 +56,8 @@ class HeyexXmlReader:
         if self._bscans is None:
             self._bscans = []
 
-            def bscan_builder(d, a, bmeta, p):
-                return lambda: Bscan(d, a, bmeta, p)
+            def bscan_builder(d, a, bmeta, p, n):
+                return lambda: Bscan(d, a, bmeta, p, name=n)
 
             def scan_reader(path):
                 return lambda: imageio.imread(path)
@@ -71,7 +71,7 @@ class HeyexXmlReader:
                     bscan, HEXML_BSCAN_VERSIONS(self.version)))
 
                 self._bscans.append(bscan_builder(
-                    data, annotation, bscan_meta, self._data_processing))
+                    data, annotation, bscan_meta, self._data_processing, scan_name))
 
         return self._bscans
 

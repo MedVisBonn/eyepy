@@ -105,7 +105,7 @@ class Annotation(MutableMapping):
 
 class Bscan:
     def __new__(cls, data, annotation=None, meta=None, data_processing=None,
-                oct_obj=None, *args, **kwargs):
+                oct_obj=None, name=None, *args, **kwargs):
 
         def annotation_func_builder(x):
             return lambda self: self.annotation[x]
@@ -129,7 +129,8 @@ class Bscan:
                  annotation: Optional[Annotation] = None,
                  meta: Optional[Union[Dict, Meta]] = None,
                  data_processing: Optional[Callable] = None,
-                 oct_obj: Optional["Oct"] = None):
+                 oct_obj: Optional["Oct"] = None,
+                 name: Optional[str] = None):
         """
 
         Parameters
@@ -156,6 +157,7 @@ class Bscan:
         else:
             self._data_processing = data_processing
 
+        self._name = name
         self._layer_indices = None
 
     @property
@@ -167,6 +169,12 @@ class Bscan:
     @oct_obj.setter
     def oct_obj(self, value):
         self._oct_obj = value
+
+    @property
+    def name(self):
+        if self._name is None:
+            self._name = str(self.index)
+        return self._name
 
     @property
     def index(self):
@@ -406,7 +414,7 @@ class Oct:
         def read_func(p):
             return lambda: imageio.imread(p)
 
-        bscans = [Bscan(read_func(p)) for p in img_paths]
+        bscans = [Bscan(read_func(p), name=p.name) for p in img_paths]
         return cls(bscans=bscans)
 
     def estimate_bscan_distance(self):
