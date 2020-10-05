@@ -230,7 +230,7 @@ class Bscan:
         """ A dict holding all Bscan annotation data """
         if self._annotation is None:
             self._annotation = Annotation({})
-        elif callable(self._annotation)
+        elif callable(self._annotation):
             self._annotation = self._annotation()
         return self._annotation
 
