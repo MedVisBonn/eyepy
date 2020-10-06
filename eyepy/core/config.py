@@ -9,6 +9,8 @@ SEG_MAPPING = {"ILM": 0, "BM": 1, "RNFL": 2, "NFL": 2, "GCL": 3, "IPL": 4,
                "CHO": 11, "VIT": 12, "ANT": 13, "EZ": 14, "PR1": 14, "IZ": 15,
                "PR2": 15, "RPE": 16}
 
+SAVE_DRUSEN = False
+
 # Line Style for Layers in B-Scan
 layers_kwargs = {"linewidth": 0.3, "linestyle": "-"}
 

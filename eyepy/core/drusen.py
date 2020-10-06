@@ -19,7 +19,7 @@ class DrusenFinder(ABC):
 
 class DefaultDrusenFinder(DrusenFinder):
     def __init__(self, degree=3, iterations=5, outlier_threshold=5,
-                 poly_fit_type="regularized", minimum_height=2,
+                 poly_fit_type="regularized", minimum_height=2, minimum_depth=2,
                  minimum_area=0, minimum_volume=0, voxel_size=(1, 1, 1)):
         """
 
@@ -41,14 +41,16 @@ class DefaultDrusenFinder(DrusenFinder):
         self.minimum_height = minimum_height
         self.minimum_volume = minimum_volume
         self.minimum_area = minimum_area
+        self.minimum_depth = minimum_depth
         self.voxel_size = voxel_size
 
     def filter(self, drusen_map):
         return filter_by_height(drusen_map, self.minimum_height,
                                 self.voxel_size)
+        #return filter_by_depth(d, self.minimum_depth)
 
     def find(self, oct_obj):
-        drusen_map = np.zeros(oct_obj.shape)
+        drusen_map = np.zeros(oct_obj.shape, dtype=bool)
         for i, scan in enumerate(oct_obj):
             drusen_map[..., i] = drusen(
                 scan.layers["RPE"], scan.layers["BM"], scan.shape,
@@ -159,9 +161,7 @@ def filter_by_height(drusen_map, minimum_height=2, voxel_size=(1, 1, 1)):
     if minimum_height == 0:
         return drusen_map
     connected_component_array, num_drusen = ndimage.label(drusen_map)
-    height_map = np.sum(drusen_map, axis=0)
-    component_height_array = component_max_height(connected_component_array,
-                                                  height_map)
+    component_height_array = component_max_height(connected_component_array)
 
     filtered_drusen = np.copy(drusen_map)
     filtered_drusen[component_height_array <= minimum_height] = 0
@@ -188,12 +188,14 @@ def filter_by_depth(drusen_map, minimum_depth=2):
 
 
 
-def component_max_height(connected_component_array, height_map):
-    labels = np.unique(connected_component_array)
+def component_max_height(connected_component_array):
+    #labels = np.unique(connected_component_array)
     max_heights = np.zeros_like(connected_component_array)
-    for component_label in labels:
-        region = connected_component_array == component_label
-        max_heights[region] = np.max(height_map[np.sum(region, axis=0) > 0])
+    for label, drusen_pos in enumerate(ndimage.find_objects(connected_component_array)):
+        component_sub_vol = connected_component_array[drusen_pos]
+        component_max_height = np.max(np.sum(component_sub_vol==label, axis=0))
+        component_sub_vol[component_sub_vol==label] = component_max_height
+        max_heights[drusen_pos] = component_sub_vol
     return max_heights
 
 

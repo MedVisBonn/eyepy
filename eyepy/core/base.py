@@ -232,6 +232,7 @@ class Bscan:
             self._annotation = Annotation({})
         elif callable(self._annotation):
             self._annotation = self._annotation()
+        self._annotation.bscan = self
         return self._annotation
 
     @property
@@ -314,7 +315,7 @@ class Bscan:
         if drusen:
             visible = np.zeros(self.drusen.shape)
             visible[self.drusen] = 1.0
-            ax.imshow(self.drusen, alpha=visible, cmap="Reds")
+            ax.imshow(self.drusen[region], alpha=visible[region], cmap="Reds")
         for layer in layers:
             color = layers_color[layer]
             try:
@@ -473,7 +474,7 @@ class Oct:
 
     @property
     def shape(self):
-        return (self.sizeZ, self.SizeX, self.NumBScans)
+        return (self.SizeZ, self.SizeX, self.NumBScans)
     
     @property
     def SizeX(self):
@@ -485,9 +486,9 @@ class Oct:
     @property
     def SizeZ(self):
         try:
-            return self.meta["SizeX"]
+            return self.meta["SizeZ"]
         except:
-            return self[0].scan.shape[1]
+            return self[0].scan.shape[0]
 
     @property
     def NumBScans(self):
@@ -567,10 +568,11 @@ class Oct:
             # Try to load the drusen from the default location
             try:
                 self._drusen = np.load(self.drusen_path)
-            except NotADirectoryError:
+            except (NotADirectoryError, FileNotFoundError):
                 self._drusen = self._drusenfinder.filter(self.drusen_raw)
-                self.drusen_path.parent.mkdir(parents=True, exist_ok=True)
-                np.save(self.drusen_path, self._drusen)
+                if config.SAVE_DRUSEN:
+                    self.drusen_path.parent.mkdir(parents=True, exist_ok=True)
+                    np.save(self.drusen_path, self._drusen)
         return self._drusen
 
     def drusen_recompute(self, drusenfinder=None):
@@ -583,7 +585,8 @@ class Oct:
 
         self._drusen_raw = self._drusenfinder.find(self)
         self._drusen = self._drusenfinder.filter(self.drusen_raw)
-        np.save(self.drusen_path, self._drusen)
+        if config.SAVE_DRUSEN:
+            np.save(self.drusen_path, self._drusen)
         return self._drusen
 
     @property
@@ -682,10 +685,11 @@ class Oct:
     def drusenfinder(self, drusenfinder):
         self._drusen = None
         self._drusen_raw = None
-        self._drusenfinder = drusenfinder
-
-    def plot(self, ax=None, slo=True, drusen=False, bscan_region=False,
-             bscan_positions=None, masks=False, region=np.s_[...], alpha=1):
+        self._drusenfinder = drusenfinder    
+    
+    def plot(self, ax=None, enface=True, drusen=False, bscan_region=False,
+             bscan_positions=None, masks=False, region=np.s_[...], alpha=1, 
+             drusen_kwargs=None):
         """
 
         Parameters
@@ -707,10 +711,12 @@ class Oct:
         if ax is None:
             ax = plt.gca()
 
-        if slo:
+        if enface:
             self.plot_enface(ax=ax, region=region)
         if drusen:
-            self.plot_drusen(ax=ax, region=region, alpha=alpha)
+            if drusen_kwargs is None:
+                drusen_kwargs = {}
+            self.plot_drusen(ax=ax, region=region, alpha=alpha, **drusen_kwargs)
         if bscan_positions is not None:
             self.plot_bscan_positions(ax=ax, bscan_positions=bscan_positions,
                                       region=region,
@@ -725,6 +731,11 @@ class Oct:
         #    self.plot_quantification(space=space, region=region, ax=ax,
         #    q_kwargs=q_kwargs)
 
+    def plot_bscan_ticks(ax=None):
+        if ax is None:
+            ax = plt.gca()
+        ax.yticks()
+    
     def plot_layer_distance(self, region=np.s_[...], ax=None, bot_layer="BM", top_layer="RPE", vmin=None, vmax=None):
         if ax is None:
             ax = plt.gca()
@@ -827,7 +838,7 @@ class Oct:
                 cm.ScalarMappable(colors.Normalize(vmin=vmin, vmax=vmax),
                                   cmap=cmap), cax=cax)
 
-        ax.imshow(drusen[region], alpha=visible * alpha, cmap=cmap, vmin=vmin,
+        ax.imshow(drusen[region], alpha=visible[region] * alpha, cmap=cmap, vmin=vmin,
                   vmax=vmax)
 
     def plot_enface_bscan(self, ax=None, n_bscan=0):
