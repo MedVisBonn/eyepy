@@ -157,17 +157,6 @@ def compute_regularized_fit(x, y, deg):
     return weighted_average
 
 
-def filter_by_height(drusen_map, minimum_height=2, voxel_size=(1, 1, 1)):
-    if minimum_height == 0:
-        return drusen_map
-    connected_component_array, num_drusen = ndimage.label(drusen_map)
-    component_height_array = component_max_height(connected_component_array)
-
-    filtered_drusen = np.copy(drusen_map)
-    filtered_drusen[component_height_array <= minimum_height] = 0
-    return filtered_drusen.astype(bool)
-
-
 def filter_by_depth(drusen_map, minimum_depth=2):
     filtered_drusen = np.copy(drusen_map)
     if minimum_depth == 0:
@@ -181,10 +170,18 @@ def filter_by_depth(drusen_map, minimum_depth=2):
         component_max_depth = np.max(np.sum(component_sub_vol==label+1, axis=2))
         component_sub_vol[component_sub_vol==label+1] = component_max_depth
         max_depths[drusen_pos] = component_sub_vol
-    filtered_drusen[max_depths <= minimum_depth] = False
-    return filtered_drusen
+    filtered_drusen[max_depths < minimum_depth] = False
+    return filtered_drusen.astype(bool)
 
+def filter_by_height(drusen_map, minimum_height=2, voxel_size=(1, 1, 1)):
+    if minimum_height == 0:
+        return drusen_map
+    connected_component_array, num_drusen = ndimage.label(drusen_map)
+    component_height_array = component_max_height(connected_component_array)
 
+    filtered_drusen = np.copy(drusen_map)
+    filtered_drusen[component_height_array < minimum_height] = False
+    return filtered_drusen.astype(bool)
 
 def component_max_height(connected_component_array):
     #labels = np.unique(connected_component_array)
@@ -196,6 +193,26 @@ def component_max_height(connected_component_array):
         max_heights[drusen_pos] = component_sub_vol
     return max_heights
 
+def filter_by_width(drusen_map, minimum_width=2):
+    """ Filter drusen by width in single B-Scans"""
+    filtered_drusen = np.copy(drusen_map)
+    if minimum_width == 0:
+        return drusen_map
+    
+    for i in range(filtered_drusen.shape[-1]):
+        scan = filtered_drusen[..., i]
+        drusen_cols = np.any(filtered_drusen, axis=0)
+        connected_drusen, n = ndimage.label(drusen_cols)
+        if n == 0:
+            continue
+        for drusen_pos in ndimage.find_objects(connected_drusen):
+            if np.sum(drusen_cols[drusen_pos]) < minimum_width:
+                filtered_drusen[:, drusen_pos[0], i] = False
+    return filtered_drusen.astype(bool)
+
 
 def filter_by_area():
+    pass
+
+def filter_by_volume():
     pass
