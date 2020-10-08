@@ -291,9 +291,7 @@ class Bscan:
              layers_color=None, annotation_only=False, region=np.s_[...]):
         """ Plot B-Scan with segmented Layers """
         if ax is None:
-            fig, ax = plt.subplots(1, 1)
-        else:
-            fig = plt.gcf()
+            ax = plt.gca()
 
         if layers is None:
             layers = []
@@ -320,7 +318,8 @@ class Bscan:
             color = layers_color[layer]
             try:
                 layer_data = self.layers[layer]
-                layer_data -= region[0].start
+                if region[0].start is not None:
+                    layer_data -= region[0].start
                 ax.plot(layer_data, color=color, label=layer,
                         **layers_kwargs)
             except KeyError:
@@ -531,10 +530,13 @@ class Oct:
         Layers for all B-Scans are stacked such that we get a volume L x B x W
         where L are different Layers, B are the B-Scans and W is the Width of
         the B-Scans.
+
+        A flip on the B-Scan axis is needed to locate the first B-Scan at the
+        bottom of the height map.
         """
         if self._layers_raw is None:
-            self._layers_raw = np.stack([x.layers.data
-                                         for x in self], axis=1)
+            self._layers_raw = np.flip(np.stack([x.layers.data
+                                         for x in self], axis=1), axis=1)
         return self._layers_raw
 
     @property
@@ -556,6 +558,8 @@ class Oct:
 
         The object can be printed to see all available meta data.
         """
+        if self._meta is None:
+            raise AttributeError("This volume has no meta data")
         return self._meta
 
     @property
@@ -628,6 +632,12 @@ class Oct:
              0, 0,  # Bottom left
              0, oct_projection_shape[1] - 1  # Bottom right
              ]).reshape((-1, 2))
+        src = np.array(
+            [0, 0,  # Top left
+             0, oct_projection_shape[1] - 1,  # Top right
+             oct_projection_shape[0] - 1, 0,  # Bottom left
+             oct_projection_shape[0] - 1, oct_projection_shape[1] - 1  # Bottom right
+             ]).reshape((-1, 2))
 
         try:
             # Try to map the oct projection to the enface image
@@ -646,10 +656,10 @@ class Oct:
                 UserWarning)
             b_width = self[0].shape[1]
             dst = np.array(
-                [b_width - 1, 0,  # Top left
-                 b_width - 1, b_width - 1,  # Top right
-                 0, 0,  # Bottom left
-                 0, b_width - 1  # Bottom right
+                [0, 0,  # Top left
+                 0, b_width - 1,  # Top right
+                 b_width - 1, 0,  # Bottom left
+                 b_width - 1, b_width - 1  # Bottom right
                  ]).reshape((-1, 2))
 
         src = src[:, [1, 0]]
@@ -664,14 +674,18 @@ class Oct:
 
     @property
     def drusen_projection(self):
-        return np.swapaxes(np.sum(self.drusen, axis=0), 0, 1)
+        # Sum the all B-Scans along their first axis (B-Scan height)
+        # Swap axis such that the volume depth becomes the projections height not width
+        # We want the first B-Scan to be located at the bottom hence flip along axis 0
+        return np.flip(np.swapaxes(np.sum(self.drusen, axis=0), 0, 1), axis=0)
 
     @property
     def drusen_enface(self):
         """ Drusen projection warped into the enface space """
         return transform.warp(self.drusen_projection.astype(float),
                               self.tform_oct_to_enface,
-                              output_shape=self.enface_shape)
+                              output_shape=self.enface_shape, 
+                              order=0)
 
     @property
     def drusenfinder(self):
@@ -688,7 +702,7 @@ class Oct:
         self._drusenfinder = drusenfinder    
     
     def plot(self, ax=None, enface=True, drusen=False, bscan_region=False,
-             bscan_positions=None, masks=False, region=np.s_[...], alpha=1, 
+             bscan_positions=None, masks=False, region=np.s_[...],
              drusen_kwargs=None):
         """
 
@@ -716,7 +730,7 @@ class Oct:
         if drusen:
             if drusen_kwargs is None:
                 drusen_kwargs = {}
-            self.plot_drusen(ax=ax, region=region, alpha=alpha, **drusen_kwargs)
+            self.plot_drusen(ax=ax, region=region, **drusen_kwargs)
         if bscan_positions is not None:
             self.plot_bscan_positions(ax=ax, bscan_positions=bscan_positions,
                                       region=region,
@@ -731,7 +745,7 @@ class Oct:
         #    self.plot_quantification(space=space, region=region, ax=ax,
         #    q_kwargs=q_kwargs)
 
-    def plot_bscan_ticks(ax=None):
+    def plot_bscan_ticks(self, ax=None):
         if ax is None:
             ax = plt.gca()
         ax.yticks()
@@ -743,7 +757,7 @@ class Oct:
         dist = self.layers["BM"] - self.layers["RPE"]
         img = transform.warp(dist.astype(float),
                              self.tform_oct_to_enface,
-                             output_shape=self.enface_shape)
+                             output_shape=self.enface_shape, order=0)
         ax.imshow(img[region], cmap="gray", vmin=vmin, vmax=vmax)
 
     def plot_masks(self, region=np.s_[...], ax=None, color="r", linewidth=0.5):
