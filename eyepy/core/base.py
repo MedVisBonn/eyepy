@@ -297,7 +297,7 @@ class Bscan:
         return self._oct_obj.drusen[..., self.index]
 
     def plot(self, ax=None, layers=None, drusen=False, layers_kwargs=None,
-             layers_color=None, annotation_only=False, region=np.s_[...]):
+             layers_color=None, annotation_only=False, region=np.s_[:,:]):
         """ Plot B-Scan with segmented Layers """
         if ax is None:
             ax = plt.gca()
@@ -410,7 +410,6 @@ class Oct:
 
         self._drusen = None
         self._drusen_raw = None
-        self._layers_raw = None
 
         self._eyepy_id = None
         if data_path is None:
@@ -546,10 +545,7 @@ class Oct:
         A flip on the B-Scan axis is needed to locate the first B-Scan at the
         bottom of the height map.
         """
-        if self._layers_raw is None:
-            self._layers_raw = np.flip(np.stack([x.layers.data
-                                         for x in self], axis=1), axis=1)
-        return self._layers_raw
+        return np.flip(np.stack([x.layers.data for x in self], axis=1), axis=1)
 
     @property
     def layers(self):

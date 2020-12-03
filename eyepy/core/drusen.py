@@ -45,8 +45,9 @@ class DefaultDrusenFinder(DrusenFinder):
         self.voxel_size = voxel_size
 
     def filter(self, drusen_map):
-        return filter_by_height(drusen_map, self.minimum_height,
-                                self.voxel_size)
+        return drusen_map
+        #return filter_by_height(drusen_map, self.minimum_height,
+        #                        self.voxel_size)
         #return filter_by_depth(d, self.minimum_depth)
 
     def find(self, oct_obj):
