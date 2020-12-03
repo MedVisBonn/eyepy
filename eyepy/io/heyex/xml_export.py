@@ -76,15 +76,18 @@ class HeyexXmlReader:
         return self._bscans
 
     @property
+    def localizer_name(self):
+        lclzr_pattern = ".//ImageType[Type='LOCALIZER']../ImageData/ExamURL"
+        return (self.xml_root[0].find(lclzr_pattern).text.split("\\")[-1])
+        
+
+    @property
     def localizer(self):
         if self._localizer is None:
-            lclzr_pattern = ".//ImageType[Type='LOCALIZER']../ImageData/ExamURL"
-            localizer_path = (self.path.parent /
-                              self.xml_root[0].find(lclzr_pattern).text
-                              .split("\\")[-1])
+            
 
             self._localizer = EnfaceImage(
-                data=lambda: imageio.imread(localizer_path))
+                data=lambda: imageio.imread(self.path.parent / self.localizer_name), name=self.localizer_name)
 
         return self._localizer
 

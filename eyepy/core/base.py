@@ -49,8 +49,9 @@ class Meta(MutableMapping):
 
 
 class EnfaceImage:
-    def __init__(self, data):
+    def __init__(self, data, name=None):
         self._data = data
+        self._name = name
 
     @property
     def data(self):
@@ -58,6 +59,13 @@ class EnfaceImage:
         if callable(self._data):
             self._data = self._data()
         return self._data
+    
+    @property
+    def name(self):
+        if self._name is None:
+            raise ValueError("This EnfaceImage has no respective filename")
+        else:
+            return self._name
 
 
 class Annotation(MutableMapping):
@@ -185,6 +193,7 @@ class Bscan:
         annotation: Dict holding B-Scan annotations
         meta : A dictionary holding the B-Scans meta informations or
         oct_obj : Reference to the OCT Volume holding the B-Scan
+        name : Filename of the B-Scan if B-Scan is save as individual file
         """
         self._scan_raw = data
         self._scan = None
@@ -411,11 +420,14 @@ class Oct:
 
     def __getitem__(self, index) -> Bscan:
         """ The B-Scan at the given index"""
-        x = self.bscans[index]
-        if callable(x):
-            self.bscans[index] = x()
-        self.bscans[index].oct_obj = self
-        return self.bscans[index]
+        if type(index) == slice:
+            return [self[i] for i in range(*index.indices(len(self)))]
+        else:
+            bscan = self.bscans[index]
+            if callable(bscan):
+                self.bscans[index] = bscan()
+            self.bscans[index].oct_obj = self
+            return self.bscans[index]
 
     def __len__(self):
         """ The number of B-Scans """
