@@ -56,7 +56,7 @@ def compare_drusen_per_bscan(data_gt, data_pred):
         result[("Recall", bscan_gt.name)] = [recall]
         result[("GT Drusen Volume", bscan_gt.name)] = [np.sum(drusen_gt)]
         result[("PR Drusen Volume", bscan_gt.name)] = [np.sum(drusen_pred)]
-		result[("False Negatives", bscan_gt.name)] = [false_negatives]
+        result[("False Negatives", bscan_gt.name)] = [false_negatives]
         result[("False Positives", bscan_gt.name)] = [false_positives]
         
         drusen_load = np.sum(drusen_gt)
