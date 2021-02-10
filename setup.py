@@ -4,7 +4,10 @@
 """The setup script."""
 from setuptools import find_packages, setup
 import sys
-from eyepy import __version__, __author__, __email__
+
+__author__ = """Olivier Morelle"""
+__email__ = "oli4morelle@gmail.com"
+__version__ = "0.1.5"
 
 try:
     from semantic_release import setup_hook
@@ -34,7 +37,7 @@ test_requirements = ["pytest>=3"]
 setup(
     author=__author__,
     author_email=__email__,
-    python_requires=">=3.5",
+    python_requires=">=3.6",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Intended Audience :: Developers",
