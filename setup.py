@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """The setup script."""
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 from setuptools import find_packages, setup
 import sys
 
