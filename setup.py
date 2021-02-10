@@ -2,8 +2,15 @@
 # -*- coding: utf-8 -*-
 
 """The setup script."""
-
+__version__ = "0.1.4"
 from setuptools import find_packages, setup
+import sys
+
+try:
+    from semantic_release import setup_hook
+    setup_hook(sys.argv)
+except ImportError:
+    pass
 
 with open("README.rst") as readme_file:
     readme = readme_file.read()
@@ -27,7 +34,7 @@ test_requirements = ["pytest>=3"]
 setup(
     author="Olivier Morelle",
     author_email="oli4morelle@gmail.com",
-    python_requires=">2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
+    python_requires=">=3.5",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Intended Audience :: Developers",
@@ -40,7 +47,6 @@ setup(
         "Programming Language :: Python :: 3.8",
     ],
     description="The Python package for working with ophthalmological data.",
-    entry_points={"console_scripts": ["eyepy=eyepy.cli:main"]},
     install_requires=requirements,
     license="MIT license",
     long_description=readme + "\n\n" + history,
@@ -52,6 +58,5 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/MedVisBonn/eyepy",
-    version="0.1.1",
-    zip_safe=False,
-)
+    version=__version__,
+    zip_safe=False,)

@@ -5,7 +5,6 @@ python:
   - 3.7
   - 3.6
   - 3.5
-  - 2.7
 
 # Command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
 install: pip install -U tox-travis
@@ -27,3 +26,9 @@ deploy:
     tags: true
     repo: Oli4/eyepy
     python: 3.7
+    
+after_success:
+- git config --global user.name "semantic-release (via TravisCI)"
+- git config --global user.email "semantic-release@travis"
+- pip install python-semantic-release
+- semantic-release publish

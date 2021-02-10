@@ -53,11 +53,15 @@ class DefaultDrusenFinder(DrusenFinder):
     def find(self, oct_obj):
         drusen_map = np.zeros(oct_obj.shape, dtype=bool)
         for i, scan in enumerate(oct_obj):
-            drusen_map[..., i] = drusen(
-                scan.layers["RPE"], scan.layers["BM"], scan.shape,
-                degree=self.degree, iterations=self.iterations,
-                outlier_threshold=self.outlier_threshold,
-                poly_fit_type=self.poly_fit_type)
+            try:
+                drusen_map[..., i] = drusen(
+                    scan.layers["RPE"], scan.layers["BM"], scan.shape,
+                    degree=self.degree, iterations=self.iterations,
+                    outlier_threshold=self.outlier_threshold,
+                    poly_fit_type=self.poly_fit_type)
+            except KeyError as e:
+                print(e)
+
         return drusen_map
 
 
