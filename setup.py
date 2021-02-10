@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 """The setup script."""
-__version__ = "0.1.5"
 from setuptools import find_packages, setup
 import sys
+from eyepy import __version__, __author__, __email__
 
 try:
     from semantic_release import setup_hook
@@ -32,8 +32,8 @@ setup_requirements = ["pytest-runner"]
 test_requirements = ["pytest>=3"]
 
 setup(
-    author="Olivier Morelle",
-    author_email="oli4morelle@gmail.com",
+    author=__author__,
+    author_email=__email__,
     python_requires=">=3.5",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
