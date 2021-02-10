@@ -26,7 +26,7 @@ deploy:
     tags: true
     repo: Oli4/eyepy
     python: 3.7
-    
+
 after_success:
 - git config --global user.name "semantic-release (via TravisCI)"
 - git config --global user.email "semantic-release@travis"
