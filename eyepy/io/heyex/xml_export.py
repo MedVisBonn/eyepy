@@ -147,3 +147,4 @@ class HeyexXmlReader:
                 f"{bscan_obj} contains no segmentation", UserWarning)
 
         return {"layers": layers_dict, }
+

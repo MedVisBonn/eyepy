@@ -297,7 +297,7 @@ class Bscan:
         return self._oct_obj.drusen[..., self.index]
 
     def plot(self, ax=None, layers=None, drusen=False, layers_kwargs=None,
-             layers_color=None, annotation_only=False, region=np.s_[:,:]):
+             layers_color=None, annotation_only=False, region=np.s_[:, :]):
         """ Plot B-Scan with segmented Layers """
         if ax is None:
             ax = plt.gca()
@@ -305,7 +305,7 @@ class Bscan:
         if layers is None:
             layers = []
         elif layers == "all":
-            layers = config.SEG_MAPPING.keys()
+            layers = self.layers.keys()
 
         if layers_kwargs is None:
             layers_kwargs = config.layers_kwargs
@@ -328,8 +328,9 @@ class Bscan:
             try:
                 layer_data = self.layers[layer]
                 if region[0].start is not None:
-                    layer_data -= region[0].start
-                ax.plot(layer_data, color=color, label=layer,
+                    layer_data = layer_data - region[0].start
+                ax.plot(layer_data[region[1].start:region[1].stop],
+                        color=color, label=layer,
                         **layers_kwargs)
             except KeyError:
                 warnings.warn(f"Layer '{layer}' has no Segmentation",
@@ -448,6 +449,21 @@ class Oct:
         return cls(bscans=reader.bscans,
                    localizer=reader.localizer,
                    meta=reader.oct_meta,
+                   data_path=Path(path).parent)
+    @classmethod
+    def from_duke_mat(cls, path):
+        import scipy.io as sio
+        loaded = sio.loadmat(path)
+        data = np.moveaxis(loaded["images"], -1, 0)
+        label = np.swapaxes(loaded["layerMaps"], 1, 2)
+
+        bscans = []
+        mapping = {"BM": 2, "RPE": 1, "ILM": 0}
+        for d, l in zip(data, label):
+            annotation = Annotation({"layers": LayerAnnotation(l, mapping)})
+            bscans.append(Bscan(d, annotation=annotation))
+        return cls(bscans=bscans,
+                   meta=Meta(**{"Age": loaded["Age"]}),
                    data_path=Path(path).parent)
 
     @classmethod
