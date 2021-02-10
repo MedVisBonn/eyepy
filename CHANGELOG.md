@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.0.0 (2021-02-10)
+### Breaking
+*  ([`09f8746`](https://github.com/MedVisBonn/eyepy/commit/09f8746538ef18cda473fdd0644c96a0094a9f68))
+
 ## v0.1.6 (2021-02-10)
 ### Fix
 * **.travis.yml:** Another fix ([`79e3332`](https://github.com/MedVisBonn/eyepy/commit/79e33325605f87205a1797cb232328ef8698c21d))
