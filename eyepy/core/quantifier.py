@@ -90,7 +90,7 @@ class DefaultEyeQuantifier(EyeQuantifier):
         for name, mask in masks.items():
             # The voxel size in enface space not in the measurement (oct) space
             if space == "oct":
-                mask = transform.warp(mask, oct_obj.tform_enface_to_oct)[
+                mask = transform.warp(mask, oct_obj.tform_localizer_to_oct)[
                        :oct_obj.NumBScans, :oct_obj.SizeX]
             results[f"{name} [mm³]"] = ((drusen_enface * mask).sum()
                                         * voxel_size_µm3 / 1e9)

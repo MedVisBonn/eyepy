@@ -397,17 +397,15 @@ class Oct:
         Parameters
         ----------
         bscans :
-        enfacereader :
         meta :
         drusenfinder :
         """
         self.bscans = bscans
         self._localizer = localizer
-        self._enface = None
         self._meta = meta
         self._drusenfinder = drusenfinder
         self._eyequantifier = eyequantifier
-        self._tform_enface_to_oct = None
+        self._tform_localizer_to_oct = None
 
         self._drusen = None
         self._drusen_raw = None
@@ -481,7 +479,7 @@ class Oct:
         # Try to estimate B-Scan distances. Can be used if Bscan Positions
         # but not their distance is in the meta information
 
-        # Pythagoras in case B-Scans are rotated with respect to the enface
+        # Pythagoras in case B-Scans are rotated with respect to the localizer
         a = self[-1].StartY - self[0].StartY
         b = self[-1].StartX - self[0].StartX
         self.meta["Distance"] = np.sqrt(a ** 2 + b ** 2) / (
@@ -524,7 +522,7 @@ class Oct:
             return len(self)
     
     @property
-    def enface(self):
+    def localizer(self):
         """ A numpy array holding the OCTs localizer enface if available """
         try:
             return self._localizer.data
@@ -632,23 +630,23 @@ class Oct:
         return self._eyequantifier.quantify(self)
 
     @property
-    def tform_enface_to_oct(self):
-        if self._tform_enface_to_oct is None:
-            self._tform_enface_to_oct = self._estimate_enface_to_oct_tform()
-        return self._tform_enface_to_oct
+    def tform_localizer_to_oct(self):
+        if self._tform_localizer_to_oct is None:
+            self._tform_localizer_to_oct = self._estimate_localizer_to_oct_tform()
+        return self._tform_localizer_to_oct
 
     @property
-    def tform_oct_to_enface(self):
-        return self.tform_enface_to_oct.inverse
+    def tform_oct_to_localizer(self):
+        return self.tform_localizer_to_oct.inverse
     
     @property
-    def enface_shape(self):
+    def localizer_shape(self):
         try:
-            return self.enface.shape
+            return self.localizer.shape
         except:
             return (self.SizeX, self.SizeX)    
     
-    def _estimate_enface_to_oct_tform(self):
+    def _estimate_localizer_to_oct_tform(self):
         oct_projection_shape = (self.NumBScans, self.SizeX)
         src = np.array(
             [oct_projection_shape[0] - 1, 0,  # Top left
@@ -664,7 +662,7 @@ class Oct:
              ]).reshape((-1, 2))
 
         try:
-            # Try to map the oct projection to the enface image
+            # Try to map the oct projection to the localizer image
             dst = np.array(
                 [self[-1].StartY / self.ScaleXSlo, self[-1].StartX / self.ScaleYSlo,
                  self[-1].EndY / self.ScaleXSlo, self[-1].EndX / self.ScaleYSlo,
@@ -674,8 +672,8 @@ class Oct:
         except AttributeError:
             # Map the oct projection to a square area of shape (bscan_width, bscan_width)
             warnings.warn(
-                f"Bscan positions on enface image or the scale of the "
-                f"enface image is missing. We assume that the B-Scans cover "
+                f"Bscan positions on localizer image or the scale of the "
+                f"localizer image is missing. We assume that the B-Scans cover "
                 f"a square area and are equally spaced.",
                 UserWarning)
             b_width = self[0].shape[1]
@@ -691,7 +689,7 @@ class Oct:
         tform = transform.estimate_transform("affine", src, dst)
 
         if not np.allclose(tform.inverse(tform(src)), src):
-            msg = f"Problem with transformation of OCT Projection to the enface image space."
+            msg = f"Problem with transformation of OCT Projection to the localizer image space."
             raise ValueError(msg)
 
         return tform
@@ -705,10 +703,10 @@ class Oct:
 
     @property
     def drusen_enface(self):
-        """ Drusen projection warped into the enface space """
+        """ Drusen projection warped into the localizer space """
         return transform.warp(self.drusen_projection.astype(float),
-                              self.tform_oct_to_enface,
-                              output_shape=self.enface_shape, 
+                              self.tform_oct_to_localizer,
+                              output_shape=self.localizer_shape,
                               order=0)
 
     @property
@@ -725,7 +723,7 @@ class Oct:
         self._drusen_raw = None
         self._drusenfinder = drusenfinder    
     
-    def plot(self, ax=None, enface=True, drusen=False, bscan_region=False,
+    def plot(self, ax=None, localizer=True, drusen=False, bscan_region=False,
              bscan_positions=None, masks=False, region=np.s_[...],
              drusen_kwargs=None):
         """
@@ -749,8 +747,8 @@ class Oct:
         if ax is None:
             ax = plt.gca()
 
-        if enface:
-            self.plot_enface(ax=ax, region=region)
+        if localizer:
+            self.plot_localizer(ax=ax, region=region)
         if drusen:
             if drusen_kwargs is None:
                 drusen_kwargs = {}
@@ -780,8 +778,8 @@ class Oct:
 
         dist = self.layers["BM"] - self.layers["RPE"]
         img = transform.warp(dist.astype(float),
-                             self.tform_oct_to_enface,
-                             output_shape=self.enface_shape, order=0)
+                             self.tform_oct_to_localizer,
+                             output_shape=self.localizer_shape, order=0)
         ax.imshow(img[region], cmap="gray", vmin=vmin, vmax=vmax)
 
     def plot_masks(self, region=np.s_[...], ax=None, color="r", linewidth=0.5):
@@ -813,10 +811,10 @@ class Oct:
             y = [line["start"][1], line["end"][1]]
             ax.plot(x, y, color=color, linewidth=linewidth)
 
-    def plot_enface(self, ax=None, region=np.s_[...]):
+    def plot_localizer(self, ax=None, region=np.s_[...]):
         if ax is None:
             ax = plt.gca()
-        ax.imshow(self.enface[region], cmap="gray")
+        ax.imshow(self.localizer[region], cmap="gray")
 
     def plot_bscan_positions(self, bscan_positions="all", ax=None,
                              region=np.s_[...], line_kwargs=None):
@@ -879,7 +877,7 @@ class Oct:
         ax.imshow(drusen[region], alpha=visible[region] * alpha, cmap=cmap, vmin=vmin,
                   vmax=vmax)
 
-    def plot_enface_bscan(self, ax=None, n_bscan=0):
+    def plot_localizer_bscan(self, ax=None, n_bscan=0):
         """ Plot Slo with one selected B-Scan """
         raise NotImplementedError()
 
