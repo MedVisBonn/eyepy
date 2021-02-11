@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.0 (2021-02-11)
+### Fix
+* Changed enface to localizer in OCT object ([`bf6ecd2`](https://github.com/MedVisBonn/eyepy/commit/bf6ecd2d7e10bfbadf0e46c9115d0b908014b639))
+
+### Breaking
+*  ([`bf6ecd2`](https://github.com/MedVisBonn/eyepy/commit/bf6ecd2d7e10bfbadf0e46c9115d0b908014b639))
+*  ([`09f8746`](https://github.com/MedVisBonn/eyepy/commit/09f8746538ef18cda473fdd0644c96a0094a9f68))
+
 ## v1.0.0 (2021-02-10)
 ### Breaking
 *  ([`09f8746`](https://github.com/MedVisBonn/eyepy/commit/09f8746538ef18cda473fdd0644c96a0094a9f68))
