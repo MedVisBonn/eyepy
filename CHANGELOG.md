@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.3 (2021-02-11)
+### Fix
+* **docs:** Remove eyepy as requirement for building docs ([`05d6293`](https://github.com/MedVisBonn/eyepy/commit/05d6293382368f6cce42286193e6618f2518c5a6))
+
 ## v0.2.2 (2021-02-11)
 ### Fix
 * **setup.py-eyepy/__init__.py:** Make sure the version numbers match ([`7357f11`](https://github.com/MedVisBonn/eyepy/commit/7357f11ad7f3af4466ccd03d8fe0f7f846c8915e))
