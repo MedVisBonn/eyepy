@@ -2,10 +2,10 @@
 eyepy
 =====
 
-.. image:: https://img.shields.io/pypi/v/eyepie.svg
-        :target: https://pypi.python.org/pypi/eyepie
+.. image:: https://badge.fury.io/py/eyepie.svg
+    :target: https://badge.fury.io/py/eyepie
 
-.. image:: https://api.travis-ci.com/MedVisBonn/eyepy.svg?branch=master&status=failed
+.. image:: https://travis-ci.com/MedVisBonn/eyepy.svg?branch=master
     :target: https://travis-ci.com/MedVisBonn/eyepy
 
 .. image:: https://readthedocs.org/projects/eyepy/badge/?version=latest
@@ -13,7 +13,9 @@ eyepy
         :alt: Documentation Status
 
 
-This software is under active development and can not be considered stable
+This software is under active development and things might change without
+backwards compatibility. If you want to use eyepy in your project make sure to
+pin the version in your requirements file.
 
 
 Features

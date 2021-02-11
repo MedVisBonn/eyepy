@@ -1,8 +1,10 @@
+# -*- coding: utf-8 -*-
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Union
 
-import logging
 logger = logging.getLogger(__name__)
+
 
 def _get_meta_attr(meta_attr):
     def prop_func(self):
@@ -19,17 +21,22 @@ def _get_first(unpacked: tuple):
     return unpacked[0]
 
 
-def _date_in_seconds(dt: datetime,
-                     epoche: datetime = datetime.utcfromtimestamp(0),
-                     second_frac: Union[float, int] = 1):
+def _date_in_seconds(
+    dt: datetime,
+    epoche: datetime = datetime.utcfromtimestamp(0),
+    second_frac: Union[float, int] = 1,
+):
     seconds = (dt - epoche).total_seconds() / second_frac
     if not seconds.is_integer():
         raise ValueError("The resulting number needs to be a whole number")
     return int(seconds)
 
 
-def _date_from_seconds(s: int, epoche: datetime = datetime.utcfromtimestamp(0),
-                       second_frac: Union[float, int] = 1):
+def _date_from_seconds(
+    s: int,
+    epoche: datetime = datetime.utcfromtimestamp(0),
+    second_frac: Union[float, int] = 1,
+):
     return epoche + timedelta(seconds=s * second_frac)
 
 

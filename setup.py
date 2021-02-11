@@ -2,15 +2,18 @@
 # -*- coding: utf-8 -*-
 
 """The setup script."""
-from setuptools import find_packages, setup
 import sys
 
+from setuptools import find_packages, setup
+
+# These are also specified in eyepy.__init__.py
 __author__ = """Olivier Morelle"""
 __email__ = "oli4morelle@gmail.com"
 __version__ = "0.2.0"
 
 try:
     from semantic_release import setup_hook
+
     setup_hook(sys.argv)
 except ImportError:
     pass
@@ -21,14 +24,7 @@ with open("README.rst") as readme_file:
 with open("HISTORY.rst") as history_file:
     history = history_file.read()
 
-requirements = [
-    "imageio",
-    "numpy",
-    "matplotlib",
-    "seaborn",
-    "scikit-image",
-    "scipy"
-]
+requirements = ["imageio", "numpy", "matplotlib", "seaborn", "scikit-image", "scipy"]
 
 setup_requirements = ["pytest-runner"]
 
@@ -62,4 +58,5 @@ setup(
     tests_require=test_requirements,
     url="https://github.com/MedVisBonn/eyepy",
     version=__version__,
-    zip_safe=False,)
+    zip_safe=False,
+)

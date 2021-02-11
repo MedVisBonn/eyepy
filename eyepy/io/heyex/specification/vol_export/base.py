@@ -1,6 +1,7 @@
+# -*- coding: utf-8 -*-
 from datetime import datetime
 
-from eyepy.io.utils import _clean_ascii, _get_first, _date_from_seconds
+from eyepy.io.utils import _clean_ascii, _date_from_seconds, _get_first
 
 
 # "HSF-OCT-103"
@@ -35,9 +36,10 @@ def oct_base_spec():
         "ScanPosition": ("4s", _clean_ascii),
         # Examination time. The structure holds an unsigned 64-bit date and time
         # value. It is encoded as 100ns units since beginning of January 1, 1601
-        "ExamTime": ("Q", lambda x: _date_from_seconds(x[0],
-                                                       datetime(1601, 1, 1),
-                                                       1e-7)),
+        "ExamTime": (
+            "Q",
+            lambda x: _date_from_seconds(x[0], datetime(1601, 1, 1), 1e-7),
+        ),
         # Scan pattern type:
         #   0 = Unknown pattern,
         #   1 = Single line scan (one B-Scan only),
@@ -63,9 +65,10 @@ def oct_base_spec():
         # User-defined patient ID (zero terminated string).
         "PatientID": ("24s", _clean_ascii),
         # Patient's date of birth
-        "DOB": ("d", lambda x: _date_from_seconds(x[0],
-                                                  datetime(1899, 12, 30),
-                                                  60 * 60 * 24)),
+        "DOB": (
+            "d",
+            lambda x: _date_from_seconds(x[0], datetime(1899, 12, 30), 60 * 60 * 24),
+        ),
         # Internal visit ID used by HEYEX.
         "VID": ("I", _get_first),
         # User-defined visit ID (zero terminated string). This ID can be defined
@@ -77,9 +80,10 @@ def oct_base_spec():
         "VisitID": ("24s", _clean_ascii),
         # Date the visit took place. Identical to the date of an examination tab
         # in HEYEX.
-        "VisitDate": ("d", lambda x: _date_from_seconds(x[0],
-                                                        datetime(1899, 12, 30),
-                                                        60 * 60 * 24)),
+        "VisitDate": (
+            "d",
+            lambda x: _date_from_seconds(x[0], datetime(1899, 12, 30), 60 * 60 * 24),
+        ),
         # Type of grid used to derive thickness data. 0 No thickness data
         # available, >0 Type of grid used to derive thickness values. Thickness
         # data is only available for ScanPattern 3 and 4.
@@ -95,7 +99,7 @@ def oct_base_spec():
         # same progression share this ID.
         "ProgID": ("34s", _clean_ascii),
         # Spare bytes for future use. Initialized to 0.
-        "__empty": ("1790s", _get_first)
+        "__empty": ("1790s", _get_first),
     }
 
 
@@ -132,5 +136,5 @@ def bscan_base_spec():
         # values are initialized to 0.
         "IVTrafo": ("ffffff", lambda x: x),
         # Spare bytes for future use.
-        "__empty": ("168s", _get_first)
+        "__empty": ("168s", _get_first),
     }

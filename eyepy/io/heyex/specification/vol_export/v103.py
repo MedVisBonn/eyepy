@@ -1,4 +1,5 @@
-from .base import oct_base_spec, bscan_base_spec
+# -*- coding: utf-8 -*-
+from .base import bscan_base_spec, oct_base_spec
 
 
 def oct_spec():

@@ -1,13 +1,16 @@
+# -*- coding: utf-8 -*-
 import hashlib
+import logging
 import os
 import warnings
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import List, Dict, Union, Callable, Optional
+from typing import Callable, Dict, List, Optional, Union
 
 import imageio
 import numpy as np
-from matplotlib import pyplot as plt, patches, cm, colors
+from matplotlib import cm, colors, patches
+from matplotlib import pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from skimage import transform
 
@@ -15,12 +18,30 @@ from eyepy.core import config
 from eyepy.core.drusen import DefaultDrusenFinder, DrusenFinder
 from eyepy.core.quantifier import DefaultEyeQuantifier, EyeQuantifier
 
-import logging
 logger = logging.getLogger(__name__)
 
-class Meta(MutableMapping):
 
+class Meta(MutableMapping):
     def __init__(self, *args, **kwargs):
+        """The Meta object is a dict with additional functionalities.
+
+        The additional functionallities are:
+        1. A string representation suitable for printing the meta information.
+
+        2. Checking if a keys value is a callable before returning it. In case
+        it is a callable, it sets the value to the return value of the callable.
+        This is used for lazy loading OCT data. The meta information for the OCT
+        and all B-Scans is only read from the file when accessed.
+
+        An instance of the meta object can be created as you would create an
+        ordinary dictionary.
+
+        For example:
+
+            + Meta({"SizeX": 512})
+            + Meta(SizeX=512)
+            + Meta([(SizeX, 512), (SizeY, 512)])
+        """
         self._store = dict()
         self.update(dict(*args, **kwargs))  # use the free update to set keys
 
@@ -43,8 +64,7 @@ class Meta(MutableMapping):
         return len(self._store)
 
     def __str__(self):
-        return f"{os.linesep}".join(
-            [f"{f}: {self[f]}" for f in self if f != "__empty"])
+        return f"{os.linesep}".join([f"{f}: {self[f]}" for f in self if f != "__empty"])
 
     def __repr__(self):
         return self.__str__()
@@ -57,11 +77,11 @@ class EnfaceImage:
 
     @property
     def data(self):
-        """ Return the enface image as numpy array """
+        """Return the enface image as numpy array."""
         if callable(self._data):
             self._data = self._data()
         return self._data
-    
+
     @property
     def name(self):
         if self._name is None:
@@ -71,7 +91,6 @@ class EnfaceImage:
 
 
 class Annotation(MutableMapping):
-
     def __init__(self, *args, **kwargs):
         self._store = dict()
         self.update(dict(*args, **kwargs))  # use the free update to set keys
@@ -115,7 +134,6 @@ class Annotation(MutableMapping):
 
 
 class LayerAnnotation(MutableMapping):
-
     def __init__(self, data, layername_mapping=None, max_height=2000):
         self._data = data
         self.max_height = max_height
@@ -133,9 +151,12 @@ class LayerAnnotation(MutableMapping):
     def __getitem__(self, key):
         data = self.data[self.mapping[key]]
         nans = np.isnan(data)
-        empty = np.nonzero(np.logical_or(
-            np.less(data, 0, where=~nans),
-            np.greater(data, self.max_height, where=~nans)))
+        empty = np.nonzero(
+            np.logical_or(
+                np.less(data, 0, where=~nans),
+                np.greater(data, self.max_height, where=~nans),
+            )
+        )
         data[empty] = np.nan
         if np.nansum(data) > 0:
             return data
@@ -165,8 +186,17 @@ class LayerAnnotation(MutableMapping):
 
 
 class Bscan:
-    def __new__(cls, data, annotation=None, meta=None, data_processing=None,
-                oct_obj=None, name=None, *args, **kwargs):
+    def __new__(
+        cls,
+        data,
+        annotation=None,
+        meta=None,
+        data_processing=None,
+        oct_obj=None,
+        name=None,
+        *args,
+        **kwargs,
+    ):
         # Make all meta fields accessible as attributes of the BScan without
         # reading them. Set a property instead
         def meta_func_builder(x):
@@ -177,13 +207,15 @@ class Bscan:
                 setattr(cls, key, property(meta_func_builder(key)))
         return object.__new__(cls, *args, **kwargs)
 
-    def __init__(self,
-                 data: Union[np.ndarray, Callable],
-                 annotation: Optional[Annotation] = None,
-                 meta: Optional[Union[Dict, Meta]] = None,
-                 data_processing: Optional[Callable] = None,
-                 oct_obj: Optional["Oct"] = None,
-                 name: Optional[str] = None):
+    def __init__(
+        self,
+        data: Union[np.ndarray, Callable],
+        annotation: Optional[Annotation] = None,
+        meta: Optional[Union[Dict, Meta]] = None,
+        data_processing: Optional[Callable] = None,
+        oct_obj: Optional["Oct"] = None,
+        name: Optional[str] = None,
+    ):
         """
 
         Parameters
@@ -233,12 +265,12 @@ class Bscan:
 
     @property
     def meta(self):
-        """ A dict holding all Bscan meta data """
+        """A dict holding all Bscan meta data."""
         return self._meta
 
     @property
     def annotation(self):
-        """ A dict holding all Bscan annotation data """
+        """A dict holding all Bscan annotation data."""
         if self._annotation is None:
             self._annotation = Annotation({})
         elif callable(self._annotation):
@@ -248,11 +280,11 @@ class Bscan:
 
     @property
     def scan_raw(self):
-        """ An array holding a single raw B-Scan
+        """An array holding a single raw B-Scan.
 
-        The dtype is not changed after the import. If available this is the
-        unprocessed output of the OCT device. In any case this is the
-        unprocessed data imported by eyepy.
+        The dtype is not changed after the import. If available this is
+        the unprocessed output of the OCT device. In any case this is
+        the unprocessed data imported by eyepy.
         """
         if callable(self._scan_raw):
             self._scan_raw = self._scan_raw()
@@ -260,10 +292,10 @@ class Bscan:
 
     @property
     def scan(self):
-        """ An array holding a single B-Scan with the commonly used contrast
+        """An array holding a single B-Scan with the commonly used contrast.
 
-        The array is of dtype <ubyte> and encodes the intensities as values
-        between 0 and 255.
+        The array is of dtype <ubyte> and encodes the intensities as
+        values between 0 and 255.
         """
         if self._scan is None:
             self._scan = self._data_processing(self.scan_raw)
@@ -276,7 +308,9 @@ class Bscan:
     @property
     def layers(self):
         if "layers" not in self.annotation:
-            l_shape = np.zeros((max(config.SEG_MAPPING.values()) + 1, self.oct_obj.SizeX))
+            l_shape = np.zeros(
+                (max(config.SEG_MAPPING.values()) + 1, self.oct_obj.SizeX)
+            )
             self.annotation["layers"] = LayerAnnotation(l_shape)
         if callable(self.annotation["layers"]):
             self.annotation["layers"] = self.annotation["layers"]()
@@ -284,7 +318,7 @@ class Bscan:
 
     @property
     def drusen_raw(self):
-        """ Return drusen computed from the RPE and BM layer segmentation
+        """Return drusen computed from the RPE and BM layer segmentation.
 
         The raw drusen are computed based on single B-Scans
         """
@@ -292,15 +326,23 @@ class Bscan:
 
     @property
     def drusen(self):
-        """ Return filtered drusen
+        """Return filtered drusen.
 
         Drusen are filtered based on the complete volume
         """
         return self._oct_obj.drusen[..., self.index]
 
-    def plot(self, ax=None, layers=None, drusen=False, layers_kwargs=None,
-             layers_color=None, annotation_only=False, region=np.s_[:, :]):
-        """ Plot B-Scan with segmented Layers """
+    def plot(
+        self,
+        ax=None,
+        layers=None,
+        drusen=False,
+        layers_kwargs=None,
+        layers_color=None,
+        annotation_only=False,
+        region=np.s_[:, :],
+    ):
+        """Plot B-Scan with segmented Layers."""
         if ax is None:
             ax = plt.gca()
 
@@ -331,12 +373,14 @@ class Bscan:
                 layer_data = self.layers[layer]
                 if region[0].start is not None:
                     layer_data = layer_data - region[0].start
-                ax.plot(layer_data[region[1].start:region[1].stop],
-                        color=color, label=layer,
-                        **layers_kwargs)
+                ax.plot(
+                    layer_data[region[1].start : region[1].stop],
+                    color=color,
+                    label=layer,
+                    **layers_kwargs,
+                )
             except KeyError:
-                warnings.warn(f"Layer '{layer}' has no Segmentation",
-                              UserWarning)
+                warnings.warn(f"Layer '{layer}' has no Segmentation", UserWarning)
 
 
 class Oct:
@@ -367,12 +411,19 @@ class Oct:
     where the key is a number and the value is a numpy.ndarray of shape
     (NumBScans, SizeX)."""
 
-    def __new__(cls, bscans: List[Bscan],
-                localizer=None,
-                meta=None, data_path=None, *args, **kwargs):
+    def __new__(
+        cls,
+        bscans: List[Bscan],
+        localizer=None,
+        meta=None,
+        data_path=None,
+        *args,
+        **kwargs,
+    ):
         # Set all the meta fields as attributes
 
         if meta is not None:
+
             def meta_func_builder(x):
                 return lambda self: self.meta[x]
 
@@ -387,13 +438,15 @@ class Oct:
 
         return object.__new__(cls, *args, **kwargs)
 
-    def __init__(self,
-                 bscans: List[Union[Callable, Bscan]],
-                 localizer: Optional[Union[Callable, EnfaceImage]] = None,
-                 meta: Optional[Meta] = None,
-                 drusenfinder: DrusenFinder = DefaultDrusenFinder(),
-                 eyequantifier: EyeQuantifier = DefaultEyeQuantifier(),
-                 data_path: Optional[str] = None):
+    def __init__(
+        self,
+        bscans: List[Union[Callable, Bscan]],
+        localizer: Optional[Union[Callable, EnfaceImage]] = None,
+        meta: Optional[Meta] = None,
+        drusenfinder: DrusenFinder = DefaultDrusenFinder(),
+        eyequantifier: EyeQuantifier = DefaultEyeQuantifier(),
+        data_path: Optional[str] = None,
+    ):
         """
 
         Parameters
@@ -419,7 +472,7 @@ class Oct:
         self.drusen_path = self.data_path / ".eyepy" / f"{self.eyepy_id}_drusen_map.npy"
 
     def __getitem__(self, index) -> Bscan:
-        """ The B-Scan at the given index"""
+        """The B-Scan at the given index."""
         if type(index) == slice:
             return [self[i] for i in range(*index.indices(len(self)))]
         else:
@@ -430,29 +483,37 @@ class Oct:
             return self.bscans[index]
 
     def __len__(self):
-        """ The number of B-Scans """
+        """The number of B-Scans."""
         return len(self.bscans)
 
     @classmethod
     def from_heyex_xml(cls, path):
         from eyepy.io.heyex import HeyexXmlReader
+
         reader = HeyexXmlReader(path)
-        return cls(bscans=reader.bscans,
-                   localizer=reader.localizer,
-                   meta=reader.oct_meta,
-                   data_path=reader.path)
+        return cls(
+            bscans=reader.bscans,
+            localizer=reader.localizer,
+            meta=reader.oct_meta,
+            data_path=reader.path,
+        )
 
     @classmethod
     def from_heyex_vol(cls, path):
         from eyepy.io.heyex import HeyexVolReader
+
         reader = HeyexVolReader(path)
-        return cls(bscans=reader.bscans,
-                   localizer=reader.localizer,
-                   meta=reader.oct_meta,
-                   data_path=Path(path).parent)
+        return cls(
+            bscans=reader.bscans,
+            localizer=reader.localizer,
+            meta=reader.oct_meta,
+            data_path=Path(path).parent,
+        )
+
     @classmethod
     def from_duke_mat(cls, path):
         import scipy.io as sio
+
         loaded = sio.loadmat(path)
         data = np.moveaxis(loaded["images"], -1, 0)
         label = np.swapaxes(loaded["layerMaps"], 1, 2)
@@ -462,9 +523,11 @@ class Oct:
         for d, l in zip(data, label):
             annotation = Annotation({"layers": LayerAnnotation(l, mapping)})
             bscans.append(Bscan(d, annotation=annotation))
-        return cls(bscans=bscans,
-                   meta=Meta(**{"Age": loaded["Age"]}),
-                   data_path=Path(path).parent)
+        return cls(
+            bscans=bscans,
+            meta=Meta(**{"Age": loaded["Age"]}),
+            data_path=Path(path).parent,
+        )
 
     @classmethod
     def from_folder(cls, path):
@@ -484,13 +547,12 @@ class Oct:
         # Pythagoras in case B-Scans are rotated with respect to the localizer
         a = self[-1].StartY - self[0].StartY
         b = self[-1].StartX - self[0].StartX
-        self.meta["Distance"] = np.sqrt(a ** 2 + b ** 2) / (
-                len(self.bscans) - 1)
+        self.meta["Distance"] = np.sqrt(a ** 2 + b ** 2) / (len(self.bscans) - 1)
         return self.Distance
 
     @property
     def eyepy_id(self):
-        """ Visit ID for saving visit related files """
+        """Visit ID for saving visit related files."""
         if self._eyepy_id is None:
             # Compute a hash of the first B-Scan as ID
             sha1 = hashlib.sha1()
@@ -501,7 +563,7 @@ class Oct:
     @property
     def shape(self):
         return (self.SizeZ, self.SizeX, self.NumBScans)
-    
+
     @property
     def SizeX(self):
         try:
@@ -522,37 +584,38 @@ class Oct:
             return self.meta["NumBScans"]
         except:
             return len(self)
-    
+
     @property
     def localizer(self):
-        """ A numpy array holding the OCTs localizer enface if available """
+        """A numpy array holding the OCTs localizer enface if available."""
         try:
+
             return self._localizer.data
         except AttributeError:
             raise AttributeError("This OCT object has not localizer image.")
 
     @property
     def volume_raw(self):
-        """ An array holding the OCT volume
+        """An array holding the OCT volume.
 
-        The dtype is not changed after the import. If available this is the
-        unprocessed output of the OCT device. In any case this is the
-        unprocessed data imported by eyepy.
+        The dtype is not changed after the import. If available this is
+        the unprocessed output of the OCT device. In any case this is
+        the unprocessed data imported by eyepy.
         """
         return np.stack([x.scan_raw for x in self.bscans], axis=-1)
 
     @property
     def volume(self):
-        """ An array holding the OCT volume with the commonly used contrast
+        """An array holding the OCT volume with the commonly used contrast.
 
-        The array is of dtype <ubyte> and encodes the intensities as values
-        between 0 and 255.
+        The array is of dtype <ubyte> and encodes the intensities as
+        values between 0 and 255.
         """
         return np.stack([x.scan for x in self.bscans], axis=-1)
 
     @property
     def layers_raw(self):
-        """ Height maps for all layers combined into one volume.
+        """Height maps for all layers combined into one volume.
 
         Layers for all B-Scans are stacked such that we get a volume L x B x W
         where L are different Layers, B are the B-Scans and W is the Width of
@@ -565,20 +628,26 @@ class Oct:
 
     @property
     def layers(self):
-        """ Height maps for all layers accessible by the layers name """
+        """Height maps for all layers accessible by the layers name."""
         nans = np.isnan(self.layers_raw)
-        empty = np.nonzero(np.logical_or(
-            np.less(self.layers_raw, 0, where=~nans),
-            np.greater(self.layers_raw, self.SizeZ, where=~nans)))
+        empty = np.nonzero(
+            np.logical_or(
+                np.less(self.layers_raw, 0, where=~nans),
+                np.greater(self.layers_raw, self.SizeZ, where=~nans),
+            )
+        )
 
         data = self.layers_raw.copy()
         data[empty] = np.nan
-        return {name: data[i, ...] for name, i in config.SEG_MAPPING.items()
-                if np.nansum(data[i, ...]) != 0}
+        return {
+            name: data[i, ...]
+            for name, i in config.SEG_MAPPING.items()
+            if np.nansum(data[i, ...]) != 0
+        }
 
     @property
     def meta(self):
-        """ A dict holding all OCT meta data
+        """A dict holding all OCT meta data.
 
         The object can be printed to see all available meta data.
         """
@@ -588,7 +657,7 @@ class Oct:
 
     @property
     def drusen(self):
-        """ Final drusen after post processing the initial raw drusen
+        """Final drusen after post processing the initial raw drusen.
 
         Here the `filter` function of the DrusenFinder has been applied
         """
@@ -604,7 +673,7 @@ class Oct:
         return self._drusen
 
     def drusen_recompute(self, drusenfinder=None):
-        """ Recompute Drusen optionally with a custom DrusenFinder
+        """Recompute Drusen optionally with a custom DrusenFinder.
 
         Use this if you do not like the computed / loaded drusen
         """
@@ -619,7 +688,7 @@ class Oct:
 
     @property
     def drusen_raw(self):
-        """ Initial drusen before post procssing
+        """Initial drusen before post procssing.
 
         The initial drusen found by the DrusenFinders `find` function.
         """
@@ -640,51 +709,76 @@ class Oct:
     @property
     def tform_oct_to_localizer(self):
         return self.tform_localizer_to_oct.inverse
-    
+
     @property
     def localizer_shape(self):
         try:
             return self.localizer.shape
         except:
-            return (self.SizeX, self.SizeX)    
-    
+            return (self.SizeX, self.SizeX)
+
     def _estimate_localizer_to_oct_tform(self):
         oct_projection_shape = (self.NumBScans, self.SizeX)
         src = np.array(
-            [oct_projection_shape[0] - 1, 0,  # Top left
-             oct_projection_shape[0] - 1, oct_projection_shape[1] - 1,  # Top right
-             0, 0,  # Bottom left
-             0, oct_projection_shape[1] - 1  # Bottom right
-             ]).reshape((-1, 2))
+            [
+                oct_projection_shape[0] - 1,
+                0,  # Top left
+                oct_projection_shape[0] - 1,
+                oct_projection_shape[1] - 1,  # Top right
+                0,
+                0,  # Bottom left
+                0,
+                oct_projection_shape[1] - 1,  # Bottom right
+            ]
+        ).reshape((-1, 2))
         src = np.array(
-            [0, 0,  # Top left
-             0, oct_projection_shape[1] - 1,  # Top right
-             oct_projection_shape[0] - 1, 0,  # Bottom left
-             oct_projection_shape[0] - 1, oct_projection_shape[1] - 1  # Bottom right
-             ]).reshape((-1, 2))
+            [
+                0,
+                0,  # Top left
+                0,
+                oct_projection_shape[1] - 1,  # Top right
+                oct_projection_shape[0] - 1,
+                0,  # Bottom left
+                oct_projection_shape[0] - 1,
+                oct_projection_shape[1] - 1,  # Bottom right
+            ]
+        ).reshape((-1, 2))
 
         try:
             # Try to map the oct projection to the localizer image
             dst = np.array(
-                [self[-1].StartY / self.ScaleXSlo, self[-1].StartX / self.ScaleYSlo,
-                 self[-1].EndY / self.ScaleXSlo, self[-1].EndX / self.ScaleYSlo,
-                 self[0].StartY / self.ScaleXSlo, self[0].StartX / self.ScaleYSlo,
-                 self[0].EndY / self.ScaleXSlo, self[0].EndX / self.ScaleYSlo
-                 ]).reshape((-1, 2))
+                [
+                    self[-1].StartY / self.ScaleXSlo,
+                    self[-1].StartX / self.ScaleYSlo,
+                    self[-1].EndY / self.ScaleXSlo,
+                    self[-1].EndX / self.ScaleYSlo,
+                    self[0].StartY / self.ScaleXSlo,
+                    self[0].StartX / self.ScaleYSlo,
+                    self[0].EndY / self.ScaleXSlo,
+                    self[0].EndX / self.ScaleYSlo,
+                ]
+            ).reshape((-1, 2))
         except AttributeError:
             # Map the oct projection to a square area of shape (bscan_width, bscan_width)
             warnings.warn(
                 f"Bscan positions on localizer image or the scale of the "
                 f"localizer image is missing. We assume that the B-Scans cover "
                 f"a square area and are equally spaced.",
-                UserWarning)
+                UserWarning,
+            )
             b_width = self[0].shape[1]
             dst = np.array(
-                [0, 0,  # Top left
-                 0, b_width - 1,  # Top right
-                 b_width - 1, 0,  # Bottom left
-                 b_width - 1, b_width - 1  # Bottom right
-                 ]).reshape((-1, 2))
+                [
+                    0,
+                    0,  # Top left
+                    0,
+                    b_width - 1,  # Top right
+                    b_width - 1,
+                    0,  # Bottom left
+                    b_width - 1,
+                    b_width - 1,  # Bottom right
+                ]
+            ).reshape((-1, 2))
 
         src = src[:, [1, 0]]
         dst = dst[:, [1, 0]]
@@ -705,15 +799,17 @@ class Oct:
 
     @property
     def drusen_enface(self):
-        """ Drusen projection warped into the localizer space """
-        return transform.warp(self.drusen_projection.astype(float),
-                              self.tform_oct_to_localizer,
-                              output_shape=self.localizer_shape,
-                              order=0)
+        """Drusen projection warped into the localizer space."""
+        return transform.warp(
+            self.drusen_projection.astype(float),
+            self.tform_oct_to_localizer,
+            output_shape=self.localizer_shape,
+            order=0,
+        )
 
     @property
     def drusenfinder(self):
-        """ Get and set the DrusenFinder object
+        """Get and set the DrusenFinder object.
 
         When the DrusenFinder object is set all drusen are removed.
         """
@@ -723,11 +819,19 @@ class Oct:
     def drusenfinder(self, drusenfinder):
         self._drusen = None
         self._drusen_raw = None
-        self._drusenfinder = drusenfinder    
-    
-    def plot(self, ax=None, localizer=True, drusen=False, bscan_region=False,
-             bscan_positions=None, masks=False, region=np.s_[...],
-             drusen_kwargs=None):
+        self._drusenfinder = drusenfinder
+
+    def plot(
+        self,
+        ax=None,
+        localizer=True,
+        drusen=False,
+        bscan_region=False,
+        bscan_positions=None,
+        masks=False,
+        region=np.s_[...],
+        drusen_kwargs=None,
+    ):
         """
 
         Parameters
@@ -756,10 +860,12 @@ class Oct:
                 drusen_kwargs = {}
             self.plot_drusen(ax=ax, region=region, **drusen_kwargs)
         if bscan_positions is not None:
-            self.plot_bscan_positions(ax=ax, bscan_positions=bscan_positions,
-                                      region=region,
-                                      line_kwargs={"linewidth": 0.5,
-                                                   "color": "green"})
+            self.plot_bscan_positions(
+                ax=ax,
+                bscan_positions=bscan_positions,
+                region=region,
+                line_kwargs={"linewidth": 0.5, "color": "green"},
+            )
         if bscan_region:
             self.plot_bscan_region(region=region, ax=ax)
 
@@ -773,15 +879,26 @@ class Oct:
         if ax is None:
             ax = plt.gca()
         ax.yticks()
-    
-    def plot_layer_distance(self, region=np.s_[...], ax=None, bot_layer="BM", top_layer="RPE", vmin=None, vmax=None):
+
+    def plot_layer_distance(
+        self,
+        region=np.s_[...],
+        ax=None,
+        bot_layer="BM",
+        top_layer="RPE",
+        vmin=None,
+        vmax=None,
+    ):
         if ax is None:
             ax = plt.gca()
 
         dist = self.layers["BM"] - self.layers["RPE"]
-        img = transform.warp(dist.astype(float),
-                             self.tform_oct_to_localizer,
-                             output_shape=self.localizer_shape, order=0)
+        img = transform.warp(
+            dist.astype(float),
+            self.tform_oct_to_localizer,
+            output_shape=self.localizer_shape,
+            order=0,
+        )
         ax.imshow(img[region], cmap="gray", vmin=vmin, vmax=vmax)
 
     def plot_masks(self, region=np.s_[...], ax=None, color="r", linewidth=0.5):
@@ -803,9 +920,13 @@ class Oct:
             ax = plt.gca()
 
         for circle in primitives["circles"]:
-            c = patches.Circle(circle["center"], circle["radius"],
-                               facecolor='none',
-                               edgecolor=color, linewidth=linewidth)
+            c = patches.Circle(
+                circle["center"],
+                circle["radius"],
+                facecolor="none",
+                edgecolor=color,
+                linewidth=linewidth,
+            )
             ax.add_patch(c)
 
         for line in primitives["lines"]:
@@ -818,8 +939,9 @@ class Oct:
             ax = plt.gca()
         ax.imshow(self.localizer[region], cmap="gray")
 
-    def plot_bscan_positions(self, bscan_positions="all", ax=None,
-                             region=np.s_[...], line_kwargs=None):
+    def plot_bscan_positions(
+        self, bscan_positions="all", ax=None, region=np.s_[...], line_kwargs=None
+    ):
         if bscan_positions is None:
             bscan_positions = []
         elif bscan_positions == "all" or bscan_positions is True:
@@ -842,19 +964,30 @@ class Oct:
         if ax is None:
             ax = plt.gca()
 
-        up_right_corner = (self[-1].EndX / self.ScaleXSlo,
-                           self[-1].EndY / self.ScaleYSlo)
+        up_right_corner = (
+            self[-1].EndX / self.ScaleXSlo,
+            self[-1].EndY / self.ScaleYSlo,
+        )
         width = (self[0].StartX - self[0].EndX) / self.ScaleXSlo
         height = (self[0].StartY - self[-1].EndY) / self.ScaleYSlo
         # Create a Rectangle patch
-        rect = patches.Rectangle(up_right_corner, width, height, linewidth=1,
-                                 edgecolor='r', facecolor='none')
+        rect = patches.Rectangle(
+            up_right_corner, width, height, linewidth=1, edgecolor="r", facecolor="none"
+        )
 
         # Add the patch to the Axes
         ax.add_patch(rect)
 
-    def plot_drusen(self, ax=None, region=np.s_[...], cmap="Reds",
-                    vmin=None, vmax=None, cbar=True, alpha=1):
+    def plot_drusen(
+        self,
+        ax=None,
+        region=np.s_[...],
+        cmap="Reds",
+        vmin=None,
+        vmax=None,
+        cbar=True,
+        alpha=1,
+    ):
         drusen = self.drusen_enface
 
         if ax is None:
@@ -866,34 +999,39 @@ class Oct:
             vmin = 1
 
         visible = np.zeros(drusen[region].shape)
-        visible[np.logical_and(vmin < drusen[region],
-                               drusen[region] < vmax)] = 1
+        visible[np.logical_and(vmin < drusen[region], drusen[region] < vmax)] = 1
 
         if cbar:
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="5%", pad=0.05)
             plt.colorbar(
-                cm.ScalarMappable(colors.Normalize(vmin=vmin, vmax=vmax),
-                                  cmap=cmap), cax=cax)
+                cm.ScalarMappable(colors.Normalize(vmin=vmin, vmax=vmax), cmap=cmap),
+                cax=cax,
+            )
 
-        ax.imshow(drusen[region], alpha=visible[region] * alpha, cmap=cmap, vmin=vmin,
-                  vmax=vmax)
+        ax.imshow(
+            drusen[region],
+            alpha=visible[region] * alpha,
+            cmap=cmap,
+            vmin=vmin,
+            vmax=vmax,
+        )
 
     def plot_localizer_bscan(self, ax=None, n_bscan=0):
-        """ Plot Slo with one selected B-Scan """
+        """Plot Slo with one selected B-Scan."""
         raise NotImplementedError()
 
-    def plot_bscans(self, bs_range=range(0, 8), cols=4, layers=None,
-                    layers_kwargs=None):
-        """ Plot a grid with B-Scans """
+    def plot_bscans(
+        self, bs_range=range(0, 8), cols=4, layers=None, layers_kwargs=None
+    ):
+        """Plot a grid with B-Scans."""
         rows = int(np.ceil(len(bs_range) / cols))
         if layers is None:
             layers = []
 
-        fig, axes = plt.subplots(
-            cols, rows, figsize=(rows * 4, cols * 4))
+        fig, axes = plt.subplots(cols, rows, figsize=(rows * 4, cols * 4))
 
-        with np.errstate(invalid='ignore'):
+        with np.errstate(invalid="ignore"):
             for i in bs_range:
                 bscan = self[i]
                 ax = axes.flatten()[i]

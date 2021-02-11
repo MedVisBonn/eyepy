@@ -1,4 +1,6 @@
+# -*- coding: utf-8 -*-
 import functools
+import logging
 import warnings
 import xml.etree.ElementTree as ElementTree
 from pathlib import Path
@@ -8,12 +10,11 @@ import numpy as np
 from skimage import img_as_ubyte
 
 from eyepy.core import config
-from eyepy.core.base import Bscan, Meta, EnfaceImage, Annotation, LayerAnnotation
-from eyepy.io.heyex.specification.xml_export import \
-    HEXML_VERSIONS, HEXML_BSCAN_VERSIONS
+from eyepy.core.base import Annotation, Bscan, EnfaceImage, LayerAnnotation, Meta
+from eyepy.io.heyex.specification.xml_export import HEXML_BSCAN_VERSIONS, HEXML_VERSIONS
 
-import logging
 logger = logging.getLogger(__name__)
+
 
 @functools.lru_cache(maxsize=4, typed=False)
 def get_xml_root(filepath):
@@ -22,7 +23,7 @@ def get_xml_root(filepath):
 
 
 class HeyexXmlReader:
-    """ A reader for HEYEX .xml exports
+    """A reader for HEYEX .xml exports.
 
     This reader lazy loads a .xml export. It gives you access to B-Scans with
     their annotations and meta data, the localizer image and the OCTs meta data.
@@ -40,76 +41,77 @@ class HeyexXmlReader:
             xmls = list(path.glob("*.xml"))
             if len(xmls) == 0:
                 raise FileNotFoundError(
-                    "There is no .xml file under the given filepath")
+                    "There is no .xml file under the given filepath"
+                )
             elif len(xmls) > 1:
                 raise ValueError(
-                    "There is more than one .xml file in the given folder.")
+                    "There is more than one .xml file in the given folder."
+                )
             path = xmls[0]
         self.path = path
         self.xml_root = get_xml_root(self.path)
         self.version = self.xml_root[0].find("SWVersion")[1].text
 
-        self._bscans = None
-        self._localizer = None
         self._oct_meta = None
 
     @property
     def bscans(self):
-        if self._bscans is None:
-            self._bscans = []
+        bscans = []
 
-            def bscan_builder(d, a, bmeta, p, n):
-                return lambda: Bscan(d, a, bmeta, p, name=n)
+        def bscan_builder(d, a, bmeta, p, n):
+            return lambda: Bscan(d, a, bmeta, p, name=n)
 
-            def scan_reader(path):
-                return lambda: imageio.imread(path)
+        def scan_reader(path):
+            return lambda: imageio.imread(path)
 
-            for bscan in self.xml_root[0].findall(".//ImageType[Type='OCT'].."):
-                scan_name = bscan.find("./ImageData/ExamURL").text.split("\\")[
-                    -1]
-                data = scan_reader(self.path.parent / scan_name)
-                annotation = Annotation(**self.create_annotation_dict(bscan))
-                bscan_meta = Meta(**self.create_meta_retrieve_funcs_heyex_xml(
-                    bscan, HEXML_BSCAN_VERSIONS(self.version)))
+        for bscan in self.xml_root[0].findall(".//ImageType[Type='OCT'].."):
+            scan_name = bscan.find("./ImageData/ExamURL").text.split("\\")[-1]
+            data = scan_reader(self.path.parent / scan_name)
+            annotation = Annotation(**self.create_annotation_dict(bscan))
+            bscan_meta = Meta(
+                **self.create_meta_retrieve_funcs_heyex_xml(
+                    bscan, HEXML_BSCAN_VERSIONS(self.version)
+                )
+            )
 
-                self._bscans.append(bscan_builder(
-                    data, annotation, bscan_meta, self._data_processing, scan_name))
+            bscans.append(
+                bscan_builder(
+                    data, annotation, bscan_meta, self._data_processing, scan_name
+                )
+            )
 
-        return self._bscans
+        return bscans
 
     @property
     def localizer_name(self):
         lclzr_pattern = ".//ImageType[Type='LOCALIZER']../ImageData/ExamURL"
-        return (self.xml_root[0].find(lclzr_pattern).text.split("\\")[-1])
-        
+        return self.xml_root[0].find(lclzr_pattern).text.split("\\")[-1]
 
     @property
     def localizer(self):
-        if self._localizer is None:
-            
-
-            self._localizer = EnfaceImage(
-                data=lambda: imageio.imread(self.path.parent / self.localizer_name), name=self.localizer_name)
-
-        return self._localizer
+        return EnfaceImage(
+            data=lambda: imageio.imread(self.path.parent / self.localizer_name),
+            name=self.localizer_name,
+        )
 
     @property
     def oct_meta(self):
         if self._oct_meta is None:
             retrieve_dict = self.create_meta_retrieve_funcs_heyex_xml(
-                self.xml_root[0], HEXML_VERSIONS(self.version))
+                self.xml_root[0], HEXML_VERSIONS(self.version)
+            )
             self._oct_meta = Meta(**retrieve_dict)
 
         return self._oct_meta
 
     def _data_processing(self, data):
-        """ How to process the loaded B-Scans """
+        """How to process the loaded B-Scans."""
         if data.ndim == 3:
             return img_as_ubyte(data[..., 0])
         return img_as_ubyte(data)
 
     def create_meta_retrieve_funcs_heyex_xml(self, xml_root, specification):
-        """ For every meta field, create a function to read it from the file
+        """For every meta field, create a function to read it from the file.
 
         Return all functions in a dict name: func
         """
@@ -119,7 +121,8 @@ class HeyexXmlReader:
 
         func_dict = {}
 
-        def func_builder(xml, f, lo): return lambda: f(xml.findall(lo))
+        def func_builder(xml, f, lo):
+            return lambda: f(xml.findall(lo))
 
         for field, func, loc in zip(fields, funcs, locs):
             func_dict[field] = func_builder(xml_root, func, loc)
@@ -127,9 +130,10 @@ class HeyexXmlReader:
         return func_dict
 
     def create_annotation_dict(self, bscan_root):
-        """ For every Annotation create a function to read it
+        """For every Annotation create a function to read it.
 
-        Currently only a function to read the layer segmentaton is returned.
+        Currently only a function to read the layer segmentaton is
+        returned.
         """
 
         def layers_dict(bscan_obj):
@@ -137,16 +141,20 @@ class HeyexXmlReader:
             seglines = bscan_root.findall(".//SegLine")
 
             if seglines:
-                data = np.full(shape=(17, bscan_obj.oct_obj.SizeX),
-                               fill_value=np.nan, dtype="float32")
+                data = np.full(
+                    shape=(17, bscan_obj.oct_obj.SizeX),
+                    fill_value=np.nan,
+                    dtype="float32",
+                )
                 for segline in seglines:
                     name = segline.find("./Name").text
-                    data[config.SEG_MAPPING[name], :] = \
-                        [float(x) for x in segline.find("./Array").text.split()]
+                    data[config.SEG_MAPPING[name], :] = [
+                        float(x) for x in segline.find("./Array").text.split()
+                    ]
                 return LayerAnnotation(data, max_height=bscan_obj.oct_obj.SizeZ)
 
-            warnings.warn(
-                f"{bscan_obj} contains no segmentation", UserWarning)
+            warnings.warn(f"{bscan_obj} contains no segmentation", UserWarning)
 
-        return {"layers": layers_dict, }
-
+        return {
+            "layers": layers_dict,
+        }

@@ -1,16 +1,19 @@
+# -*- coding: utf-8 -*-
+import logging
 from functools import lru_cache
-from typing import Union, Tuple
+from typing import Tuple, Union
 
 import numpy as np
 
 Shape = Union[int, Tuple[int, int]]
 
-import logging
 logger = logging.getLogger(__name__)
 
+
 @lru_cache(maxsize=8)
-def filtergrid(size: Shape, quadrant_shift: bool = True,
-               normalize: bool = True) -> Tuple[np.ndarray, np.ndarray]:
+def filtergrid(
+    size: Shape, quadrant_shift: bool = True, normalize: bool = True
+) -> Tuple[np.ndarray, np.ndarray]:
     """Generates grid for constructing frequency domain filters.
     Parameters
     ----------
@@ -48,8 +51,9 @@ def filtergrid(size: Shape, quadrant_shift: bool = True,
 
 
 @lru_cache(maxsize=8)
-def radius_filtergrid(size: Shape, quadrant_shift: bool = True,
-                      normalize: bool = True) -> np.ndarray:
+def radius_filtergrid(
+    size: Shape, quadrant_shift: bool = True, normalize: bool = True
+) -> np.ndarray:
     """
     Parameters
     ----------

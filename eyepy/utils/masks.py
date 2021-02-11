@@ -1,15 +1,17 @@
+# -*- coding: utf-8 -*-
 import cmath
+import logging
 
 import numpy as np
 from skimage import transform
 
 from eyepy.utils.filters import radius_filtergrid, theta_filtergrid
 
-import logging
 logger = logging.getLogger(__name__)
 
+
 def circle_mask(radius, mask_shape=None, smooth_edges=False):
-    """ Create a centered circular mask with given radius
+    """Create a centered circular mask with given radius.
 
     Parameters
     ----------
@@ -19,7 +21,6 @@ def circle_mask(radius, mask_shape=None, smooth_edges=False):
 
     Returns
     -------
-
     """
     if mask_shape is None:
         mask_shape = (radius * 2, radius * 2)
@@ -32,16 +33,14 @@ def circle_mask(radius, mask_shape=None, smooth_edges=False):
 
     circle_mask = np.zeros(work_shape)
     circle_mask[
-        radius_filtergrid(work_shape, quadrant_shift=False,
-                          normalize=False) < radius
-        ] = 1
+        radius_filtergrid(work_shape, quadrant_shift=False, normalize=False) < radius
+    ] = 1
 
     return transform.resize(circle_mask, mask_shape)
 
 
-def sector_masks(mask_shape, n_sectors=4, sector_rotations=0,
-                 smooth_edges=False):
-    """ Create masks for n radial sectors
+def sector_masks(mask_shape, n_sectors=4, sector_rotations=0, smooth_edges=False):
+    """Create masks for n radial sectors.
 
     By default the first sector is the first quadrant, and the remaining 3
     sectors are added counter clockwise.
@@ -62,7 +61,6 @@ def sector_masks(mask_shape, n_sectors=4, sector_rotations=0,
 
     Returns
     -------
-
     """
     if smooth_edges:
         work_shape = (mask_shape[0] * 5, mask_shape[1] * 5)
@@ -88,15 +86,13 @@ def sector_masks(mask_shape, n_sectors=4, sector_rotations=0,
             mask = np.ones(work_shape)
             mask[
                 np.where(
-                    np.logical_and(theta < sector_start,
-                                   theta >= sector_end - 360)
+                    np.logical_and(theta < sector_start, theta >= sector_end - 360)
                 )
             ] = 0
         else:
             mask = np.zeros(work_shape)
             mask[
-                np.where(
-                    np.logical_and(theta >= sector_start, theta < sector_end))
+                np.where(np.logical_and(theta >= sector_start, theta < sector_end))
             ] = 1
 
         if smooth_edges:
@@ -107,11 +103,14 @@ def sector_masks(mask_shape, n_sectors=4, sector_rotations=0,
     return masks
 
 
-def create_region_shape_primitives(mask_shape, radii: list = (0.8, 1.8),
-                                   n_sectors: list = (1, 4),
-                                   rotation: list = (0, 45),
-                                   center=None):
-    """ Create circles and lines indicating region boundaries of quantification
+def create_region_shape_primitives(
+    mask_shape,
+    radii: list = (0.8, 1.8),
+    n_sectors: list = (1, 4),
+    rotation: list = (0, 45),
+    center=None,
+):
+    """Create circles and lines indicating region boundaries of quantification
     masks. These can used for plotting the masks.
 
     Parameters
@@ -124,7 +123,6 @@ def create_region_shape_primitives(mask_shape, radii: list = (0.8, 1.8),
 
     Returns
     -------
-
     """
     if center is None:
         center = (mask_shape[0] / 2, mask_shape[0] / 2)
@@ -151,11 +149,17 @@ def create_region_shape_primitives(mask_shape, radii: list = (0.8, 1.8),
     return primitives
 
 
-def create_region_masks(mask_shape, radii: list = (0.8, 1.8),
-                        n_sectors: list = (1, 4), rotation: list = (0, 45),
-                        center=None, smooth_edges=False, ring_sectors=True,
-                        add_circle_masks=False) -> list:
-    """ Create segmented circular region masks for quantification
+def create_region_masks(
+    mask_shape,
+    radii: list = (0.8, 1.8),
+    n_sectors: list = (1, 4),
+    rotation: list = (0, 45),
+    center=None,
+    smooth_edges=False,
+    ring_sectors=True,
+    add_circle_masks=False,
+) -> list:
+    """Create segmented circular region masks for quantification.
 
     First circular masks with the provided radii are generated. Then ring masks
     are created by subtracting the first circular mask from the second and so
@@ -180,7 +184,6 @@ def create_region_masks(mask_shape, radii: list = (0.8, 1.8),
 
     Returns
     -------
-
     """
 
     # Create circles
@@ -188,17 +191,24 @@ def create_region_masks(mask_shape, radii: list = (0.8, 1.8),
     for radius in radii:
         circles.append(circle_mask(radius, mask_shape, smooth_edges))
 
-    n_sectors = [n_sectors[i] if i < len(n_sectors) else None for i, _ in
-                 enumerate(radii[1:])]
-    rotation = [rotation[i] if i < len(rotation) else 0 for i, _ in
-                enumerate(radii[1:])]
+    n_sectors = [
+        n_sectors[i] if i < len(n_sectors) else None for i, _ in enumerate(radii[1:])
+    ]
+    rotation = [
+        rotation[i] if i < len(rotation) else 0 for i, _ in enumerate(radii[1:])
+    ]
 
     level_sector_parts = []
     for n_sec, rot in zip(n_sectors, rotation):
         if n_sec is not None:
-            level_sector_parts.append(sector_masks(mask_shape, n_sectors=n_sec,
-                                                   sector_rotations=rot,
-                                                   smooth_edges=smooth_edges))
+            level_sector_parts.append(
+                sector_masks(
+                    mask_shape,
+                    n_sectors=n_sec,
+                    sector_rotations=rot,
+                    smooth_edges=smooth_edges,
+                )
+            )
 
     if ring_sectors:
         rings = []
@@ -224,8 +234,8 @@ def create_region_masks(mask_shape, radii: list = (0.8, 1.8),
 
     if center is not None:
         translation = transform.AffineTransform(
-            translation=np.array(center) - np.array(mask_shape) / 2)
-        all_masks = [transform.warp(mask, translation.inverse) for mask in
-                     all_masks]
+            translation=np.array(center) - np.array(mask_shape) / 2
+        )
+        all_masks = [transform.warp(mask, translation.inverse) for mask in all_masks]
 
     return all_masks
