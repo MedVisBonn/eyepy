@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.5 (2021-02-11)
+### Fix
+* **docs:** Add requirements.txt for docs ([`8008c63`](https://github.com/MedVisBonn/eyepy/commit/8008c634bad246559c4b7d5b60b18749af5bfb30))
+
 ## v0.2.4 (2021-02-11)
 ### Fix
 * **travis.yml:** Removed --user option ([`f68df9e`](https://github.com/MedVisBonn/eyepy/commit/f68df9ed6c7889923ea50573ad10e47140d9f80d))
