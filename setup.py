@@ -7,7 +7,7 @@ import sys
 
 __author__ = """Olivier Morelle"""
 __email__ = "oli4morelle@gmail.com"
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 try:
     from semantic_release import setup_hook

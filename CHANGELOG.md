@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.1 (2021-02-11)
+### Fix
+* **core.drusen.py:** Use logging module instead of prints in this package ([`978fa11`](https://github.com/MedVisBonn/eyepy/commit/978fa11079cff23d7d8ffb423f3767858dfd6f2e))
+
 ## v0.2.0 (2021-02-11)
 ### Fix
 * Changed enface to localizer in OCT object ([`bf6ecd2`](https://github.com/MedVisBonn/eyepy/commit/bf6ecd2d7e10bfbadf0e46c9115d0b908014b639))
