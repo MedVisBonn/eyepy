@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.2 (2021-02-11)
+### Fix
+* **setup.py-eyepy/__init__.py:** Make sure the version numbers match ([`7357f11`](https://github.com/MedVisBonn/eyepy/commit/7357f11ad7f3af4466ccd03d8fe0f7f846c8915e))
+
 ## v0.2.1 (2021-02-11)
 ### Fix
 * **core.drusen.py:** Use logging module instead of prints in this package ([`978fa11`](https://github.com/MedVisBonn/eyepy/commit/978fa11079cff23d7d8ffb423f3767858dfd6f2e))
