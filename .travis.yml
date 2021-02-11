@@ -10,7 +10,7 @@ python:
 before_install:
   - python -m pip install --upgrade pip
 install:
-  - pip install --user tox-travis twine --use-feature=2020-resolver
+  - pip install tox-travis twine --use-feature=2020-resolver
 
 # Command to run tests, e.g. python setup.py test
 script: tox
