@@ -21,7 +21,7 @@
 import os
 import sys
 
-__version__ = "0.2.3"
+__version__ = "0.2.4"
 sys.path.insert(0, os.path.abspath(".."))
 
 

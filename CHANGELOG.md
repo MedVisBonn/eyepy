@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.4 (2021-02-11)
+### Fix
+* **travis.yml:** Removed --user option ([`f68df9e`](https://github.com/MedVisBonn/eyepy/commit/f68df9ed6c7889923ea50573ad10e47140d9f80d))
+* **travis.yml:** Switch to new pip version to properly resolve twine dependencies ([`7215226`](https://github.com/MedVisBonn/eyepy/commit/7215226c4ca2a78da8cbbfd73ef36a5322c7bb22))
+
 ## v0.2.3 (2021-02-11)
 ### Fix
 * **docs:** Remove eyepy as requirement for building docs ([`05d6293`](https://github.com/MedVisBonn/eyepy/commit/05d6293382368f6cce42286193e6618f2518c5a6))

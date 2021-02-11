@@ -9,7 +9,7 @@ from setuptools import find_packages, setup
 # These are also specified in eyepy.__init__.py
 __author__ = """Olivier Morelle"""
 __email__ = "oli4morelle@gmail.com"
-__version__ = "0.2.3"
+__version__ = "0.2.4"
 
 try:
     from semantic_release import setup_hook
