@@ -4,6 +4,9 @@ from pathlib import Path
 
 from eyepy.core.base import Oct
 
+import logging
+logger = logging.getLogger(__name__)
+
 SAMPLE_DATA = {"drusen_patient":
                    ('https://uni-bonn.sciebo.de/s/VD8CPAgDKp2EYlm/download',
                     Oct.from_heyex_xml)}

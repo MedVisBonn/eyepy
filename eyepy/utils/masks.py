@@ -5,6 +5,8 @@ from skimage import transform
 
 from eyepy.utils.filters import radius_filtergrid, theta_filtergrid
 
+import logging
+logger = logging.getLogger(__name__)
 
 def circle_mask(radius, mask_shape=None, smooth_edges=False):
     """ Create a centered circular mask with given radius

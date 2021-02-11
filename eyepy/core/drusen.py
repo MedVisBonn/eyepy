@@ -1,9 +1,12 @@
 from abc import ABC, abstractmethod
 
+
 import numpy as np
 import scipy.ndimage as ndimage
 from scipy.interpolate import interp1d
 
+import logging
+logger = logging.getLogger(__name__)
 
 class DrusenFinder(ABC):
     @abstractmethod
@@ -60,7 +63,7 @@ class DefaultDrusenFinder(DrusenFinder):
                     outlier_threshold=self.outlier_threshold,
                     poly_fit_type=self.poly_fit_type)
             except KeyError as e:
-                print(e)
+                logger.warning(e)
 
         return drusen_map
 

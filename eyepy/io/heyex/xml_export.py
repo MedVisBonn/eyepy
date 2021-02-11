@@ -12,6 +12,8 @@ from eyepy.core.base import Bscan, Meta, EnfaceImage, Annotation, LayerAnnotatio
 from eyepy.io.heyex.specification.xml_export import \
     HEXML_VERSIONS, HEXML_BSCAN_VERSIONS
 
+import logging
+logger = logging.getLogger(__name__)
 
 @functools.lru_cache(maxsize=4, typed=False)
 def get_xml_root(filepath):

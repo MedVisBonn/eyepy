@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
 
+import logging
+logger = logging.getLogger(__name__)
+
 def compare_layers_per_ascan(data_gt, data_pred, layers=["BM", "RPE"]):
     """ Compare layer annotations for two OCT volumes."""
     drusen_map = data_gt.drusen_projection>0

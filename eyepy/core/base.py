@@ -15,6 +15,8 @@ from eyepy.core import config
 from eyepy.core.drusen import DefaultDrusenFinder, DrusenFinder
 from eyepy.core.quantifier import DefaultEyeQuantifier, EyeQuantifier
 
+import logging
+logger = logging.getLogger(__name__)
 
 class Meta(MutableMapping):
 

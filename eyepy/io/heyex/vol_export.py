@@ -16,6 +16,8 @@ from eyepy.core.base import Bscan, Meta, EnfaceImage, Annotation, LayerAnnotatio
 from eyepy.io.utils import _clean_ascii
 from .specification.vol_export import HEVOL_VERSIONS, HEVOL_BSCAN_VERSIONS
 
+import logging
+logger = logging.getLogger(__name__)
 
 class HeyexVolReader:
     """ A reader for HEYEX .vol exports

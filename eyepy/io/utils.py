@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta, timezone
 from typing import Union
 
+import logging
+logger = logging.getLogger(__name__)
 
 def _get_meta_attr(meta_attr):
     def prop_func(self):

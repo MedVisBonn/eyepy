@@ -5,6 +5,8 @@ from skimage import transform
 from eyepy.utils.masks import create_region_masks, \
     create_region_shape_primitives
 
+import logging
+logger = logging.getLogger(__name__)
 
 class EyeQuantifier(ABC):
 

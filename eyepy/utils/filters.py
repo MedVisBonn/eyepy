@@ -5,6 +5,8 @@ import numpy as np
 
 Shape = Union[int, Tuple[int, int]]
 
+import logging
+logger = logging.getLogger(__name__)
 
 @lru_cache(maxsize=8)
 def filtergrid(size: Shape, quadrant_shift: bool = True,
