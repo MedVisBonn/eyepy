@@ -346,6 +346,25 @@ class Bscan:
         if ax is None:
             ax = plt.gca()
 
+        # Complete region index expression
+        if region[0].start is None:
+            r0_start = 0
+        else:
+            r0_start = region[0].start
+        if region[1].start is None:
+            r1_start = 0
+        else:
+            r1_start = region[1].start
+        if region[0].stop is None:
+            r0_stop = self.shape[0]
+        else:
+            r0_stop = region[0].stop
+        if region[1].stop is None:
+            r1_stop = self.shape[1]
+        else:
+            r1_stop = region[1].stop
+        region = np.s_[r0_start:r0_stop, r1_start:r1_stop]
+
         if layers is None:
             layers = []
         elif layers == "all":
@@ -371,10 +390,16 @@ class Bscan:
             color = layers_color[layer]
             try:
                 layer_data = self.layers[layer]
-                if region[0].start is not None:
-                    layer_data = layer_data - region[0].start
+                # Adjust layer height to plotted region
+                layer_data = layer_data - region[0].start
+                # Remove layer if outside of region
+                layer_data = layer_data[region[1].start: region[1].stop]
+                layer_data[layer_data < 0] = 0
+                region_height = region[0].stop - region[0].start
+                layer_data[layer_data > region_height] = region_height
+
                 ax.plot(
-                    layer_data[region[1].start : region[1].stop],
+                    layer_data,
                     color=color,
                     label=layer,
                     **layers_kwargs,
@@ -592,7 +617,7 @@ class Oct:
 
             return self._localizer.data
         except AttributeError:
-            raise AttributeError("This OCT object has not localizer image.")
+            raise AttributeError("This OCT object has no localizer image.")
 
     @property
     def volume_raw(self):
