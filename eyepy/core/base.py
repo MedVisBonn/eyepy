@@ -157,6 +157,7 @@ class LayerAnnotation(MutableMapping):
                 np.greater(data, self.max_height, where=~nans),
             )
         )
+        data = np.copy(data)
         data[empty] = np.nan
         if np.nansum(data) > 0:
             return data
