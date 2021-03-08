@@ -93,7 +93,7 @@ def drusen(
 ):
     """Compute drusen from the RPE layer segmentation.
 
-    First estimate the normal RPE by fitting a polynomial to the RPE.
+    First estimate the ideal RPE by fitting a polynomial to the RPE.
     Then compute drusen as the area between the RPE and the normal RPE
     """
 
