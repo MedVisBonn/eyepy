@@ -394,16 +394,13 @@ class Bscan:
                 # Adjust layer height to plotted region
                 layer_data = layer_data - region[0].start
                 # Remove layer if outside of region
-                layer_data = layer_data[region[1].start: region[1].stop]
+                layer_data = layer_data[region[1].start : region[1].stop]
                 layer_data[layer_data < 0] = 0
                 region_height = region[0].stop - region[0].start
                 layer_data[layer_data > region_height] = region_height
 
                 ax.plot(
-                    layer_data,
-                    color=color,
-                    label=layer,
-                    **layers_kwargs,
+                    layer_data, color=color, label=layer, **layers_kwargs,
                 )
             except KeyError:
                 warnings.warn(f"Layer '{layer}' has no Segmentation", UserWarning)
