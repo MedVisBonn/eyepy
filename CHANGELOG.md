@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.6 (2021-03-12)
+### Fix
+* **base.py:** Fixed bugs for oat ([`7e10ab3`](https://github.com/MedVisBonn/eyepy/commit/7e10ab30e4ac9f7499ed16c00fe09c9567a83765))
+
 ## v0.2.5 (2021-02-11)
 ### Fix
 * **docs:** Add requirements.txt for docs ([`8008c63`](https://github.com/MedVisBonn/eyepy/commit/8008c634bad246559c4b7d5b60b18749af5bfb30))
