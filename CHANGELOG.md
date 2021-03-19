@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.0 (2021-03-19)
+### Feature
+* **drusen.py:** Added new histogram based DrusenFinder and made it the new default ([`9a3e667`](https://github.com/MedVisBonn/eyepy/commit/9a3e667ba721c2f16085b4f62225d1ee9ded078d))
+
 ## v0.2.6 (2021-03-12)
 ### Fix
 * **base.py:** Fixed bugs for oat ([`7e10ab3`](https://github.com/MedVisBonn/eyepy/commit/7e10ab30e4ac9f7499ed16c00fe09c9567a83765))
