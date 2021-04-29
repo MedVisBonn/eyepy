@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from .v103 import bscan_spec as v103_bscan
 from .v103 import oct_spec as v103_oct
 

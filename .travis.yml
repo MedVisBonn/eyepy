@@ -1,29 +1,22 @@
 # Config file for automatic testing at travis-ci.org
-
 language: python
 python:
+  - 3.8
   - 3.7
   - 3.6
-  - 3.5
-  - 2.7
 
 # Command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
-install: pip install -U tox-travis
+#install: pip install -U tox-travis
+before_install:
+  - python -m pip install --upgrade pip
+install:
+  - pip install tox-travis twine --use-feature=2020-resolver
 
 # Command to run tests, e.g. python setup.py test
 script: tox
 
-# Assuming you have installed the travis-ci CLI tool, after you
-# create the Github repo and add it to Travis, run the
-# following command to finish PyPI deployment setup:
-# $ travis encrypt --add deploy.password
-deploy:
-  provider: pypi
-  distributions: sdist bdist_wheel
-  user: Oli4
-  password:
-    secure: PLEASE_REPLACE_ME
-  on:
-    tags: true
-    repo: Oli4/eyepy
-    python: 3.7
+after_success:
+  - git config --global user.name "semantic-release (via TravisCI)"
+  - git config --global user.email "semantic-release@travis"
+  - pip install python-semantic-release
+  - semantic-release publish

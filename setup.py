@@ -2,8 +2,21 @@
 # -*- coding: utf-8 -*-
 
 """The setup script."""
+import sys
 
 from setuptools import find_packages, setup
+
+# These are also specified in eyepy.__init__.py
+__author__ = """Olivier Morelle"""
+__email__ = "oli4morelle@gmail.com"
+__version__ = "0.3.0"
+
+try:
+    from semantic_release import setup_hook
+
+    setup_hook(sys.argv)
+except ImportError:
+    pass
 
 with open("README.rst") as readme_file:
     readme = readme_file.read()
@@ -11,23 +24,17 @@ with open("README.rst") as readme_file:
 with open("HISTORY.rst") as history_file:
     history = history_file.read()
 
-requirements = [
-    "imageio==2.6.1",
-    "numpy==1.17.3",
-    "matplotlib==3.3.1",
-    "scikit-image==0.16.2",
-    "untangle==1.1.1",
-    "scipy"
-]
+requirements = ["imageio", "numpy", "matplotlib", "seaborn", "scikit-image",
+                "scipy", "imagecodecs"]
 
 setup_requirements = ["pytest-runner"]
 
 test_requirements = ["pytest>=3"]
 
 setup(
-    author="Olivier Morelle",
-    author_email="oli4morelle@gmail.com",
-    python_requires=">2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
+    author=__author__,
+    author_email=__email__,
+    python_requires=">=3.6",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Intended Audience :: Developers",
@@ -40,18 +47,17 @@ setup(
         "Programming Language :: Python :: 3.8",
     ],
     description="The Python package for working with ophthalmological data.",
-    entry_points={"console_scripts": ["eyepy=eyepy.cli:main"]},
     install_requires=requirements,
     license="MIT license",
     long_description=readme + "\n\n" + history,
     include_package_data=True,
-    keywords="eyepy",
-    name="eyepy",
+    keywords=["eyepy", "eyepie"],
+    name="eyepie",
     packages=find_packages(include=["eyepy", "eyepy.*"]),
     setup_requires=setup_requirements,
     test_suite="tests",
     tests_require=test_requirements,
-    url="https://github.com/Oli4/eyepy",
-    version="0.1.0",
+    url="https://github.com/MedVisBonn/eyepy",
+    version=__version__,
     zip_safe=False,
 )

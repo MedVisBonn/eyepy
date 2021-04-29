@@ -4,7 +4,6 @@
 """Tests for `eyepy` package."""
 
 import pytest
-from eyepy import eyepy
 
 
 @pytest.fixture

@@ -1,5 +1,11 @@
-from eyepy.io.utils import _get_first_as_str, _get_first_as_int, _get_first_as_float, _get_datetime_from_xml, \
-    _get_date_from_xml
+# -*- coding: utf-8 -*-
+from eyepy.io.utils import (
+    _get_date_from_xml,
+    _get_datetime_from_xml,
+    _get_first_as_float,
+    _get_first_as_int,
+    _get_first_as_str,
+)
 
 
 def oct_base_spec():
@@ -7,44 +13,66 @@ def oct_base_spec():
         # Version
         "Version": ("./SWVersion/Version", _get_first_as_str),
         # Number of A-Scans in each B-Scan, i.e. B-Scan width in pixel
-        "SizeX": (".//ImageType[Type='OCT']../"
-                  "OphthalmicAcquisitionContext/Width", _get_first_as_int),
+        "SizeX": (
+            ".//ImageType[Type='OCT']../" "OphthalmicAcquisitionContext/Width",
+            _get_first_as_int,
+        ),
         # Number of B-Scans in OCT scan
         "NumBScans": (".//ImageType[Type='OCT']..", len),
         # Number of samples in an A-Scan, i.e. B-Scan height in pixel
-        "SizeZ": (".//ImageType[Type='OCT']../"
-                  "OphthalmicAcquisitionContext/Height", _get_first_as_int),
+        "SizeZ": (
+            ".//ImageType[Type='OCT']../" "OphthalmicAcquisitionContext/Height",
+            _get_first_as_int,
+        ),
         # Width of a B-Scan pixel in mm
-        "ScaleX": (".//ImageType[Type='OCT']../"
-                   "OphthalmicAcquisitionContext/ScaleX", _get_first_as_float),
+        "ScaleX": (
+            ".//ImageType[Type='OCT']../" "OphthalmicAcquisitionContext/ScaleX",
+            _get_first_as_float,
+        ),
         # Distance between two adjacent B-Scans in mm (Not given in the XMl we
         # could try to estimate it from the B-Scan positions)
         "Distance": ("", lambda x: None),
         # Height of a B-Scan pixel in mm (In the XML the scale is given for
         # every B-Scan and it is called ScaleY instead of ScaleZ)
-        "ScaleZ": (".//ImageType[Type='OCT']../"
-                   "OphthalmicAcquisitionContext/ScaleY", _get_first_as_float),
+        "ScaleZ": (
+            ".//ImageType[Type='OCT']../" "OphthalmicAcquisitionContext/ScaleY",
+            _get_first_as_float,
+        ),
         # Width of the SLO image in pixel
-        "SizeXSlo": (".//ImageType[Type='LOCALIZER']../"
-                     "OphthalmicAcquisitionContext/Width", _get_first_as_int),
+        "SizeXSlo": (
+            ".//ImageType[Type='LOCALIZER']../" "OphthalmicAcquisitionContext/Width",
+            _get_first_as_int,
+        ),
         # Height of the SLO image in pixel
-        "SizeYSlo": (".//ImageType[Type='LOCALIZER']../"
-                     "OphthalmicAcquisitionContext/Height", _get_first_as_int),
+        "SizeYSlo": (
+            ".//ImageType[Type='LOCALIZER']../" "OphthalmicAcquisitionContext/Height",
+            _get_first_as_int,
+        ),
         # Width of a pixel in the SLO image in mm
-        "ScaleXSlo": (".//ImageType[Type='LOCALIZER']../"
-                      "OphthalmicAcquisitionContext/ScaleX", _get_first_as_float),
+        "ScaleXSlo": (
+            ".//ImageType[Type='LOCALIZER']../" "OphthalmicAcquisitionContext/ScaleX",
+            _get_first_as_float,
+        ),
         # Height of a pixel in the SLO image in mm
-        "ScaleYSlo": (".//ImageType[Type='LOCALIZER']../"
-                      "OphthalmicAcquisitionContext/ScaleY", _get_first_as_float),
+        "ScaleYSlo": (
+            ".//ImageType[Type='LOCALIZER']../" "OphthalmicAcquisitionContext/ScaleY",
+            _get_first_as_float,
+        ),
         # Horizontal field size of the SLO image in dgr
-        "FieldSizeSlo": (".//ImageType[Type='LOCALIZER']../"
-                         "OphthalmicAcquisitionContext/Angle", _get_first_as_int),
+        "FieldSizeSlo": (
+            ".//ImageType[Type='LOCALIZER']../" "OphthalmicAcquisitionContext/Angle",
+            _get_first_as_int,
+        ),
         # Scan focus in dpt
-        "ScanFocus": (".//ImageType[Type='LOCALIZER']../"
-                      "OphthalmicAcquisitionContext/Focus", _get_first_as_float),
+        "ScanFocus": (
+            ".//ImageType[Type='LOCALIZER']../" "OphthalmicAcquisitionContext/Focus",
+            _get_first_as_float,
+        ),
         # Examined eye (zero terminated string). "OS": Left eye; "OD": Right eye
-        "ScanPosition": ("./Patient/Study/Series/Laterality",
-         lambda x: "OD" if x[0].text == "R" else "OS"),
+        "ScanPosition": (
+            "./Patient/Study/Series/Laterality",
+            lambda x: "OD" if x[0].text == "R" else "OS",
+        ),
         # Examination time
         "ExamTime": ("./Patient/Study/Series", _get_datetime_from_xml),
         # Scan pattern type: (Not given in XML)
@@ -64,8 +92,7 @@ def oct_base_spec():
         # Format: see ID, This ID is only present if the OCT-scan is part of a
         # progression otherwise this string is empty. For the reference scan of
         # a progression ID and ReferenceID are identical.
-        "ReferenceID": ("./Patient/Study/Series/ReferenceSeries/ID",
-         _get_first_as_int),
+        "ReferenceID": ("./Patient/Study/Series/ReferenceSeries/ID", _get_first_as_int),
         # Internal patient ID used by HEYEX.
         "PID": ("./Patient/ID", _get_first_as_int),
         # User-defined patient ID (zero terminated string).
@@ -90,7 +117,7 @@ def oct_base_spec():
         "GridType": ("./Patient/Study/Series/ThicknessGrid/Type", _get_first_as_int),
         # Internal progression ID (zero terminated string). All scans of the
         # same progression share this ID.
-        "ProgID": ("./Patient/Study/Series/ProgID", _get_first_as_str)
+        "ProgID": ("./Patient/Study/Series/ProgID", _get_first_as_str),
     }
 
 
@@ -99,30 +126,25 @@ def bscan_base_spec():
         # The same as the XML Version
         "Version": ("./SWVersion/Version", _get_first_as_str),
         # X-Coordinate of the B-Scan's start point in mm.
-        "StartX": ("./OphthalmicAcquisitionContext/Start/Coord/X",
-         _get_first_as_float),
+        "StartX": ("./OphthalmicAcquisitionContext/Start/Coord/X", _get_first_as_float),
         # Y-Coordinate of the B-Scan's start point in mm.
-        "StartY": ("./OphthalmicAcquisitionContext/Start/Coord/Y",
-         _get_first_as_float),
+        "StartY": ("./OphthalmicAcquisitionContext/Start/Coord/Y", _get_first_as_float),
         # X-Coordinate of the B-Scan's end point in mm. For circle scans, this
         # is the X-Coordinate of the circle's center point.
-        "EndX": ("./OphthalmicAcquisitionContext/End/Coord/X",
-         _get_first_as_float),
+        "EndX": ("./OphthalmicAcquisitionContext/End/Coord/X", _get_first_as_float),
         # Y-Coordinate of the B-Scan's end point in mm. For circle scans, this
         # is the Y-Coordinate of the circle's center point.
-        "EndY": ("./OphthalmicAcquisitionContext/End/Coord/Y",
-         _get_first_as_float),
+        "EndY": ("./OphthalmicAcquisitionContext/End/Coord/Y", _get_first_as_float),
         # Number of segmentation vectors
         "NumSeg": ("./Segmentation/NumSegmentations", _get_first_as_int),
         # Image quality measure. If this value does not exist, its value is set
         # to INVALID.
-        "Quality": ("./OphthalmicAcquisitionContext/ImageQuality",
-         _get_first_as_float),
+        "Quality": ("./OphthalmicAcquisitionContext/ImageQuality", _get_first_as_float),
         # Horizontal shift (in # of A-Scans) of the classification band against
         # the segmentation lines (for circular scan only).
         "Shift": ("", lambda x: None),
         # Intra volume transformation matrix. The values are only available for
         # volume and radial scans and if alignment is turned off, otherwise the
         # values are initialized to 0.
-        "IVTrafo": ("", lambda x: None)
+        "IVTrafo": ("", lambda x: None),
     }

@@ -12,7 +12,7 @@ To install eyepy, run this command in your terminal:
 
 .. code-block:: console
 
-    $ pip install eyepy
+    $ pip install eyepie
 
 This is the preferred method to install eyepy, as it will always install the most recent stable release.
 
@@ -32,13 +32,13 @@ You can either clone the public repository:
 
 .. code-block:: console
 
-    $ git clone git://github.com/Oli4/eyepy
+    $ git clone git://github.com/MedVisBonn/eyepy
 
 Or download the `tarball`_:
 
 .. code-block:: console
 
-    $ curl -OJL https://github.com/Oli4/eyepy/tarball/master
+    $ curl -OJL https://github.com/MedVisBonn/eyepy/tarball/master
 
 Once you have a copy of the source, you can install it with:
 
@@ -47,5 +47,5 @@ Once you have a copy of the source, you can install it with:
     $ python setup.py install
 
 
-.. _Github repo: https://github.com/Oli4/eyepy
-.. _tarball: https://github.com/Oli4/eyepy/tarball/master
+.. _Github repo: https://github.com/MedVisBonn/eyepy
+.. _tarball: https://github.com/MedVisBonn/eyepy/tarball/master
