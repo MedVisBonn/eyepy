@@ -664,7 +664,7 @@ class Oct:
         data[empty] = np.nan
         return {
             name: data[i, ...]
-            for name, i in config.SEG_MAPPING.items()
+            for name, i in self[0].layers.mapping.items()
             if np.nansum(data[i, ...]) != 0
         }
 
