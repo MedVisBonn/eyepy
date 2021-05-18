@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.1 (2021-05-18)
+### Fix
+* **base.py:** Fix layer mapping in case LayerAnnotation does not contain all layers ([`5e8621e`](https://github.com/MedVisBonn/eyepy/commit/5e8621ea50722281d1d4d56c12aa9ea574d5ef3a))
+
+### Documentation
+* **readme:** Added eyepy logo to readme.rst and removed readme.md ([`bc3e19d`](https://github.com/MedVisBonn/eyepy/commit/bc3e19d3120fa9a5329a6ad67ec9632a735d1d6e))
+
 ## v0.3.0 (2021-03-19)
 ### Feature
 * **drusen.py:** Added new histogram based DrusenFinder and made it the new default ([`9a3e667`](https://github.com/MedVisBonn/eyepy/commit/9a3e667ba721c2f16085b4f62225d1ee9ded078d))
