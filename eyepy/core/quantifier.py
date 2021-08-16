@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+from typing import List
 from abc import ABC, abstractmethod
 
 from skimage import transform
@@ -48,10 +49,19 @@ class DefaultEyeQuantifier(EyeQuantifier):
                 "OD": ["Superior", "Temporal", "Inferior", "Nasal"],
             }
             names = region_names[oct_obj.ScanPosition]
-            names = [f"{n} 0.8-1.8" for n in names]
+            names = [f"{n} {self.radii[0]}-{self.radii[1]}" for n in names]
             [names.append(f"Radius-{r}") for r in self.radii]
             self._regions = {name: mask for name, mask in zip(names, masks)}
         return self._regions
+
+    @property
+    def radii(self):
+        return self._radii
+
+    @radii.setter
+    def radii(self, value: List):
+        self._radii = value
+        self._regions = None
 
     def plot_primitives(self, oct_obj):
         radii_enface_space = [r / oct_obj.ScaleXSlo for r in self.radii]

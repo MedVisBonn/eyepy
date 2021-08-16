@@ -584,6 +584,10 @@ class Oct:
         return self._eyepy_id
 
     @property
+    def fovea_pos(self):
+        return None
+
+    @property
     def shape(self):
         return (self.SizeZ, self.SizeX, self.NumBScans)
 

@@ -153,7 +153,7 @@ class HeyexXmlReader:
                     ]
                 return LayerAnnotation(data, max_height=bscan_obj.oct_obj.SizeZ)
             else:
-                warnings.warn(f"{bscan_obj} contains no segmentation", UserWarning)
+                #warnings.warn(f"{bscan_obj} contains no segmentation", UserWarning)
                 data = np.zeros((max(config.SEG_MAPPING.values()) + 1, bscan_obj.oct_obj.SizeX))
                 return LayerAnnotation(data, max_height=bscan_obj.oct_obj.SizeZ)
 
