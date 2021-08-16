@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.5 (2021-08-16)
+### Fix
+* **DefaultEyeQuantifier:** Enable radii change for default quantifier ([`ca8aff3`](https://github.com/MedVisBonn/eyepy/commit/ca8aff334a6ba26d187cd5e73178002b101e7d29))
+
 ## v0.3.4 (2021-08-16)
 ### Fix
 * Fix the reference ([`eadf100`](https://github.com/MedVisBonn/eyepy/commit/eadf10098635d8e18eb2dea264b44c7535669ac5))
