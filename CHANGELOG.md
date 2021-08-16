@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.2 (2021-08-16)
+### Fix
+* **eyepy/io/heyex:** Allow unknown heyex xml versions ([`5c51b46`](https://github.com/MedVisBonn/eyepy/commit/5c51b4656d0dcc28d4b7c2ff0e8112e176746e28))
+
 ## v0.3.1 (2021-05-18)
 ### Fix
 * **base.py:** Fix layer mapping in case LayerAnnotation does not contain all layers ([`5e8621e`](https://github.com/MedVisBonn/eyepy/commit/5e8621ea50722281d1d4d56c12aa9ea574d5ef3a))
