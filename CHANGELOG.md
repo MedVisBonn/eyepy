@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.4 (2021-08-16)
+### Fix
+* Fix the reference ([`eadf100`](https://github.com/MedVisBonn/eyepy/commit/eadf10098635d8e18eb2dea264b44c7535669ac5))
+
 ## v0.3.3 (2021-08-16)
 ### Fix
 * **io/heyex/xml_export:** Initalize empty LayerAnnotation if no annotation is provided ([`6626467`](https://github.com/MedVisBonn/eyepy/commit/662646702bcf41ec3f98b4e891f3566ce613ba54))
