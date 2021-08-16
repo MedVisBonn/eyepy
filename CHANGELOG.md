@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.3 (2021-08-16)
+### Fix
+* **io/heyex/xml_export:** Initalize empty LayerAnnotation if no annotation is provided ([`6626467`](https://github.com/MedVisBonn/eyepy/commit/662646702bcf41ec3f98b4e891f3566ce613ba54))
+
 ## v0.3.2 (2021-08-16)
 ### Fix
 * **eyepy/io/heyex:** Allow unknown heyex xml versions ([`5c51b46`](https://github.com/MedVisBonn/eyepy/commit/5c51b4656d0dcc28d4b7c2ff0e8112e176746e28))
