@@ -24,10 +24,7 @@ class DrusenFinder(ABC):
 class DefaultDrusenFinder(DrusenFinder):
     def __init__(
         self,
-        minimum_height=0,
-        minimum_depth=0,
-        minimum_area=0,
-        minimum_volume=0,
+        minimum_height=2,
         voxel_size=(1, 1, 1),
     ):
         """
@@ -35,21 +32,14 @@ class DefaultDrusenFinder(DrusenFinder):
         Parameters
         ----------
         minimum_height: Minimum drusen  height.
-        minimum_area: Minimum enface area. Currently not used
-        minimum_volume: Minimum drusen volume. Currently not used
         voxel_size: (height, width, depth) length of the voxel in µm.
         """
         self.minimum_height = minimum_height
-        self.minimum_volume = minimum_volume
-        self.minimum_area = minimum_area
-        self.minimum_depth = minimum_depth
         self.voxel_size = voxel_size
 
     def filter(self, drusen_map):
-        return drusen_map
-        # return filter_by_height(drusen_map, self.minimum_height,
-        #                        self.voxel_size)
-        # return filter_by_depth(d, self.minimum_depth)
+        return filter_by_height(drusen_map, self.minimum_height,
+                                    self.voxel_size)
 
     def find(self, oct_obj):
         return drusen2d(oct_obj.layers["RPE"], oct_obj.layers["BM"],
@@ -120,9 +110,6 @@ class DrusenFinderPolyFit(DrusenFinder):
         outlier_threshold=5,
         poly_fit_type="regularized",
         minimum_height=2,
-        minimum_depth=2,
-        minimum_area=0,
-        minimum_volume=0,
         voxel_size=(1, 1, 1),
     ):
         """
@@ -134,8 +121,6 @@ class DrusenFinderPolyFit(DrusenFinder):
         outlier_threshold: Threshold for RPE Pixel to be considered in the next iteration
         poly_fit_type: If "regularized", regularize the normal RPE fitting.
         minimum_height: Minimum drusen  height.
-        minimum_area: Minimum enface area. Currently not used
-        minimum_volume: Minimum drusen volume. Currently not used
         voxel_size: (height, width, depth) length of the voxel in µm.
         """
         self.degree = degree
@@ -143,16 +128,11 @@ class DrusenFinderPolyFit(DrusenFinder):
         self.outlier_threshold = outlier_threshold
         self.poly_fit_type = poly_fit_type
         self.minimum_height = minimum_height
-        self.minimum_volume = minimum_volume
-        self.minimum_area = minimum_area
-        self.minimum_depth = minimum_depth
         self.voxel_size = voxel_size
 
     def filter(self, drusen_map):
-        return drusen_map
-        # return filter_by_height(drusen_map, self.minimum_height,
-        #                        self.voxel_size)
-        # return filter_by_depth(d, self.minimum_depth)
+        return filter_by_height(drusen_map, self.minimum_height,
+                                    self.voxel_size)
 
     def find(self, oct_obj):
         drusen_map = np.zeros(oct_obj.shape, dtype=bool)
@@ -320,37 +300,14 @@ def filter_by_height(drusen_map, minimum_height=2, voxel_size=(1, 1, 1)):
 
 
 def component_max_height(connected_component_array):
-    # labels = np.unique(connected_component_array)
     max_heights = np.zeros_like(connected_component_array)
-    for label, drusen_pos in enumerate(ndimage.find_objects(connected_component_array)):
+    # Iterate over all connected drusen components
+    for drusen_pos in ndimage.find_objects(connected_component_array):
+        # Work on subvolume for faster processing
         component_sub_vol = connected_component_array[drusen_pos]
+        # Find current label (most frequent label in the subvolume)
+        label = np.bincount(component_sub_vol[component_sub_vol!=0]).argmax()
         component_max_height = np.max(np.sum(component_sub_vol == label, axis=0))
-        component_sub_vol[component_sub_vol == label] = component_max_height
-        max_heights[drusen_pos] = component_sub_vol
+        # Set drusen region to drusen max height
+        max_heights[drusen_pos][component_sub_vol == label] = component_max_height
     return max_heights
-
-
-def filter_by_width(drusen_map, minimum_width=2):
-    """Filter drusen by width in single B-Scans."""
-    filtered_drusen = np.copy(drusen_map)
-    if minimum_width == 0:
-        return drusen_map
-
-    for i in range(filtered_drusen.shape[-1]):
-        scan = filtered_drusen[..., i]
-        drusen_cols = np.any(filtered_drusen, axis=0)
-        connected_drusen, n = ndimage.label(drusen_cols)
-        if n == 0:
-            continue
-        for drusen_pos in ndimage.find_objects(connected_drusen):
-            if np.sum(drusen_cols[drusen_pos]) < minimum_width:
-                filtered_drusen[:, drusen_pos[0], i] = False
-    return filtered_drusen.astype(bool)
-
-
-def filter_by_area():
-    pass
-
-
-def filter_by_volume():
-    pass
