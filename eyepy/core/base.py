@@ -1020,10 +1020,11 @@ class Oct:
         if ax is None:
             ax = plt.gca()
 
-        if vmax is None:
-            vmax = drusen.max()
         if vmin is None:
             vmin = 1
+        if vmax is None:
+            vmax = max([drusen.max(), vmin])
+
 
         visible = np.zeros(drusen[region].shape)
         visible[np.logical_and(vmin < drusen[region], drusen[region] < vmax)] = 1
