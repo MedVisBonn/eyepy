@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.6 (2021-10-14)
+### Fix
+* **drusen.py:** Fix the drusen height filtering ([`4d1b375`](https://github.com/MedVisBonn/eyepy/commit/4d1b375561a5dbd1df634ba09c4aff20243f52df))
+
 ## v0.3.5 (2021-08-16)
 ### Fix
 * **DefaultEyeQuantifier:** Enable radii change for default quantifier ([`ca8aff3`](https://github.com/MedVisBonn/eyepy/commit/ca8aff334a6ba26d187cd5e73178002b101e7d29))
