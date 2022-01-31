@@ -1025,9 +1025,8 @@ class Oct:
         if vmax is None:
             vmax = max([drusen.max(), vmin])
 
-
         visible = np.zeros(drusen[region].shape)
-        visible[np.logical_and(vmin < drusen[region], drusen[region] < vmax)] = 1
+        visible[np.logical_and(vmin <= drusen[region], drusen[region] <= vmax)] = 1
 
         if cbar:
             divider = make_axes_locatable(ax)
