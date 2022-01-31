@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.7 (2022-01-31)
+### Fix
+* **base:** Fix error when plotting volumes without drusen; fix visibility of drusen projection ([`9c08c72`](https://github.com/MedVisBonn/eyepy/commit/9c08c7206809da406917a9c05a808a12de594660))
+
 ## v0.3.6 (2021-10-14)
 ### Fix
 * **drusen.py:** Fix the drusen height filtering ([`4d1b375`](https://github.com/MedVisBonn/eyepy/commit/4d1b375561a5dbd1df634ba09c4aff20243f52df))
