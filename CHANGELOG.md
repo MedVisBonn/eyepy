@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.1 (2022-02-17)
+### Fix
+* **EyeVolume:** Fix B-scan iteration; enable setting layer heights from EyeBscan ([`f982d68`](https://github.com/MedVisBonn/eyepy/commit/f982d687a7834922866377b70a755e253c785880))
+
 ## v0.4.0 (2022-02-17)
 ### Breaking
 *  ([`117ef89`](https://github.com/MedVisBonn/eyepy/commit/117ef89ec5874b366abb0da2b544011799a4e4f5))
