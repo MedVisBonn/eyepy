@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.0 (2022-02-17)
+### Breaking
+*  ([`117ef89`](https://github.com/MedVisBonn/eyepy/commit/117ef89ec5874b366abb0da2b544011799a4e4f5))
+
 ## v0.3.7 (2022-01-31)
 ### Fix
 * **base:** Fix error when plotting volumes without drusen; fix visibility of drusen projection ([`9c08c72`](https://github.com/MedVisBonn/eyepy/commit/9c08c7206809da406917a9c05a808a12de594660))
