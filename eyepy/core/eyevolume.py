@@ -1,31 +1,55 @@
 import numpy as np
+import numpy.typing as npt
 from matplotlib import cm, colors, patches
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from numpy import typing as npt
 from skimage import transform
 
 from eyepy.core.eyeenface import EyeEnface
 from eyepy.core.eyebscan import EyeBscan
-from eyepy.core.eyemeta import EyeMeta
+from eyepy.core.eyemeta import EyeEnfaceMeta, EyeBscanMeta, EyeVolumeMeta
 
 from eyepy import config
 from collections import defaultdict
-from typing import Union, List
+from typing import Union, List, Optional, Dict, TypedDict, Tuple
 from skimage.transform._geometric import GeometricTransform
 
 import matplotlib.pyplot as plt
 
 
+class LayerKnot(TypedDict):
+    pos: Tuple[float, float]
+    cp_in: Tuple[float, float]
+    cp_out: Tuple[float, float]
+
+
 class EyeVolumeLayerAnnotation:
-    def __init__(self, height_map, name, knots=None):
-        self.height_map = height_map
-        self.name = name
+    def __init__(
+        self,
+        volume: "EyeVolume",
+        data: Optional[npt.NDArray[np.float32]] = None,
+        knots: Optional[Dict[int, List[LayerKnot]]] = None,
+    ):
+        """
+
+        Args:
+            volume:
+            data: Layer height map
+            knots: Dict with List of CubicSpline knots for every B-scan, accessed by B-scan index
+        """
+        self.volume = volume
+        if data is None:
+            self.data = np.full((volume.size_z, volume.size_x), np.nan)
+        else:
+            self.data = data
+
         if knots is None:
             self.knots = defaultdict(lambda: [])
         elif type(knots) is dict:
             self.knots = defaultdict(lambda: [], knots)
 
     def layer_indices(self):
-        layer = self.height_map
+        layer = self.data
         nan_indices = np.isnan(layer)
         col_indices = np.arange(len(layer))[~nan_indices]
         row_indices = np.rint(layer).astype(int)[~nan_indices]
@@ -228,7 +252,10 @@ class EyeVolumeVoxelAnnotation:
         mask_img = np.zeros(self.volume.localizer.shape, dtype=float)[region]
         visible = np.zeros_like(mask_img)
         for mask_name in self.masks.keys():
-            mask_img += self.masks[mask_name][region] * self.quantification[mask_name]
+            mask_img += (
+                self.masks[mask_name][region]
+                * self.quantification[mask_name + " [mm³]"]
+            )
             visible += self.masks[mask_name][region]
 
         if vmin is None:
@@ -256,20 +283,21 @@ class EyeVolumeVoxelAnnotation:
 class EyeVolume:
     def __init__(
         self,
-        data,
-        meta,
-        layers=None,
+        data: npt.NDArray[np.float32],
+        meta: EyeVolumeMeta = None,
         ascan_maps=None,
         localizer: "EyeEnface" = None,
         transformation: GeometricTransform = None,
     ):
         self.data = data
-        self.meta = meta
-        if layers is None:
-            self.layers = {}
-        else:
-            self.layers = layers
+        self._bscans = {}
 
+        if meta is None:
+            self.meta = self._default_meta(self.data)
+        else:
+            self.meta = meta
+
+        self.layers = defaultdict(lambda: EyeVolumeLayerAnnotation(self))
         self.volume_maps = {}
 
         if ascan_maps is None:
@@ -283,24 +311,37 @@ class EyeVolume:
             self.localizer_transform = transformation
 
         if localizer is None:
-            projection = np.flip(np.nanmean(data, axis=1), axis=0)
-            image = transform.warp(
-                projection,
-                self.localizer_transform.inverse,
-                output_shape=(self.size_x, self.size_x),
-                order=1,
-            )
-            self.localizer = EyeEnface(
-                image,
-                meta=EyeMeta(
-                    size_x=self.size_x,
-                    size_y=self.size_x,
-                    scale_x=self.scale_x,
-                    scale_y=self.scale_x,
-                ),
-            )
+            self.localizer = self._default_localizer(self.data)
         else:
             self.localizer = localizer
+
+    def _default_meta(self, volume):
+        bscan_meta = [
+            EyeBscanMeta(
+                start_pos=(0, i), end_pos=((volume.shape[2] - 1), i), pos_unit="pixel"
+            )
+            for i in range(volume.shape[0] - 1, -1, -1)
+        ]
+        meta = EyeVolumeMeta(
+            scale_x=1, scale_y=1, scale_z=1, scale_unit="pixel", bscan_meta=bscan_meta
+        )
+        return meta
+
+    def _default_localizer(self, data):
+        projection = np.flip(np.nanmean(data, axis=1), axis=0)
+        image = transform.warp(
+            projection,
+            self.localizer_transform.inverse,
+            output_shape=(self.size_x, self.size_x),
+            order=1,
+        )
+        localizer = EyeEnface(
+            image,
+            meta=EyeEnfaceMeta(
+                scale_x=self.scale_x, scale_y=self.scale_x, scale_unit="mm"
+            ),
+        )
+        return localizer
 
     def _estimate_transform(self):
         """Compute a transform to map a 2D projection of the volume to a square"""
@@ -333,19 +374,33 @@ class EyeVolume:
         """The B-Scan at the given index."""
         if type(index) == slice:
             return [self[i] for i in range(*index.indices(len(self)))]
+
+        if index < 0:
+            index = len(self) + index
+
+        if index < len(self):
+            try:
+                return self._bscans[index]
+            except KeyError:
+                self._bscans[index] = EyeBscan(self, index)
+                return self._bscans[index]
         else:
-            if index <= len(self):
-                return EyeBscan(self, index)
-            else:
-                raise IndexError()
+            raise IndexError()
 
     def __len__(self):
         """The number of B-Scans."""
         return self.shape[0]
 
+    def add_layer(self, name, height_map):
+        self.layers[name] = EyeVolumeLayerAnnotation(self, height_map)
+
     @property
     def shape(self):
         return self.data.shape
+
+    @property
+    def scale(self):
+        return self.scale_z, self.scale_y, self.scale_x
 
     @property
     def size_z(self):

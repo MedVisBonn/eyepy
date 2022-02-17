@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Union, MutableMapping
+from typing import Union, MutableMapping, Tuple
 
 import numpy as np
 from skimage import transform
 
-from eyepy import EyeMeta
 from eyepy.io.lazy import LazyVolume
+from eyepy.core.eyemeta import EyeBscanMeta, EyeVolumeMeta, EyeEnfaceMeta
 
 logger = logging.getLogger(__name__)
 
@@ -93,16 +93,19 @@ def _get_date_from_xml(elements):
 
 
 def _compute_localizer_oct_transform(
-    volume_meta: MutableMapping, enface_meta: MutableMapping
+    volume_meta: MutableMapping,
+    enface_meta: MutableMapping,
+    volume_shape: Tuple[int, int, int],
 ):
     bscan_meta = volume_meta["bscan_meta"]
+    size_z, size_y, size_x = volume_shape
     # Points in oct space as row/column indices
     src = np.array(
         [
             [0, 0],  # Top left
-            [0, volume_meta["size_x"] - 1],  # Top right
-            [volume_meta["size_z"] - 1, 0],  # Bottom left
-            [volume_meta["size_z"] - 1, volume_meta["size_x"] - 1],  # Bottom right
+            [0, size_x - 1],  # Top right
+            [size_z - 1, 0],  # Bottom left
+            [size_z - 1, size_x - 1],  # Bottom right
         ]
     )
 
@@ -123,11 +126,10 @@ def _compute_localizer_oct_transform(
 
 
 def _get_enface_meta(lazy_volume: LazyVolume):
-    return EyeMeta(
-        size_x=lazy_volume.meta["SizeXSlo"],
-        size_y=lazy_volume.meta["SizeYSlo"],
+    return EyeEnfaceMeta(
         scale_x=lazy_volume.meta["ScaleXSlo"],
         scale_y=lazy_volume.meta["ScaleYSlo"],
+        scale_unit="mm",
         modality="NIR",
         laterality=lazy_volume.meta["ScanPosition"],
         field_size=lazy_volume.meta["FieldSizeSlo"],
@@ -139,10 +141,11 @@ def _get_enface_meta(lazy_volume: LazyVolume):
 
 def _get_volume_meta(lazy_volume: LazyVolume):
     bscan_meta = [
-        EyeMeta(
+        EyeBscanMeta(
             quality=b.meta["Quality"],
             start_pos=(b.meta["StartX"], b.meta["StartY"]),
             end_pos=(b.meta["EndX"], b.meta["EndY"]),
+            pos_unit="mm",
         )
         for b in lazy_volume
     ]
@@ -166,13 +169,11 @@ def _get_volume_meta(lazy_volume: LazyVolume):
     else:
         bscan_distance = 0
 
-    return EyeMeta(
-        size_x=lazy_volume.meta["SizeX"],
-        size_y=lazy_volume.meta["SizeY"],
-        size_z=lazy_volume.meta["NumBScans"],
+    return EyeVolumeMeta(
         scale_x=lazy_volume.meta["ScaleX"],
         scale_y=lazy_volume.meta["ScaleY"],
         scale_z=bscan_distance,
+        scale_unit="mm",
         laterality=lazy_volume.meta["ScanPosition"],
         visit_date=lazy_volume.meta["VisitDate"],
         exam_time=lazy_volume.meta["ExamTime"],

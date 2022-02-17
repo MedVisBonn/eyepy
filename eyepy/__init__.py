@@ -7,12 +7,14 @@ __version__ = "0.3.7"
 
 from eyepy.core import (
     EyeEnface,
-    EyeVolumeLayerAnnotation,
     EyeVolume,
     EyeBscan,
     EyeData,
-    EyeMeta,
+    EyeVolumeMeta,
+    EyeBscanMeta,
+    EyeEnfaceMeta,
     EyeVolumeVoxelAnnotation,
+    EyeVolumeLayerAnnotation,
 )
 
 from eyepy.io import (

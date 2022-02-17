@@ -18,11 +18,11 @@ class EyeEnface:
 
     @property
     def size_x(self):
-        return self.meta["size_x"]
+        return self.shape[1]
 
     @property
     def size_y(self):
-        return self.meta["size_y"]
+        return self.shape[0]
 
     @property
     def laterality(self):

@@ -1,23 +1,9 @@
 import os
-from typing import MutableMapping
+from typing import MutableMapping, List, Tuple
 
 
 class EyeMeta(MutableMapping):
     def __init__(self, *args, **kwargs):
-        """The Meta object is a dict with additional functionalities.
-
-        The additional functionallities are:
-        1. A string representation suitable for printing the meta information.
-
-        An instance of the meta object can be created as you would create an
-        ordinary dictionary.
-
-        For example:
-
-            + Meta({"SizeX": 512})
-            + Meta(SizeX=512)
-            + Meta([(SizeX, 512), (SizeY, 512)])
-        """
         self._store = dict()
         self.update(dict(*args, **kwargs))  # use the free update to set keys
 
@@ -41,3 +27,69 @@ class EyeMeta(MutableMapping):
 
     def __repr__(self):
         return self.__str__()
+
+
+class EyeEnfaceMeta(EyeMeta):
+    def __init__(self, scale_x: float, scale_y: float, scale_unit: str, **kwargs):
+        """A dict with required keys to hold meta data for enface images of the eye
+
+        Args:
+            scale_x: Horizontal scale of the enface pixels
+            scale_y: Vertical scale of the enface pixels
+            scale_unit: Unit of the scale. e.g. µm if scale is given in µm/pixel
+            **kwargs:
+        """
+        super().__init__(
+            scale_x=scale_x, scale_y=scale_y, scale_unit=scale_unit, **kwargs
+        )
+
+
+class EyeBscanMeta(EyeMeta):
+    def __init__(
+        self,
+        start_pos: Tuple[float, float],
+        end_pos: Tuple[float, float],
+        pos_unit: str,
+        **kwargs,
+    ):
+        """A dict with required keys to hold meta data for OCT B-scans
+
+        Args:
+            start_pos: B-scan start on the enface
+            end_pos: B-scan end on the enface
+            pos_unit: Unit of the positions
+            **kwargs:
+        """
+        super().__init__(
+            start_pos=start_pos, end_pos=end_pos, pos_unit=pos_unit, **kwargs
+        )
+
+
+class EyeVolumeMeta(EyeMeta):
+    def __init__(
+        self,
+        scale_z: float,
+        scale_x: float,
+        scale_y: float,
+        scale_unit: str,
+        bscan_meta: List[EyeBscanMeta],
+        **kwargs,
+    ):
+        """A dict with required keys to hold meta data for OCT volumes
+
+        Args:
+            scale_z: Distance between neighbouring B-scans
+            scale_x: Horizontal scale of the B-scan pixels
+            scale_y: Vertical scale of the B-scan pixels
+            scale_unit: Unit of the scale. e.g. µm if scale is given in µm/pixel
+            bscan_meta: A list holding an EyeBscanMeta object for every B-scan of the volume
+            **kwargs:
+        """
+        super().__init__(
+            scale_z=scale_z,
+            scale_x=scale_x,
+            scale_y=scale_y,
+            scale_unit=scale_unit,
+            bscan_meta=bscan_meta,
+            **kwargs,
+        )

@@ -2,7 +2,7 @@
 import logging
 
 import numpy as np
-from eyepy.core.eyevolume import EyeVolumeLayerAnnotation
+from eyepy.core import EyeVolumeLayerAnnotation
 
 from eyepy.quantification.utils.filter import filter_by_height_enface
 
@@ -51,9 +51,9 @@ def drusen(rpe_height, bm_height, volume_shape, minimum_height=2):
     """
     # Estimate ideal RPE
     if type(rpe_height) is EyeVolumeLayerAnnotation:
-        rpe_height = rpe_height.height_map
+        rpe_height = rpe_height.data
     if type(bm_height) is EyeVolumeLayerAnnotation:
-        bm_height = bm_height.height_map
+        bm_height = bm_height.data
 
     idealrpe = ideal_rpe(rpe_height, bm_height, volume_shape)
     # Create drusen map

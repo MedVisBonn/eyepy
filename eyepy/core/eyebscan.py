@@ -1,6 +1,20 @@
+import collections
+
 import numpy as np
 from eyepy import config
 import matplotlib.pyplot as plt
+
+
+class EyeBscanLayers:
+    def __init__(self, eyebscan):
+        self.index = eyebscan.index
+        self.volume = eyebscan._volume
+
+    def __getitem__(self, item):
+        return self.volume.layers[item].data[-(self.index + 1)]
+
+    def __setitem__(self, key, value):
+        self.volume.layers[key].data[-(self.index + 1), :] = value
 
 
 class EyeBscan:
@@ -8,13 +22,11 @@ class EyeBscan:
         self.index = index
         self._volume = volume
 
+        self._bscan_layers = EyeBscanLayers(self)
+
     @property
     def meta(self):
         return self._volume.meta["bscan_meta"][self.index]
-
-    @property
-    def name(self):
-        return self.meta["name"]
 
     @property
     def data(self):
@@ -22,10 +34,13 @@ class EyeBscan:
 
     @property
     def layers(self):
-        return {
-            key: val.height_map[-(self.index + 1)]
-            for key, val in self._volume.layers.items()
-        }
+        return self._bscan_layers
+        # self._volume.layers
+        # return collections.defaultdict(lambda : )
+        # return {
+        #    key: val.height_map[-(self.index + 1)]
+        #    for key, val in self._volume.layers.items()
+        # }
 
     @property
     def ascan_maps(self):
