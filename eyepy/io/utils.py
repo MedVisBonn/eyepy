@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Union
+from typing import Union, MutableMapping
+
+import numpy as np
+from skimage import transform
+
+from eyepy import EyeMeta
+from eyepy.io.lazy import LazyVolume
 
 logger = logging.getLogger(__name__)
 
@@ -84,3 +90,91 @@ def _get_date_from_xml(elements):
     month = int(date.find("Month").text)
     day = int(date.find("Day").text)
     return datetime(year, month, day).date()
+
+
+def _compute_localizer_oct_transform(
+    volume_meta: MutableMapping, enface_meta: MutableMapping
+):
+    bscan_meta = volume_meta["bscan_meta"]
+    # Points in oct space as row/column indices
+    src = np.array(
+        [
+            [0, 0],  # Top left
+            [0, volume_meta["size_x"] - 1],  # Top right
+            [volume_meta["size_z"] - 1, 0],  # Bottom left
+            [volume_meta["size_z"] - 1, volume_meta["size_x"] - 1],  # Bottom right
+        ]
+    )
+
+    # Respective points in enface space as x/y coordinates
+    scale = np.array([enface_meta["scale_x"], enface_meta["scale_y"]])
+    dst = np.array(
+        [
+            bscan_meta[-1]["start_pos"] / scale,  # Top left
+            bscan_meta[-1]["end_pos"] / scale,  # Top right
+            bscan_meta[0]["start_pos"] / scale,  # Bottom left
+            bscan_meta[0]["end_pos"] / scale,  # Bottom right
+        ]
+    )
+
+    # Switch from row/column indices to x/y coordinates
+    src = src[:, [1, 0]]
+    return transform.estimate_transform("affine", src, dst)
+
+
+def _get_enface_meta(lazy_volume: LazyVolume):
+    return EyeMeta(
+        size_x=lazy_volume.meta["SizeXSlo"],
+        size_y=lazy_volume.meta["SizeYSlo"],
+        scale_x=lazy_volume.meta["ScaleXSlo"],
+        scale_y=lazy_volume.meta["ScaleYSlo"],
+        modality="NIR",
+        laterality=lazy_volume.meta["ScanPosition"],
+        field_size=lazy_volume.meta["FieldSizeSlo"],
+        scan_focus=lazy_volume.meta["ScanFocus"],
+        visit_date=lazy_volume.meta["VisitDate"],
+        exam_time=lazy_volume.meta["ExamTime"],
+    )
+
+
+def _get_volume_meta(lazy_volume: LazyVolume):
+    bscan_meta = [
+        EyeMeta(
+            quality=b.meta["Quality"],
+            start_pos=(b.meta["StartX"], b.meta["StartY"]),
+            end_pos=(b.meta["EndX"], b.meta["EndY"]),
+        )
+        for b in lazy_volume
+    ]
+
+    if not lazy_volume.ScanPattern == 1:
+        # Check if all B-scans are parallel and have the same distance. They might be rotated though
+        dist_func = lambda a, b: np.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2)
+        start_distances = [
+            dist_func(bscan_meta[i]["start_pos"], bscan_meta[i + 1]["start_pos"])
+            for i in range(len(bscan_meta) - 1)
+        ]
+        end_distances = [
+            dist_func(bscan_meta[i]["end_pos"], bscan_meta[i + 1]["end_pos"])
+            for i in range(len(bscan_meta) - 1)
+        ]
+        if set(start_distances) == set(end_distances):
+            bscan_distance = start_distances[0]
+        else:
+            msg = "B-scans are not equally spaced. Data can not be imported."
+            raise ValueError(msg)
+    else:
+        bscan_distance = 0
+
+    return EyeMeta(
+        size_x=lazy_volume.meta["SizeX"],
+        size_y=lazy_volume.meta["SizeY"],
+        size_z=lazy_volume.meta["NumBScans"],
+        scale_x=lazy_volume.meta["ScaleX"],
+        scale_y=lazy_volume.meta["ScaleY"],
+        scale_z=bscan_distance,
+        laterality=lazy_volume.meta["ScanPosition"],
+        visit_date=lazy_volume.meta["VisitDate"],
+        exam_time=lazy_volume.meta["ExamTime"],
+        bscan_meta=bscan_meta,
+    )

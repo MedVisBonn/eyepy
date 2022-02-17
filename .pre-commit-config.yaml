@@ -1,39 +1,17 @@
-# See https://pre-commit.com for more information
-# See https://pre-commit.com/hooks.html for more hooks
-minimum_pre_commit_version: 1.20.0
 repos:
--   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.4.0
-    hooks:
-    -   id: trailing-whitespace
-    -   id: end-of-file-fixer
-    -   id: check-yaml
-    -   id: check-added-large-files
-    -   id: requirements-txt-fixer
-    -   id: fix-encoding-pragma
-    -   id: check-docstring-first
--   repo: https://github.com/asottile/blacken-docs
-    rev: v1.3.0
-    hooks:
-    -   id: blacken-docs
--   repo: https://github.com/pre-commit/pygrep-hooks
-    rev: v1.4.2
-    hooks:
-    -   id: python-use-type-annotations
--   repo: https://github.com/myint/docformatter
-    rev: v1.3.1
-    hooks:
-    -   id: docformatter
--   repo: https://github.com/pycqa/isort
-    rev: 5.6.3
-    hooks:
-    -   id: isort
-        name: isort (python)
-    -   id: isort
-        name: isort (cython)
-        types: [cython]
--   repo: https://github.com/psf/black
-    rev: 19.10b0
-    hooks:
-    -   id: black
-        language_version: python3 # Should be a command that runs python3.6+
+- hooks:
+  - id: check-yaml
+  - id: end-of-file-fixer
+  - id: trailing-whitespace
+  repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.1.0
+- hooks:
+  - id: black
+  repo: https://github.com/psf/black
+  rev: 21.12b0
+- hooks:
+  - id: commitizen
+    stages:
+    - commit-msg
+  repo: https://github.com/commitizen-tools/commitizen
+  rev: v2.20.4

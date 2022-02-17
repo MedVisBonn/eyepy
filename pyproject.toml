@@ -1,0 +1,52 @@
+[tool.poetry]
+name = "eyepie"
+packages = [
+    {include = "eyepy"}
+]
+version = "0.3.7"
+description = "The Python package for working with ophthalmological data."
+authors = ["Olivier Morelle <oli4morelle@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/MedVisBonn/eyepy"
+keywords = ["ophthalmology", "oct", "visualization", "spectralis"]
+classifiers = [
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Healthcare Industry",
+    "Development Status :: 4 - Beta",
+    "Natural Language :: English",
+    "Operating System :: OS Independent"
+]
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.11"
+scikit-image = "^0.19.1"
+imagecodecs = "^2021.11.20"
+matplotlib = "^3.5.1"
+itk = "^5.2.1"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.5"
+pytest-cov = "^3.0.0"
+pre-commit = "^2.16.0"
+commitizen = "^2.20.4"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.semantic_release]
+major_on_zero = false
+version_variable = ['eyepy/__init__.py:__version__']
+version_toml = "pyproject.toml:tool.poetry.version"
+upload_to_pypi = true
+upload_to_release = true
+build_command = "pip install poetry && poetry build"

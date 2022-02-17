@@ -13,13 +13,13 @@ def oct_base_spec():
         # Number of B-Scans in OCT scan
         "NumBScans": ("I", _get_first),
         # Number of samples in an A-Scan, i.e. B-Scan height in pixel
-        "SizeZ": ("I", _get_first),
+        "SizeY": ("I", _get_first),
         # Width of a B-Scan pixel in mm
         "ScaleX": ("d", _get_first),
         # Distance between two adjacent B-Scans in mm
         "Distance": ("d", _get_first),
         # Height of a B-Scan pixel in mm
-        "ScaleZ": ("d", _get_first),
+        "ScaleY": ("d", _get_first),
         # Width of the SLO image in pixel
         "SizeXSlo": ("I", _get_first),
         # Height of the SLO image in pixel

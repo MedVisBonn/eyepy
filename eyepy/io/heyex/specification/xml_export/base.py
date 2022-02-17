@@ -20,7 +20,7 @@ def oct_base_spec():
         # Number of B-Scans in OCT scan
         "NumBScans": (".//ImageType[Type='OCT']..", len),
         # Number of samples in an A-Scan, i.e. B-Scan height in pixel
-        "SizeZ": (
+        "SizeY": (
             ".//ImageType[Type='OCT']../" "OphthalmicAcquisitionContext/Height",
             _get_first_as_int,
         ),
@@ -33,8 +33,8 @@ def oct_base_spec():
         # could try to estimate it from the B-Scan positions)
         "Distance": ("", lambda x: None),
         # Height of a B-Scan pixel in mm (In the XML the scale is given for
-        # every B-Scan and it is called ScaleY instead of ScaleZ)
-        "ScaleZ": (
+        # every B-Scan)
+        "ScaleY": (
             ".//ImageType[Type='OCT']../" "OphthalmicAcquisitionContext/ScaleY",
             _get_first_as_float,
         ),

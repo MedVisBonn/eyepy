@@ -1,16 +1,21 @@
 # -*- coding: utf-8 -*-
 import functools
 import logging
-import warnings
 import xml.etree.ElementTree as ElementTree
 from pathlib import Path
 
 import imageio
 import numpy as np
 from skimage import img_as_ubyte
+from eyepy.io.lazy import (
+    LazyEnfaceImage,
+    LazyMeta,
+    LazyBscan,
+    LazyAnnotation,
+    LazyLayerAnnotation,
+    SEG_MAPPING,
+)
 
-from eyepy.core import config
-from eyepy.core.base import Annotation, Bscan, EnfaceImage, LayerAnnotation, Meta
 from eyepy.io.heyex.specification.xml_export import HEXML_BSCAN_VERSIONS, HEXML_VERSIONS
 
 logger = logging.getLogger(__name__)
@@ -59,7 +64,7 @@ class HeyexXmlReader:
         bscans = []
 
         def bscan_builder(d, a, bmeta, p, n):
-            return lambda: Bscan(d, a, bmeta, p, name=n)
+            return lambda: LazyBscan(d, a, bmeta, p, name=n)
 
         def scan_reader(path):
             return lambda: imageio.imread(path)
@@ -67,8 +72,8 @@ class HeyexXmlReader:
         for bscan in self.xml_root[0].findall(".//ImageType[Type='OCT'].."):
             scan_name = bscan.find("./ImageData/ExamURL").text.split("\\")[-1]
             data = scan_reader(self.path.parent / scan_name)
-            annotation = Annotation(**self.create_annotation_dict(bscan))
-            bscan_meta = Meta(
+            annotation = LazyAnnotation(**self.create_annotation_dict(bscan))
+            bscan_meta = LazyMeta(
                 **self.create_meta_retrieve_funcs_heyex_xml(
                     bscan, HEXML_BSCAN_VERSIONS(self.version)
                 )
@@ -83,15 +88,12 @@ class HeyexXmlReader:
         return bscans
 
     @property
-    def localizer_name(self):
-        lclzr_pattern = ".//ImageType[Type='LOCALIZER']../ImageData/ExamURL"
-        return self.xml_root[0].find(lclzr_pattern).text.split("\\")[-1]
-
-    @property
     def localizer(self):
-        return EnfaceImage(
-            data=lambda: imageio.imread(self.path.parent / self.localizer_name),
-            name=self.localizer_name,
+        localizer_pattern = ".//ImageType[Type='LOCALIZER']../ImageData/ExamURL"
+        localizer_name = self.xml_root[0].find(localizer_pattern).text.split("\\")[-1]
+        return LazyEnfaceImage(
+            data=lambda: imageio.imread(self.path.parent / localizer_name),
+            name=localizer_name,
         )
 
     @property
@@ -100,7 +102,7 @@ class HeyexXmlReader:
             retrieve_dict = self.create_meta_retrieve_funcs_heyex_xml(
                 self.xml_root[0], HEXML_VERSIONS(self.version)
             )
-            self._oct_meta = Meta(**retrieve_dict)
+            self._oct_meta = LazyMeta(**retrieve_dict)
 
         return self._oct_meta
 
@@ -148,15 +150,16 @@ class HeyexXmlReader:
                 )
                 for segline in seglines:
                     name = segline.find("./Name").text
-                    data[config.SEG_MAPPING[name], :] = [
+                    data[SEG_MAPPING[name], :] = [
                         float(x) for x in segline.find("./Array").text.split()
                     ]
-                return LayerAnnotation(data, max_height=bscan_obj.oct_obj.SizeZ)
+                return LazyLayerAnnotation(data, max_height=bscan_obj.oct_obj.SizeY)
             else:
-                #warnings.warn(f"{bscan_obj} contains no segmentation", UserWarning)
-                data = np.zeros((max(config.SEG_MAPPING.values()) + 1, bscan_obj.oct_obj.SizeX))
-                return LayerAnnotation(data, max_height=bscan_obj.oct_obj.SizeZ)
-
+                # warnings.warn(f"{bscan_obj} contains no segmentation", UserWarning)
+                data = np.zeros(
+                    (max(SEG_MAPPING.values()) + 1, bscan_obj.oct_obj.SizeX)
+                )
+                return LazyLayerAnnotation(data, max_height=bscan_obj.oct_obj.SizeY)
 
         return {
             "layers": layers_dict,

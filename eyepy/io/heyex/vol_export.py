@@ -14,7 +14,13 @@ from typing import IO, Union
 import numpy as np
 from skimage import img_as_ubyte
 
-from eyepy.core.base import Annotation, Bscan, EnfaceImage, LayerAnnotation, Meta
+from eyepy.io.lazy import (
+    LazyEnfaceImage,
+    LazyMeta,
+    LazyBscan,
+    LazyAnnotation,
+    LazyLayerAnnotation,
+)
 from eyepy.io.utils import _clean_ascii
 
 from .specification.vol_export import HEVOL_BSCAN_VERSIONS, HEVOL_VERSIONS
@@ -61,11 +67,11 @@ class HeyexVolReader:
         if self._bscans is None:
             oct_header_size = 2048
             slo_size = self.oct_meta["SizeXSlo"] * self.oct_meta["SizeYSlo"]
-            bscan_size = self.oct_meta["SizeX"] * self.oct_meta["SizeZ"]
-            shape = (self.oct_meta["SizeZ"], self.oct_meta["SizeX"])
+            bscan_size = self.oct_meta["SizeX"] * self.oct_meta["SizeY"]
+            shape = (self.oct_meta["SizeY"], self.oct_meta["SizeX"])
 
             def bscan_builder(d, a, bmeta, p):
-                return lambda: Bscan(d, a, bmeta, p)
+                return lambda: LazyBscan(d, a, bmeta, p)
 
             self._bscans = []
             for index in range(self.oct_meta["NumBScans"]):
@@ -82,13 +88,13 @@ class HeyexVolReader:
                     shape=shape,
                 )
 
-                bscan_meta = Meta(
+                bscan_meta = LazyMeta(
                     **self.create_meta_retrieve_funcs_heyex_vol(
                         HEVOL_BSCAN_VERSIONS(self.bscan_version), startpos
                     )
                 )
 
-                annotation = Annotation(**self.create_annotation_dict(startpos))
+                annotation = LazyAnnotation(**self.create_annotation_dict(startpos))
 
                 self._bscans.append(
                     bscan_builder(data, annotation, bscan_meta, self._data_processing)
@@ -100,7 +106,7 @@ class HeyexVolReader:
     def localizer(self):
         if self._localizer is None:
             shape = (self.oct_meta["SizeXSlo"], self.oct_meta["SizeYSlo"])
-            self._localizer = EnfaceImage(
+            self._localizer = LazyEnfaceImage(
                 data=np.ndarray(
                     buffer=self.memmap, dtype="uint8", offset=2048, shape=shape
                 )
@@ -113,14 +119,18 @@ class HeyexVolReader:
             retrieve_dict = self.create_meta_retrieve_funcs_heyex_vol(
                 HEVOL_VERSIONS(self.version)
             )
-            self._oct_meta = Meta(**retrieve_dict)
+            self._oct_meta = LazyMeta(**retrieve_dict)
         return self._oct_meta
 
     def _data_processing(self, data):
         """How to process the loaded B-Scans."""
         data = np.copy(data)
-        data[data > 1.1] = np.nan
-        return img_as_ubyte(np.power(data, 1 / 4))
+        data[data > 1.1] = 0.0
+        # return data
+        func = lambda x: np.rint(
+            (np.log(np.clip(x, 3.8e-06, 0.99) + 2.443e-04) + 8.301) * 1.207e-01 * 255
+        )
+        return img_as_ubyte(func(data).astype(int))
 
     def create_annotation_dict(self, startpos):
         """For every Annotation create a function to read it.
@@ -136,7 +146,7 @@ class HeyexVolReader:
                 offset=startpos + bscan_obj.OffSeg,
                 shape=(17, bscan_obj.oct_obj.SizeX),
             )
-            return LayerAnnotation(data, max_height=bscan_obj.oct_obj.SizeZ)
+            return LazyLayerAnnotation(data, max_height=bscan_obj.oct_obj.SizeY)
 
         return {
             "layers": layers_dict,
