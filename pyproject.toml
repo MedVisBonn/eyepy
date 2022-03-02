@@ -3,7 +3,7 @@ name = "eyepie"
 packages = [
     {include = "eyepy"}
 ]
-version = "0.4.1"
+version = "0.5.0"
 description = "The Python package for working with ophthalmological data."
 authors = ["Olivier Morelle <oli4morelle@gmail.com>"]
 license = "MIT"

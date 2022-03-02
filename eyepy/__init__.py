@@ -3,7 +3,7 @@
 
 __author__ = """Olivier Morelle"""
 __email__ = "oli4morelle@gmail.com"
-__version__ = "0.4.1"
+__version__ = "0.5.0"
 
 from eyepy.core import (
     EyeEnface,

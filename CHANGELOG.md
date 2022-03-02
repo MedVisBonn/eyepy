@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.0 (2022-03-02)
+### Feature
+* **eyevolume.py:** Enable custom intensity transformation for OCT data ([`761dd5a`](https://github.com/MedVisBonn/eyepy/commit/761dd5a4a360ca46d79ff2074b2644b4c2fd8ca4))
+
 ## v0.4.1 (2022-02-17)
 ### Fix
 * **EyeVolume:** Fix B-scan iteration; enable setting layer heights from EyeBscan ([`f982d68`](https://github.com/MedVisBonn/eyepy/commit/f982d687a7834922866377b70a755e253c785880))
