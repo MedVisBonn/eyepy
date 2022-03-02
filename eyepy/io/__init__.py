@@ -68,6 +68,7 @@ def import_heyex_xml(path):
 
 def import_heyex_vol(path):
     from eyepy.io.heyex import HeyexVolReader
+    from skimage import img_as_ubyte
 
     reader = HeyexVolReader(path)
     l_volume = LazyVolume(
@@ -90,11 +91,25 @@ def import_heyex_vol(path):
 
     enface = EyeEnface(data=l_volume.localizer, meta=enface_meta)
     volume = EyeVolume(
-        data=l_volume.volume,
+        data=l_volume.volume_raw,
         meta=volume_meta,
         localizer=enface,
         transformation=transformation,
     )
+
+    def vol_intensity_transform(data):
+        selection_0 = data == np.finfo(np.float32).max
+        selection_data = data <= 1
+
+        new = np.log(data[selection_data] + 2.44e-04)
+        new = (new + 8.3) / 8.285
+
+        data[selection_data] = new
+        data[selection_0] = 0
+        data = np.clip(data, 0, 1)
+        return img_as_ubyte(data)
+
+    volume.set_intensity_transform(vol_intensity_transform)
 
     layer_height_maps = l_volume.layers
     for key, val in layer_height_maps.items():

@@ -78,7 +78,7 @@ In the resulting plot on the left, the scale is the drusen height in voxel and o
 import matplotlib.pyplot as plt
 import eyepy as ep
 
-# Import DUKE volume
+# Import example data
 ev = ep.data.load("drusen_patient")
 drusen_map = ep.drusen(ev.layers["RPE"], ev.layers["BM"], ev.shape, minimum_height=2)
 ev.set_volume_map("drusen", drusen_map)

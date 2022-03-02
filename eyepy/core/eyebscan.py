@@ -35,12 +35,6 @@ class EyeBscan:
     @property
     def layers(self):
         return self._bscan_layers
-        # self._volume.layers
-        # return collections.defaultdict(lambda : )
-        # return {
-        #    key: val.height_map[-(self.index + 1)]
-        #    for key, val in self._volume.layers.items()
-        # }
 
     @property
     def ascan_maps(self):

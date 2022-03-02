@@ -11,7 +11,7 @@ from eyepy.core.eyemeta import EyeEnfaceMeta, EyeBscanMeta, EyeVolumeMeta
 
 from eyepy import config
 from collections import defaultdict
-from typing import Union, List, Optional, Dict, TypedDict, Tuple
+from typing import Union, List, Optional, Dict, TypedDict, Tuple, Callable
 from skimage.transform._geometric import GeometricTransform
 
 import matplotlib.pyplot as plt
@@ -289,7 +289,10 @@ class EyeVolume:
         localizer: "EyeEnface" = None,
         transformation: GeometricTransform = None,
     ):
-        self.data = data
+        self._raw_data = data
+        self._data = None
+        self.intensity_transform = lambda x: x
+
         self._bscans = {}
 
         if meta is None:
@@ -393,6 +396,16 @@ class EyeVolume:
 
     def add_layer(self, name, height_map):
         self.layers[name] = EyeVolumeLayerAnnotation(self, height_map)
+
+    def set_intensity_transform(self, func: Callable):
+        self.intensity_transform = func
+        self._data = None
+
+    @property
+    def data(self):
+        if self._data is None:
+            self._data = self.intensity_transform(np.copy(self._raw_data))
+        return self._data
 
     @property
     def shape(self):
