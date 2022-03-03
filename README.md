@@ -113,3 +113,7 @@ ax.axis("off")
 ```
 
 ![Example quantification](examples/bscan_visualization.jpeg)
+
+# Related Projects:
+
++ [OCT-Converter](https://github.com/marksgraham/OCT-Converter): Extract raw optical coherence tomography (OCT) and fundus data from proprietary file formats. (.fds/.fda/.e2e/.img/.oct/.dcm)
