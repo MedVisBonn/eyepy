@@ -7,16 +7,16 @@ from pathlib import Path
 import imageio
 import numpy as np
 from skimage import img_as_ubyte
-from eyepy.io.lazy import (
-    LazyEnfaceImage,
-    LazyMeta,
-    LazyBscan,
-    LazyAnnotation,
-    LazyLayerAnnotation,
-    SEG_MAPPING,
-)
 
 from eyepy.io.heyex.specification.xml_export import HEXML_BSCAN_VERSIONS, HEXML_VERSIONS
+from eyepy.io.lazy import (
+    SEG_MAPPING,
+    LazyAnnotation,
+    LazyBscan,
+    LazyEnfaceImage,
+    LazyLayerAnnotation,
+    LazyMeta,
+)
 
 logger = logging.getLogger(__name__)
 

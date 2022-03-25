@@ -1,11 +1,20 @@
+import datetime
+import json
 import os
-from typing import MutableMapping, List, Tuple
+from typing import List, MutableMapping, Tuple
 
 
 class EyeMeta(MutableMapping):
     def __init__(self, *args, **kwargs):
         self._store = dict()
         self.update(dict(*args, **kwargs))  # use the free update to set keys
+
+    def as_dict(self):
+        data = self._store.copy()
+        for key in ["visit_date", "exam_time"]:
+            if key in data.keys() and data[key] is not None:
+                data[key] = data[key].isoformat()
+        return data
 
     def __getitem__(self, key):
         return self._store[key]
@@ -42,6 +51,13 @@ class EyeEnfaceMeta(EyeMeta):
         super().__init__(
             scale_x=scale_x, scale_y=scale_y, scale_unit=scale_unit, **kwargs
         )
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        for key in ["visit_date", "exam_time"]:
+            if key in data.keys() and data[key] is not None:
+                data[key] = datetime.datetime.fromisoformat(data[key])
+        return cls(**data)
 
 
 class EyeBscanMeta(EyeMeta):
@@ -93,3 +109,16 @@ class EyeVolumeMeta(EyeMeta):
             bscan_meta=bscan_meta,
             **kwargs,
         )
+
+    def as_dict(self):
+        data = super().as_dict()
+        data["bscan_meta"] = [bm.as_dict() for bm in data["bscan_meta"]]
+        return data
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        data["bscan_meta"] = [EyeBscanMeta(**d) for d in data["bscan_meta"]]
+        for key in ["visit_date", "exam_time"]:
+            if key in data.keys() and data[key] is not None:
+                data[key] = datetime.datetime.fromisoformat(data[key])
+        return cls(**data)

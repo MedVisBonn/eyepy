@@ -1,26 +1,29 @@
+import json
+import shutil
+import tempfile
+import zipfile
+from collections import defaultdict
+from pathlib import Path
+from typing import Callable, List, Optional, Tuple, TypedDict, Union
+
+import matplotlib.pyplot as plt
 import numpy as np
-import numpy.typing as npt
 from matplotlib import cm, colors, patches
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from numpy import typing as npt
 from skimage import transform
-
-from eyepy.core.eyeenface import EyeEnface
-from eyepy.core.eyebscan import EyeBscan
-from eyepy.core.eyemeta import EyeEnfaceMeta, EyeBscanMeta, EyeVolumeMeta
-
-from eyepy import config
-from collections import defaultdict
-from typing import Union, List, Optional, Dict, TypedDict, Tuple, Callable
 from skimage.transform._geometric import GeometricTransform
 
-import matplotlib.pyplot as plt
+from eyepy import config
+from eyepy.core.eyebscan import EyeBscan
+from eyepy.core.eyeenface import EyeEnface
+from eyepy.core.eyemeta import EyeBscanMeta, EyeEnfaceMeta, EyeVolumeMeta
 
 
 class LayerKnot(TypedDict):
-    pos: Tuple[float, float]
-    cp_in: Tuple[float, float]
-    cp_out: Tuple[float, float]
+    knot_pos: Tuple[float, float]
+    cp_in_pos: Tuple[float, float]
+    cp_out_pos: Tuple[float, float]
 
 
 class EyeVolumeLayerAnnotation:
@@ -28,25 +31,42 @@ class EyeVolumeLayerAnnotation:
         self,
         volume: "EyeVolume",
         data: Optional[npt.NDArray[np.float32]] = None,
-        knots: Optional[Dict[int, List[LayerKnot]]] = None,
+        meta: Optional[dict] = None,
+        **kwargs,
     ):
-        """
-
-        Args:
-            volume:
-            data: Layer height map
-            knots: Dict with List of CubicSpline knots for every B-scan, accessed by B-scan index
-        """
         self.volume = volume
         if data is None:
             self.data = np.full((volume.size_z, volume.size_x), np.nan)
         else:
             self.data = data
 
-        if knots is None:
-            self.knots = defaultdict(lambda: [])
-        elif type(knots) is dict:
-            self.knots = defaultdict(lambda: [], knots)
+        if meta is None:
+            self.meta = kwargs
+        else:
+            self.meta = meta
+            self.meta.update(**kwargs)
+
+        if "knots" not in self.meta:
+            self.meta["knots"] = defaultdict(lambda: [])
+        elif type(self.meta["knots"]) is dict:
+            self.meta["knots"] = defaultdict(lambda: [], self.meta["knots"])
+
+        if "name" not in self.meta:
+            self.meta["name"] = "Layer Annotation"
+
+        self.meta["current_color"] = config.layer_colors[self.name]
+
+    @property
+    def name(self):
+        return self.meta["name"]
+
+    @name.setter
+    def name(self, value):
+        self.meta["name"] = value
+
+    @property
+    def knots(self):
+        return self.meta["knots"]
 
     def layer_indices(self):
         layer = self.data
@@ -60,25 +80,50 @@ class EyeVolumeLayerAnnotation:
 class EyeVolumeVoxelAnnotation:
     def __init__(
         self,
-        data,
-        name,
         volume: "EyeVolume",
+        data: Optional[npt.NDArray[bool]] = None,
+        meta: Optional[dict] = None,
         radii=(1.5, 2.5),
         n_sectors=(1, 4),
         offsets=(0, 45),
         center=None,
+        **kwargs,
     ):
-        self.data = data
-        self.name = name
         self.volume = volume
 
-        self._radii = radii
-        self._n_sectors = n_sectors
-        self._offsets = offsets
-        self._center = center
+        if data is None:
+            self.data = np.full(self.volume.shape, fill_value=False, dtype=bool)
+        else:
+            self.data = data
 
         self._masks = None
         self._quantification = None
+
+        if meta is None:
+            self.meta = kwargs
+        else:
+            self.meta = meta
+            self.meta.update(**kwargs)
+
+        self.meta.update(
+            **{
+                "radii": radii,
+                "n_sectors": n_sectors,
+                "offsets": offsets,
+                "center": center,
+            }
+        )
+
+        if "name" not in self.meta:
+            self.meta["name"] = "Voxel Annotation"
+
+    @property
+    def name(self):
+        return self.meta["name"]
+
+    @name.setter
+    def name(self, value):
+        self.meta["name"] = value
 
     def _reset(self):
         self._masks = None
@@ -86,39 +131,39 @@ class EyeVolumeVoxelAnnotation:
 
     @property
     def radii(self):
-        return self._radii
+        return self.meta["radii"]
 
     @radii.setter
     def radii(self, value):
         self._reset()
-        self._radii = value
+        self.meta["radii"] = value
 
     @property
     def n_sectors(self):
-        return self._n_sectors
+        return self.meta["n_sectors"]
 
     @n_sectors.setter
     def n_sectors(self, value):
         self._reset()
-        self._n_sectors = value
+        self.meta["n_sectors"] = value
 
     @property
     def offsets(self):
-        return self._offsets
+        return self.meta["offsets"]
 
     @offsets.setter
     def offsets(self, value):
         self._reset()
-        self._offsets = value
+        self.meta["offsets"] = value
 
     @property
     def center(self):
-        return self._center
+        return self.meta["center"]
 
     @center.setter
     def center(self, value):
         self._reset()
-        self._center = value
+        self.meta["center"] = value
 
     @property
     def projection(self):
@@ -300,8 +345,8 @@ class EyeVolume:
         else:
             self.meta = meta
 
-        self.layers = defaultdict(lambda: EyeVolumeLayerAnnotation(self))
-        self.volume_maps = {}
+        self._layers = []
+        self._volume_maps = []
 
         if ascan_maps is None:
             self.ascan_maps = {}
@@ -317,6 +362,133 @@ class EyeVolume:
             self.localizer = self._default_localizer(self.data)
         else:
             self.localizer = localizer
+
+    def save(self, path):
+        # Create temporary folder
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            tmpdirname = Path(tmpdirname)
+
+            # Save OCT volume as npy and meta as json
+            np.save(tmpdirname / "raw_volume.npy", self._raw_data)
+            with open(tmpdirname / "meta.json", "w") as meta_file:
+                json.dump(self.meta.as_dict(), meta_file)
+
+            if not len(self._volume_maps) == 0:
+                # Save Volume Annotations
+                voxels_path = tmpdirname / "annotations" / "voxels"
+                voxels_path.mkdir(exist_ok=True, parents=True)
+                np.save(
+                    voxels_path / "voxel_maps.npy",
+                    np.stack([v.data for v in self._volume_maps]),
+                )
+                with open(voxels_path / "meta.json", "w") as meta_file:
+                    json.dump([v.meta for v in self._volume_maps], meta_file)
+
+            if not len(self._layers) == 0:
+                layers_path = tmpdirname / "annotations" / "layers"
+                layers_path.mkdir(exist_ok=True, parents=True)
+                np.save(
+                    layers_path / "layer_heights.npy",
+                    np.stack([l.data for l in self._layers]),
+                )
+                with open(layers_path / "meta.json", "w") as meta_file:
+                    json.dump([l.meta for l in self._layers], meta_file)
+
+            # Save Localizer
+            localizer_path = tmpdirname / "localizer"
+            localizer_path.mkdir(exist_ok=True, parents=True)
+            np.save(localizer_path / "localizer.npy", self.localizer.data)
+            with open(localizer_path / "meta.json", "w") as meta_file:
+                json.dump(self.localizer.meta.as_dict(), meta_file)
+
+            # Save Localizer Annotations
+            if not len(self.localizer._area_maps) == 0:
+                pixels_path = localizer_path / "annotations" / "pixel"
+                pixels_path.mkdir(exist_ok=True, parents=True)
+                np.save(
+                    pixels_path / "pixel_maps.npy",
+                    np.stack([p.data for p in self.localizer._area_maps]),
+                )
+                with open(pixels_path / "meta.json", "w") as meta_file:
+                    json.dump([p.meta for p in self.localizer._area_maps], meta_file)
+
+            # Zip and copy to location
+            name = shutil.make_archive(Path(path).stem, "zip", tmpdirname)
+            shutil.move(name, path)
+
+    @classmethod
+    def load(cls, path):
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            tmpdirname = Path(tmpdirname)
+            with zipfile.ZipFile(path, "r") as zip_ref:
+                zip_ref.extractall(tmpdirname)
+
+            # Load raw volume and meta
+            data = np.load(tmpdirname / "raw_volume.npy")
+            with open(tmpdirname / "meta.json", "r") as meta_file:
+                volume_meta = EyeVolumeMeta.from_dict(json.load(meta_file))
+
+            # Load Volume Annotations
+            voxels_path = tmpdirname / "annotations" / "voxels"
+            if voxels_path.exists():
+                voxel_annotations = np.load(voxels_path / "voxel_maps.npy")
+                with open(voxels_path / "meta.json", "r") as meta_file:
+                    voxels_meta = json.load(meta_file)
+
+            # Load layers
+            layers_path = tmpdirname / "annotations" / "layers"
+            if layers_path.exists():
+                layer_annotations = np.load(layers_path / "layer_heights.npy")
+                with open(layers_path / "meta.json", "r") as meta_file:
+                    layers_meta = json.load(meta_file)
+
+            # Load Localizer and meta
+            localizer_path = tmpdirname / "localizer"
+            localizer_data = np.load(localizer_path / "localizer.npy")
+            with open(localizer_path / "meta.json", "r") as meta_file:
+                localizer_meta = EyeEnfaceMeta.from_dict(json.load(meta_file))
+            localizer = EyeEnface(data=localizer_data, meta=localizer_meta)
+
+            # Load Localizer Annotations
+            pixels_path = localizer_path / "annotations" / "pixel"
+            if pixels_path.exists():
+                pixel_annotations = np.load(pixels_path / "pixel_maps.npy")
+                with open(pixels_path / "meta.json", "r") as meta_file:
+                    pixels_meta = json.load(meta_file)
+
+                for i, pixel_meta in enumerate(pixels_meta):
+                    localizer.add_area_annotation(pixel_annotations[i], pixel_meta)
+
+            from eyepy.io.utils import _compute_localizer_oct_transform
+
+            transformation = _compute_localizer_oct_transform(
+                volume_meta, localizer_meta, data.shape
+            )
+
+            ev = cls(
+                data=data,
+                meta=volume_meta,
+                localizer=localizer,
+                transformation=transformation,
+            )
+            if layers_path.exists():
+                for i, layer_meta in enumerate(layers_meta):
+                    if "knots" in layer_meta:
+                        knots = layer_meta["knots"]
+                        knots = {int(i): knots[i] for i in knots}
+                        layer_meta["knots"] = knots
+                    ev.add_layer_annotation(layer_annotations[i], layer_meta)
+
+            if voxels_path.exists():
+                for i, voxel_meta in enumerate(voxels_meta):
+                    ev.add_voxel_annotation(voxel_annotations[i], voxel_meta)
+        return ev
+
+    def save_annotations(self, path):
+        pass
+
+    def load_annotations(self, path):
+        pass
 
     def _default_meta(self, volume):
         bscan_meta = [
@@ -394,9 +566,6 @@ class EyeVolume:
         """The number of B-Scans."""
         return self.shape[0]
 
-    def add_layer(self, name, height_map):
-        self.layers[name] = EyeVolumeLayerAnnotation(self, height_map)
-
     def set_intensity_transform(self, func: Callable):
         self.intensity_transform = func
         self._data = None
@@ -443,8 +612,31 @@ class EyeVolume:
     def laterality(self):
         return self.meta["laterality"]
 
-    def set_volume_map(self, name, value):
-        self.volume_maps[name] = EyeVolumeVoxelAnnotation(value, name, self)
+    @property
+    def layers(self):
+        # Create a dict to access layers by their name
+        return {layer.name: layer for layer in self._layers}
+
+    @property
+    def volume_maps(self):
+        # Create a dict to access volume_maps by their name
+        return {vm.name: vm for vm in self._volume_maps}
+
+    def add_voxel_annotation(self, voxel_map=None, meta=None, **kwargs):
+        if meta is None:
+            meta = {}
+        meta.update(**kwargs)
+        voxel_annotation = EyeVolumeVoxelAnnotation(self, voxel_map, **meta)
+        self._volume_maps.append(voxel_annotation)
+        return voxel_annotation
+
+    def add_layer_annotation(self, height_map=None, meta=None, **kwargs):
+        if meta is None:
+            meta = {}
+        meta.update(**kwargs)
+        layer_annotation = EyeVolumeLayerAnnotation(self, height_map, **meta)
+        self._layers.append(layer_annotation)
+        return layer_annotation
 
     def plot(
         self,
@@ -458,22 +650,6 @@ class EyeVolume:
         projection_kwargs=None,
         line_kwargs=None,
     ):
-        """
-
-        Args:
-            ax:
-            localizer:
-            projections:
-            bscan_region:
-            bscan_positions:
-            masks:
-            region:
-            projection_kwargs:
-
-        Returns:
-
-        """
-
         if ax is None:
             ax = plt.gca()
 

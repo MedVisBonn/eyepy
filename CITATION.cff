@@ -1,0 +1,49 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: eyepy
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Olivier
+    family-names: Morelle
+    email: oli4morelle@gmail.com
+    orcid: 'https://orcid.org/0000-0001-6404-2726'
+    affiliation: >-
+      University of Bonn - Bonn-Aachen International
+      Center for Information Technology (b-it) /
+      University Hospital Bonn - Department of
+      Ophthalmology
+identifiers:
+  - type: url
+    value: 'https://github.com/MedVisBonn/eyepy/tree/v0.5.0'
+repository-code: 'https://github.com/MedVisBonn/eyepy/tree/v0.5.0'
+abstract: >-
+  Eye imaging data from different device vendors
+  often come in different file formats. Additionally,
+  public datasets often have their own way of storing
+  data for distribution. The lack of documentation
+  for many device-specific formats is a problem
+  already when working with a single data source
+  while the pure amount of different formats slows
+  down everyone trying to use data from multiple
+  sources.
+
+  This Python package aims at providing a unified
+  interface to a wide variety of eye imaging formats
+  and the execution of standard tasks such as data
+  visualization and quantification on ETDRS grids.
+  Thereby, it enables the development of
+  device-independent software and algorithms.
+keywords:
+  - OCT
+  - Drusen
+  - Heidelberg
+  - HEYEX
+  - ETDRS
+license: MIT
+version: v0.5.0
+date-released: '2022-03-02'

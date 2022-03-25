@@ -12,7 +12,22 @@ ascan_kwargs = {"alpha": 0.5}
 line_kwargs = {"linewidth": 0.2, "linestyle": "-", "color": "green"}
 
 # Colors for different Layers
-# x = sns.color_palette("husl", 17)
-# color_palette = sns.color_palette(x[::3] + x[1::3] + x[2::3])
-# layer_colors = {key: color_palette[value] for key, value in SEG_MAPPING.items()}
-layer_colors = defaultdict(lambda: "red")
+_layer_colors = {
+    "BM": "F77189",
+    "RPE": "97A431",
+    "PR1": "36ADA4",
+    "EZ": "36ADA4",
+    "PR2": "A48CF4",
+    "IZ": "A48CF4",
+    "ELM": "E68332",
+    "ONL": "50B131",
+    "OPL": "38AABF",
+    "INL": "E866F4",
+    "IPL": "BB9832",
+    "GCL": "34AF84",
+    "RNFL": "3BA3EC",
+    "NFL": "3BA3EC",
+    "ILM": "F668C2",
+}
+
+layer_colors = defaultdict(lambda: "FF0000", **_layer_colors)

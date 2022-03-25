@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 import cmath
+import functools
 import logging
-from functools import lru_cache
-from typing import Iterable, Union, Optional, Tuple
+from typing import Iterable, Optional, Tuple, Union
 
 import numpy as np
 from skimage import transform
-
 
 logger = logging.getLogger(__name__)
 
@@ -119,8 +118,6 @@ def create_sectors(
 
     return masks
 
-
-import functools
 
 # Cache created grids. When quantifying many volumes you need the grid for both laterality and possibly different localizer sizes.
 @functools.lru_cache(8, typed=False)
@@ -314,7 +311,7 @@ def grid(
 #                 primitives["lines"].append({"start": start, "end": end})
 #
 #     return primitives
-@lru_cache(maxsize=8)
+@functools.lru_cache(maxsize=8)
 def filtergrid(
     size: Shape, quadrant_shift: bool = True, normalize: bool = True
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -354,7 +351,7 @@ def filtergrid(
     return x.T, y.T
 
 
-@lru_cache(maxsize=8)
+@functools.lru_cache(maxsize=8)
 def radius_filtergrid(
     size: Shape, quadrant_shift: bool = True, normalize: bool = True
 ) -> np.ndarray:
@@ -374,7 +371,7 @@ def radius_filtergrid(
     return radius
 
 
-@lru_cache(maxsize=8)
+@functools.lru_cache(maxsize=8)
 def theta_filtergrid(size: Shape, quadrant_shift: bool = True) -> np.ndarray:
     """
     Parameters

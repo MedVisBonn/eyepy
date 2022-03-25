@@ -15,11 +15,11 @@ import numpy as np
 from skimage import img_as_ubyte
 
 from eyepy.io.lazy import (
-    LazyEnfaceImage,
-    LazyMeta,
-    LazyBscan,
     LazyAnnotation,
+    LazyBscan,
+    LazyEnfaceImage,
     LazyLayerAnnotation,
+    LazyMeta,
 )
 from eyepy.io.utils import _clean_ascii
 

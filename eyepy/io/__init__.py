@@ -1,24 +1,24 @@
+import logging
 from pathlib import Path
 
+import imageio
+import numpy as np
+
 from eyepy import (
-    EyeVolumeMeta,
     EyeBscanMeta,
+    EyeEnface,
     EyeEnfaceMeta,
     EyeVolume,
-    EyeEnface,
+    EyeVolumeMeta,
     EyeVolumeVoxelAnnotation,
 )
 from eyepy.core import EyeVolumeLayerAnnotation
+from eyepy.io.lazy import LazyVolume
 from eyepy.io.utils import (
     _compute_localizer_oct_transform,
     _get_enface_meta,
     _get_volume_meta,
 )
-from eyepy.io.lazy import LazyVolume
-
-import imageio
-import numpy as np
-import logging
 
 logger = logging.getLogger("eyepy.io")
 
@@ -61,14 +61,15 @@ def import_heyex_xml(path):
 
     layer_height_maps = l_volume.layers
     for key, val in layer_height_maps.items():
-        volume.add_layer(key, val)
+        volume.add_layer_annotation(val, name=key)
 
     return volume
 
 
 def import_heyex_vol(path):
-    from eyepy.io.heyex import HeyexVolReader
     from skimage import img_as_ubyte
+
+    from eyepy.io.heyex import HeyexVolReader
 
     reader = HeyexVolReader(path)
     l_volume = LazyVolume(
@@ -113,7 +114,7 @@ def import_heyex_vol(path):
 
     layer_height_maps = l_volume.layers
     for key, val in layer_height_maps.items():
-        volume.add_layer(key, val)
+        volume.add_layer_annotation(val, name=key)
 
     return volume
 
@@ -176,7 +177,10 @@ def import_duke_mat(path):
     volume = EyeVolume(data=volume, meta=meta)
     names = {0: "ILM", 1: "IBRPE", 2: "BM"}
     for i, height_map in enumerate(layer_maps):
-        volume.add_layer(names[i], np.flip(height_map, axis=0))
+        volume.add_layer_annotation(
+            np.flip(height_map, axis=0),
+            name=names[i],
+        )
 
     return volume
 
@@ -186,7 +190,6 @@ def import_retouch(path):
 
     path = Path(path)
     data = itk.imread(str(path / "oct.mhd"))
-    annotation = itk.imread(str(path / "reference.mhd"))
 
     bscan_meta = [
         EyeBscanMeta(
@@ -206,8 +209,11 @@ def import_retouch(path):
     )
 
     eye_volume = EyeVolume(data=data[...], meta=meta)
-    eye_volume.set_volume_map("IRF", np.equal(annotation, 1))
-    eye_volume.set_volume_map("SRF", np.equal(annotation, 2))
-    eye_volume.set_volume_map("PED", np.equal(annotation, 3))
+
+    if (path / "reference.mhd").is_file():
+        annotation = itk.imread(str(path / "reference.mhd"))
+        eye_volume.add_voxel_annotation(np.equal(annotation, 1), name="IRF")
+        eye_volume.add_voxel_annotation(np.equal(annotation, 2), name="SRF")
+        eye_volume.add_voxel_annotation(np.equal(annotation, 3), name="PED")
 
     return eye_volume

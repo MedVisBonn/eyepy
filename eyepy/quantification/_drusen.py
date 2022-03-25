@@ -2,8 +2,8 @@
 import logging
 
 import numpy as np
-from eyepy.core import EyeVolumeLayerAnnotation
 
+from eyepy.core import EyeVolumeLayerAnnotation
 from eyepy.quantification.utils.filter import filter_by_height_enface
 
 logger = logging.getLogger("eyepy.quantification.drusen")
@@ -59,8 +59,8 @@ def drusen(rpe_height, bm_height, volume_shape, minimum_height=2):
     # Create drusen map
     drusen_map = np.zeros(volume_shape, dtype=bool)
     # Exclude normal RPE and RPE from the drusen area.
-    rpe = np.flip((rpe_height + 1).astype(int), axis=0)
-    irpe = np.flip(idealrpe.astype(int), axis=0)
+    rpe = np.flip(np.rint(rpe_height + 1).astype(int), axis=0)
+    irpe = np.flip(np.rint(idealrpe).astype(int), axis=0)
     for sli in range(drusen_map.shape[0]):
         for col in range(drusen_map.shape[2]):
             if not rpe[sli, col] == -9223372036854775808:

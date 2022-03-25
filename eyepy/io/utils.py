@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Union, MutableMapping, Tuple
+from typing import MutableMapping, Tuple, Union
 
 import numpy as np
 from skimage import transform
 
+from eyepy.core.eyemeta import EyeBscanMeta, EyeEnfaceMeta, EyeVolumeMeta
 from eyepy.io.lazy import LazyVolume
-from eyepy.core.eyemeta import EyeBscanMeta, EyeVolumeMeta, EyeEnfaceMeta
 
 logger = logging.getLogger(__name__)
 

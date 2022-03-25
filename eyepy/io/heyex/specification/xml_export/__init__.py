@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
+import logging
 import warnings
+
+from .base import bscan_base_spec, oct_base_spec
 from .v61240 import bscan_spec as v61240_bscan
 from .v61240 import oct_spec as v61240_oct
 from .v69530 import bscan_spec as v69530_bscan
 from .v69530 import oct_spec as v69530_oct
-
-from .base import bscan_base_spec, oct_base_spec
-
-import logging
 
 logger = logging.getLogger("eyepy.io.heyex")
 

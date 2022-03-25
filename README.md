@@ -18,6 +18,7 @@ pin the version in your project requirements.
 * Quantify voxel annotations on a customizable circular grid
 * Plot annotated localizer
 * Plot annotated B-scans
+* Save and load EyeVolume objects
 
 ## Getting Started
 
@@ -81,9 +82,9 @@ import eyepy as ep
 # Import example data
 ev = ep.data.load("drusen_patient")
 drusen_map = ep.drusen(ev.layers["RPE"], ev.layers["BM"], ev.shape, minimum_height=2)
-ev.set_volume_map("drusen", drusen_map)
+ev.add_voxel_annotation(drusen_map, name="drusen")
 
-fig, axes = plt.subplots(1,2, figsize=(5,10))
+fig, axes = plt.subplots(1, 2, figsize=(5, 10))
 
 # Configure quantification grid for drusen quantification
 ev.volume_maps["drusen"].radii = [1.5, 2.5]
@@ -117,3 +118,4 @@ ax.axis("off")
 # Related Projects:
 
 + [OCT-Converter](https://github.com/marksgraham/OCT-Converter): Extract raw optical coherence tomography (OCT) and fundus data from proprietary file formats. (.fds/.fda/.e2e/.img/.oct/.dcm)
++ [eyelab](https://github.com/MedVisBonn/eyelab): A GUI for annotation of OCT data based on eyepy

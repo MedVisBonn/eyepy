@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 import os
-from eyepy.core.eyemeta import EyeMeta
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Union, MutableMapping
+from typing import Callable, Dict, List, MutableMapping, Optional, Union
+
 import numpy as np
+
+from eyepy.core.eyemeta import EyeMeta
 
 # PR1 and EZ map to 14 and PR2 and IZ map to 15. Hence both names can be used
 # to access the same data
@@ -11,7 +13,6 @@ SEG_MAPPING = {
     "ILM": 0,
     "BM": 1,
     "RNFL": 2,
-    "NFL": 2,
     "GCL": 3,
     "IPL": 4,
     "INL": 5,
@@ -23,9 +24,7 @@ SEG_MAPPING = {
     "CHO": 11,
     "VIT": 12,
     "ANT": 13,
-    "EZ": 14,
     "PR1": 14,
-    "IZ": 15,
     "PR2": 15,
     "RPE": 16,
 }

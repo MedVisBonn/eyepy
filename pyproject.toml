@@ -3,7 +3,7 @@ name = "eyepie"
 packages = [
     {include = "eyepy"}
 ]
-version = "0.4.1"
+version = "0.5.0"
 description = "The Python package for working with ophthalmological data."
 authors = ["Olivier Morelle <oli4morelle@gmail.com>"]
 license = "MIT"
@@ -47,6 +47,7 @@ build-backend = "poetry.core.masonry.api"
 major_on_zero = false
 version_variable = ['eyepy/__init__.py:__version__']
 version_toml = "pyproject.toml:tool.poetry.version"
+version_pattern = ["CITATION.cff:v(\\d+\\.\\d+\\.\\d+)"]
 upload_to_pypi = true
 upload_to_release = true
 build_command = "pip install poetry && poetry build"

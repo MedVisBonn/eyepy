@@ -1,51 +1,66 @@
-import collections
+from typing import List
 
-import numpy as np
-from eyepy import config
 import matplotlib.pyplot as plt
+import numpy as np
+
+from eyepy import config
+from eyepy.core.utils import DynamicDefaultDict
 
 
-class EyeBscanLayers:
-    def __init__(self, eyebscan):
-        self.index = eyebscan.index
-        self.volume = eyebscan._volume
+class EyeBscanLayerAnnotation:
+    def __init__(self, eyevolumelayerannotation, index):
+        self.eyevolumelayerannotation = eyevolumelayerannotation
+        self.volume = eyevolumelayerannotation.volume
+        self.index = index
 
-    def __getitem__(self, item):
-        return self.volume.layers[item].data[-(self.index + 1)]
+    @property
+    def name(self):
+        return self.eyevolumelayerannotation.meta["name"]
 
-    def __setitem__(self, key, value):
-        self.volume.layers[key].data[-(self.index + 1), :] = value
+    @name.setter
+    def name(self, value: str):
+        self.eyevolumelayerannotation.meta["name"] = value
+
+    @property
+    def data(self):
+        return self.eyevolumelayerannotation.data[-(self.index + 1), :]
+
+    @data.setter
+    def data(self, value):
+        self.eyevolumelayerannotation.data[-(self.index + 1), :] = value
+
+    @property
+    def knots(self):
+        return self.eyevolumelayerannotation.knots[self.index]
+
+    @knots.setter
+    def knots(self, value: List):
+        self.eyevolumelayerannotation.knots[self.index] = value
 
 
 class EyeBscan:
     def __init__(self, volume: "EyeVolume", index: int):
         self.index = index
-        self._volume = volume
+        self.volume = volume
 
-        self._bscan_layers = EyeBscanLayers(self)
+        self.layers = DynamicDefaultDict(
+            lambda x: EyeBscanLayerAnnotation(self.volume.layers[x], self.index)
+        )
+        self.area_maps = DynamicDefaultDict(
+            lambda x: self.volume.volume_maps[x].data[self.index]
+        )
 
     @property
     def meta(self):
-        return self._volume.meta["bscan_meta"][self.index]
+        return self.volume.meta["bscan_meta"][self.index]
 
     @property
     def data(self):
-        return self._volume.data[self.index]
-
-    @property
-    def layers(self):
-        return self._bscan_layers
+        return self.volume.data[self.index]
 
     @property
     def ascan_maps(self):
-        return self._volume.ascan_maps[self.index]
-
-    @property
-    def area_maps(self):
-        return {
-            name: self._volume.volume_maps[name].data[self.index]
-            for name in self._volume.volume_maps.keys()
-        }
+        return self.volume.ascan_maps[self.index]
 
     @property
     def shape(self):
@@ -89,12 +104,12 @@ class EyeBscan:
         if layers is None:
             layers = []
         elif layers is True:
-            layers = self.layers.keys()
+            layers = self.volume.layers.keys()
 
         if areas is None:
             areas = []
         elif areas is True:
-            areas = self.area_maps.keys()
+            areas = self.volume.volume_maps.keys()
 
         if ascans is None:
             ascans = []
@@ -138,11 +153,10 @@ class EyeBscan:
                 cmap="Reds",
                 interpolation="none",
             )
-
         for layer in layers:
             color = config.layer_colors[layer]
 
-            layer_data = self.layers[layer]
+            layer_data = self.layers[layer].data
             # Adjust layer height to plotted region
             layer_data = layer_data - region[0].start
             # Remove layer if outside of region
@@ -153,7 +167,7 @@ class EyeBscan:
 
             ax.plot(
                 layer_data,
-                color=color,
+                color="#" + color,
                 label=layer,
                 **layer_kwargs,
             )
