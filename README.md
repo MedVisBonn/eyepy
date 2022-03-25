@@ -1,6 +1,8 @@
 # eyepy
 
 [![PyPI version](https://badge.fury.io/py/eyepie.svg)](https://badge.fury.io/py/eyepie)
+[![DOI](https://zenodo.org/badge/292547201.svg)](https://zenodo.org/badge/latestdoi/292547201)
+
 
 
 This package is under active development and things might change without
