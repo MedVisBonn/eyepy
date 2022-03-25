@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.0 (2022-03-25)
+### Feature
+* **eyevolume:** Enable use of EyeVolume in eyelab ([`8479628`](https://github.com/MedVisBonn/eyepy/commit/84796285a2eebb65497ac3cd438bdc212aa41e34))
+
+### Documentation
+* **README.md:** Add Related Projects section with reference to OCT-Converter ([`c273e44`](https://github.com/MedVisBonn/eyepy/commit/c273e448f177712cc67de8215b7afe448b005a4a))
+
 ## v0.5.0 (2022-03-02)
 ### Feature
 * **eyevolume.py:** Enable custom intensity transformation for OCT data ([`761dd5a`](https://github.com/MedVisBonn/eyepy/commit/761dd5a4a360ca46d79ff2074b2644b4c2fd8ca4))
