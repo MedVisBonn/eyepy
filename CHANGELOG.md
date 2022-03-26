@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.1 (2022-03-26)
+### Fix
+* **pyproject.toml:** Set minimum python version to 3.7 for compatibility with pyinstaller docker container ([`75c008c`](https://github.com/MedVisBonn/eyepy/commit/75c008cade9fda68f967590cbfe7cb68251de9c8))
+
+### Documentation
+* **README.md:** Add DOI badge ([`c4d046b`](https://github.com/MedVisBonn/eyepy/commit/c4d046bb96a0c7b60cce5a6c4745e512e3f431ad))
+
 ## v0.6.0 (2022-03-25)
 ### Feature
 * **eyevolume:** Enable use of EyeVolume in eyelab ([`8479628`](https://github.com/MedVisBonn/eyepy/commit/84796285a2eebb65497ac3cd438bdc212aa41e34))
