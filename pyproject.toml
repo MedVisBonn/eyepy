@@ -27,7 +27,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.11"
+python = ">=3.7,<3.11"
 scikit-image = "^0.19.1"
 imagecodecs = "^2021.11.20"
 matplotlib = "^3.5.1"
