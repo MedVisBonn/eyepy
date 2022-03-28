@@ -207,13 +207,22 @@ def import_retouch(path):
         scale_unit="mm",
         bscan_meta=bscan_meta,
     )
-
+    # Todo: Add intensity transform instead. Topcon and Cirrus are stored as UCHAR while spectralis is stored as USHORT
+    data = (data[...].astype(float) / np.iinfo(data[...].dtype).max * 255).astype(
+        np.uint8
+    )
     eye_volume = EyeVolume(data=data[...], meta=meta)
 
     if (path / "reference.mhd").is_file():
         annotation = itk.imread(str(path / "reference.mhd"))
-        eye_volume.add_voxel_annotation(np.equal(annotation, 1), name="IRF")
-        eye_volume.add_voxel_annotation(np.equal(annotation, 2), name="SRF")
-        eye_volume.add_voxel_annotation(np.equal(annotation, 3), name="PED")
+        eye_volume.add_voxel_annotation(
+            np.equal(annotation, 1), name="IRF", current_color="FF0000"
+        )
+        eye_volume.add_voxel_annotation(
+            np.equal(annotation, 2), name="SRF", current_color="0000FF"
+        )
+        eye_volume.add_voxel_annotation(
+            np.equal(annotation, 3), name="PED", current_color="FFFF00"
+        )
 
     return eye_volume
