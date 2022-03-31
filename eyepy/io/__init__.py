@@ -76,6 +76,7 @@ def import_heyex_vol(path):
 
     enface_meta = _get_enface_meta(l_volume)
     volume_meta = _get_volume_meta(l_volume)
+    volume_meta["intensity_transform"] = "vol"
     transformation = _compute_localizer_oct_transform(
         volume_meta, enface_meta, l_volume.shape
     )

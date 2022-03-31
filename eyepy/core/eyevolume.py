@@ -345,6 +345,8 @@ class EyeVolume:
             self.meta = self._default_meta(self._raw_data)
         else:
             self.meta = meta
+        if not "intensity_transform" in self.meta:
+            self.meta["intensity_transform"] = "default"
 
         self.set_intensity_transform(self.meta["intensity_transform"])
 
