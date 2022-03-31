@@ -1,6 +1,7 @@
 import json
 import shutil
 import tempfile
+import warnings
 import zipfile
 from collections import defaultdict
 from pathlib import Path
@@ -18,6 +19,7 @@ from eyepy import config
 from eyepy.core.eyebscan import EyeBscan
 from eyepy.core.eyeenface import EyeEnface
 from eyepy.core.eyemeta import EyeBscanMeta, EyeEnfaceMeta, EyeVolumeMeta
+from eyepy.core.utils import intensity_transforms
 
 
 class LayerKnot(TypedDict):
@@ -336,14 +338,15 @@ class EyeVolume:
     ):
         self._raw_data = data
         self._data = None
-        self.intensity_transform = lambda x: x
 
         self._bscans = {}
 
         if meta is None:
-            self.meta = self._default_meta(self.data)
+            self.meta = self._default_meta(self._raw_data)
         else:
             self.meta = meta
+
+        self.set_intensity_transform(self.meta["intensity_transform"])
 
         self._layers = []
         self._volume_maps = []
@@ -371,6 +374,9 @@ class EyeVolume:
             # Save OCT volume as npy and meta as json
             np.save(tmpdirname / "raw_volume.npy", self._raw_data)
             with open(tmpdirname / "meta.json", "w") as meta_file:
+                if self.meta["intensity_transform"] == "custom":
+                    warnings.warn("Custom intensity transforms can not be saved.")
+                    self.meta["intensity_transform"] = "default"
                 json.dump(self.meta.as_dict(), meta_file)
 
             if not len(self._volume_maps) == 0:
@@ -498,7 +504,12 @@ class EyeVolume:
             for i in range(volume.shape[0] - 1, -1, -1)
         ]
         meta = EyeVolumeMeta(
-            scale_x=1, scale_y=1, scale_z=1, scale_unit="pixel", bscan_meta=bscan_meta
+            scale_x=1,
+            scale_y=1,
+            scale_z=1,
+            scale_unit="pixel",
+            intensity_transform="default",
+            bscan_meta=bscan_meta,
         )
         return meta
 
@@ -566,9 +577,29 @@ class EyeVolume:
         """The number of B-Scans."""
         return self.shape[0]
 
-    def set_intensity_transform(self, func: Callable):
-        self.intensity_transform = func
-        self._data = None
+    def set_intensity_transform(self, func: Union[str, Callable]):
+        """
+
+        Args:
+            func: Either a string specifying a transform from eyepy.core.utils.intensity_transforms or a function
+
+        Returns:
+
+        """
+        if type(func) is str:
+            if func in intensity_transforms:
+                self.meta["intensity_transform"] = func
+                self.intensity_transform = intensity_transforms[func]
+                self._data = None
+            else:
+                raise ValueError(
+                    "Provided intensity transform name is not know. Valid names are 'vol' or 'default'. You can also pass your own function."
+                )
+
+        else:
+            self.meta["intensity_transform"] = "custom"
+            self.intensity_transform = func
+            self._data = None
 
     @property
     def data(self):
@@ -578,7 +609,7 @@ class EyeVolume:
 
     @property
     def shape(self):
-        return self.data.shape
+        return self._raw_data.shape
 
     @property
     def scale(self):
