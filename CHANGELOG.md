@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.3 (2022-03-31)
+### Fix
+* **eyevolume.py:** Set default intensity transform if none is given ([`16b44bc`](https://github.com/MedVisBonn/eyepy/commit/16b44bc19f4839c9cbd5c382273c13942ecd2a10))
+
 ## v0.6.2 (2022-03-31)
 ### Fix
 * **eyevolume.py:** Add intensity_transform to the saved meta data ([`c6a2c68`](https://github.com/MedVisBonn/eyepy/commit/c6a2c68e5f6c05dc86eba88db582473d41b2909a))
