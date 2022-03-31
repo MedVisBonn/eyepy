@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.2 (2022-03-31)
+### Fix
+* **eyevolume.py:** Add intensity_transform to the saved meta data ([`c6a2c68`](https://github.com/MedVisBonn/eyepy/commit/c6a2c68e5f6c05dc86eba88db582473d41b2909a))
+* **import_retouch:** Transform intensities correctly ([`112d1cc`](https://github.com/MedVisBonn/eyepy/commit/112d1cc178c3ab3bdb8b1f1130b95805eb5d729c))
+
 ## v0.6.1 (2022-03-26)
 ### Fix
 * **pyproject.toml:** Set minimum python version to 3.7 for compatibility with pyinstaller docker container ([`75c008c`](https://github.com/MedVisBonn/eyepy/commit/75c008cade9fda68f967590cbfe7cb68251de9c8))
