@@ -70,8 +70,8 @@ def import_heyex_vol(path):
     )
 
     ## Check if scan is a volume scan
-    if not l_volume.ScanPattern in [3, 4]:
-        msg = f"Only volumes with ScanPattern 3 or 4 are supported. The ScanPattern is {l_volume.ScanPattern} which might lead to exceptions or unexpected behaviour."
+    if not l_volume.ScanPattern in [1, 3, 4]:
+        msg = f"Only volumes with ScanPattern 1, 3 or 4 are supported. The ScanPattern is {l_volume.ScanPattern} which might lead to exceptions or unexpected behaviour."
         logger.warning(msg)
 
     enface_meta = _get_enface_meta(l_volume)

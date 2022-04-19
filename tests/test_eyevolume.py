@@ -70,3 +70,39 @@ def test_set_layers_on_eyebscan(eyevolume):
     assert np.all(bscan.layers["test_layer_2"].data == 240)
     assert np.nansum(eyevolume.layers["test_layer_2"].data) == eyevolume.size_x * 240
     assert np.all(eyevolume.layers["test_layer_2"].data[-(5 + 1)] == 240)
+
+
+# Test Bscan iteration
+def test_bscan_iteration(eyevolume):
+    bscans = [b for b in eyevolume]
+    bscans_2 = [eyevolume[i] for i in range(len(eyevolume))]
+    assert bscans == bscans_2
+
+
+# Delete layers
+def test_delete_layers(eyevolume):
+    eyevolume.add_layer_annotation(name="delete_layer")
+    assert "delete_layer" in eyevolume.layers
+
+    eyevolume[2].layers["delete_layer"].data = 20
+    assert "delete_layer" in eyevolume[2].layers
+
+    eyevolume.delete_layer_annotation("delete_layer")
+
+    assert "delete_layer" not in eyevolume.layers
+    # Test for references in the B-scans
+    assert "delete_layer" not in eyevolume[2].layers
+
+
+def test_delete_voxel_annotation(eyevolume):
+    eyevolume.add_voxel_annotation(name="delete_volume")
+    assert "delete_volume" in eyevolume.volume_maps
+
+    eyevolume[2].area_maps["delete_volume"][:5, :5] = 20
+    assert "delete_volume" in eyevolume[2].area_maps
+
+    eyevolume.delete_voxel_annotations("delete_volume")
+
+    assert "delete_volume" not in eyevolume.volume_maps
+    # Test for references in the B-scans
+    assert "delete_volume" not in eyevolume[2].area_maps

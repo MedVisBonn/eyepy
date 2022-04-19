@@ -1,4 +1,5 @@
 import json
+import logging
 import shutil
 import tempfile
 import warnings
@@ -20,6 +21,8 @@ from eyepy.core.eyebscan import EyeBscan
 from eyepy.core.eyeenface import EyeEnface
 from eyepy.core.eyemeta import EyeBscanMeta, EyeEnfaceMeta, EyeVolumeMeta
 from eyepy.core.utils import intensity_transforms
+
+logger = logging.getLogger("eyepy.core.eyevolume")
 
 
 class LayerKnot(TypedDict):
@@ -593,11 +596,14 @@ class EyeVolume:
                 self.meta["intensity_transform"] = func
                 self.intensity_transform = intensity_transforms[func]
                 self._data = None
-            else:
-                raise ValueError(
-                    "Provided intensity transform name is not know. Valid names are 'vol' or 'default'. You can also pass your own function."
+            elif func == "custom":
+                logger.warning(
+                    "Custom intensity transforms can not be loaded currently"
                 )
-
+            else:
+                logger.warning(
+                    f"Provided intensity transform name {func} is not know. Valid names are 'vol' or 'default'. You can also pass your own function."
+                )
         else:
             self.meta["intensity_transform"] = "custom"
             self.intensity_transform = func
@@ -663,6 +669,16 @@ class EyeVolume:
         self._volume_maps.append(voxel_annotation)
         return voxel_annotation
 
+    def delete_voxel_annotations(self, name):
+        for i, voxel_map in enumerate(self._volume_maps):
+            if voxel_map.name == name:
+                self._volume_maps.pop(i)
+
+        # Remove references from B-scans
+        for bscan in self:
+            if name in bscan.area_maps:
+                bscan.area_maps.pop(name)
+
     def add_layer_annotation(self, height_map=None, meta=None, **kwargs):
         if meta is None:
             meta = {}
@@ -670,6 +686,16 @@ class EyeVolume:
         layer_annotation = EyeVolumeLayerAnnotation(self, height_map, **meta)
         self._layers.append(layer_annotation)
         return layer_annotation
+
+    def delete_layer_annotation(self, name):
+        for i, layer in enumerate(self._layers):
+            if layer.name == name:
+                self._layers.pop(i)
+
+        # Remove references from B-scans
+        for bscan in self:
+            if name in bscan.layers:
+                bscan.layers.pop(name)
 
     def plot(
         self,
