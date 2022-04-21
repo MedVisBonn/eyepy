@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.5 (2022-04-21)
+### Fix
+* **io/utils.py:** Check for parallel and equal distance B-scans ([`c5d68d2`](https://github.com/MedVisBonn/eyepy/commit/c5d68d23370a314714e4d0a798336ccb6a60f032))
+
 ## v0.6.4 (2022-04-21)
 ### Fix
 * **lazy.py:** Fix shape of lazy volume ([`34b944f`](https://github.com/MedVisBonn/eyepy/commit/34b944fa02538be753352e32d4e2b046cd940b81))
