@@ -404,7 +404,7 @@ class LazyVolume:
 
     @property
     def shape(self):
-        return (self.meta["NumBScans"], self.meta["SizeX"], self.meta["SizeY"])
+        return (self.meta["NumBScans"], self.meta["SizeY"], self.meta["SizeX"])
 
     @property
     def localizer(self):
