@@ -161,7 +161,7 @@ def _get_volume_meta(lazy_volume: LazyVolume):
             dist_func(bscan_meta[i]["end_pos"], bscan_meta[i + 1]["end_pos"])
             for i in range(len(bscan_meta) - 1)
         ]
-        if not set(start_distances) == set(end_distances):
+        if not len(start_distances) == len(end_distances) == 1:
             msg = "B-scans are not equally spaced. Projections into the enface space are distorted."
             logger.warning(msg)
         bscan_distance = start_distances[0]
