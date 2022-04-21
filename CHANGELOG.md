@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.4 (2022-04-21)
+### Fix
+* **lazy.py:** Fix shape of lazy volume ([`34b944f`](https://github.com/MedVisBonn/eyepy/commit/34b944fa02538be753352e32d4e2b046cd940b81))
+* **eyevolume.py:** Enable import of B-scans with varying distances by replacing the raised Error by a warning; support deleteion of annotations ([`d8b4bb8`](https://github.com/MedVisBonn/eyepy/commit/d8b4bb870aa6a29439db0b46372610d2685b3995))
+
 ## v0.6.3 (2022-03-31)
 ### Fix
 * **eyevolume.py:** Set default intensity transform if none is given ([`16b44bc`](https://github.com/MedVisBonn/eyepy/commit/16b44bc19f4839c9cbd5c382273c13942ecd2a10))
