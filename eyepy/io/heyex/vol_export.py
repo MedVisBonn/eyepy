@@ -12,7 +12,6 @@ from struct import calcsize, unpack
 from typing import IO, Union
 
 import numpy as np
-from skimage import img_as_ubyte
 
 from eyepy.io.lazy import (
     LazyAnnotation,
@@ -23,6 +22,7 @@ from eyepy.io.lazy import (
 )
 from eyepy.io.utils import _clean_ascii
 
+from ...core.utils import vol_intensity_transform
 from .specification.vol_export import HEVOL_BSCAN_VERSIONS, HEVOL_VERSIONS
 
 logger = logging.getLogger(__name__)
@@ -97,7 +97,7 @@ class HeyexVolReader:
                 annotation = LazyAnnotation(**self.create_annotation_dict(startpos))
 
                 self._bscans.append(
-                    bscan_builder(data, annotation, bscan_meta, self._data_processing)
+                    bscan_builder(data, annotation, bscan_meta, vol_intensity_transform)
                 )
 
         return self._bscans
@@ -121,16 +121,6 @@ class HeyexVolReader:
             )
             self._oct_meta = LazyMeta(**retrieve_dict)
         return self._oct_meta
-
-    def _data_processing(self, data):
-        """How to process the loaded B-Scans."""
-        data = np.copy(data)
-        data[data > 1.1] = 0.0
-        # return data
-        func = lambda x: np.rint(
-            (np.log(np.clip(x, 3.8e-06, 0.99) + 2.443e-04) + 8.301) * 1.207e-01 * 255
-        )
-        return img_as_ubyte(func(data).astype(int))
 
     def create_annotation_dict(self, startpos):
         """For every Annotation create a function to read it.

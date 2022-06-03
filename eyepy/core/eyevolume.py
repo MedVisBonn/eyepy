@@ -51,6 +51,7 @@ class EyeVolumeLayerAnnotation:
             self.meta = meta
             self.meta.update(**kwargs)
 
+        # knots is a dict layername: list of curves where every curve is a list of knots
         if "knots" not in self.meta:
             self.meta["knots"] = defaultdict(lambda: [])
         elif type(self.meta["knots"]) is dict:
@@ -452,6 +453,13 @@ class EyeVolume:
                 layer_annotations = np.load(layers_path / "layer_heights.npy")
                 with open(layers_path / "meta.json", "r") as meta_file:
                     layers_meta = json.load(meta_file)
+                    # For compatibility with eyelab <= v0.2.0 if layer knots exist make sure they are
+                    # organized like [[knots], [knots]] and not [knots]
+                    for layer in layers_meta:
+                        if "knots" in layer:
+                            for slice in layer["knots"]:
+                                if type(layer["knots"][slice][0]) is dict:
+                                    layer["knots"][slice] = [layer["knots"][slice]]
 
             # Load Localizer and meta
             localizer_path = tmpdirname / "localizer"
