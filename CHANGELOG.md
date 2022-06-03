@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.6 (2022-06-03)
+### Fix
+* **eyevolume:** Auto convert old layer curves ([`7842120`](https://github.com/MedVisBonn/eyepy/commit/78421205c3cd4ddf4f9ff9700bf36dd9515bc4ab))
+
 ## v0.6.5 (2022-04-21)
 ### Fix
 * **io/utils.py:** Check for parallel and equal distance B-scans ([`c5d68d2`](https://github.com/MedVisBonn/eyepy/commit/c5d68d23370a314714e4d0a798336ccb6a60f032))
