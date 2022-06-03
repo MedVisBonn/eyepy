@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.7 (2022-06-03)
+### Fix
+* **eyevolume.py:** Remove reformating of knot data in load - eyelab now does it if needed ([`35060ab`](https://github.com/MedVisBonn/eyepy/commit/35060ab079fd52a415cbe61f833622a73d4a4736))
+
 ## v0.6.6 (2022-06-03)
 ### Fix
 * **eyevolume:** Auto convert old layer curves ([`7842120`](https://github.com/MedVisBonn/eyepy/commit/78421205c3cd4ddf4f9ff9700bf36dd9515bc4ab))
