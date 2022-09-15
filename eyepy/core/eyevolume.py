@@ -207,12 +207,9 @@ class EyeVolumeVoxelAnnotation:
         if vmax is None:
             vmax = max([enface_projection.max(), vmin])
 
-        visible = np.zeros(enface_projection[region].shape)
-        visible[
-            np.logical_and(
-                vmin <= enface_projection[region], enface_projection[region] <= vmax
-            )
-        ] = 1
+        enface_crop = enface_projection[region]
+        visible = np.zeros(enface_crop.shape)
+        visible[np.logical_and(vmin <= enface_crop, enface_crop <= vmax)] = 1
 
         if cbar:
             divider = make_axes_locatable(ax)
@@ -223,8 +220,8 @@ class EyeVolumeVoxelAnnotation:
             )
 
         ax.imshow(
-            enface_projection[region],
-            alpha=visible[region] * alpha,
+            enface_crop,
+            alpha=visible * alpha,
             cmap=cmap,
             vmin=vmin,
             vmax=vmax,
