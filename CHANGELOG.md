@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.8 (2022-09-15)
+### Fix
+* **eyepy:** Update pre-commit; remove itk from dependencies ([`0339fb6`](https://github.com/MedVisBonn/eyepy/commit/0339fb6f08aefd63027fb8213fc5da526a6890a7))
+
 ## v0.6.7 (2022-06-03)
 ### Fix
 * **eyevolume.py:** Remove reformating of knot data in load - eyelab now does it if needed ([`35060ab`](https://github.com/MedVisBonn/eyepy/commit/35060ab079fd52a415cbe61f833622a73d4a4736))
