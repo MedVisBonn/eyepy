@@ -4,7 +4,9 @@ from pathlib import Path
 import imageio
 import numpy as np
 
-from eyepy import EyeBscanMeta, EyeVolume, EyeVolumeMeta
+from eyepy import EyeBscanMeta
+from eyepy import EyeVolume
+from eyepy import EyeVolumeMeta
 from eyepy.io.he_vol_reader import HeVolReader
 from eyepy.io.he_xml_reader import HeXmlReader
 

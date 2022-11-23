@@ -2,7 +2,8 @@ import abc
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Union
 
-from nptyping import NDArray, Shape
+from nptyping import NDArray
+from nptyping import Shape
 
 
 class BaseLayerAnnotation(metaclass=abc.ABCMeta):

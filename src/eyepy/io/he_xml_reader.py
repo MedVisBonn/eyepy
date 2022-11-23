@@ -1,25 +1,25 @@
 # -*- coding: utf-8 -*-
 import functools
 import logging
-import xml.etree.ElementTree as ElementTree
 from pathlib import Path
 from typing import List
+import xml.etree.ElementTree as ElementTree
 
 import imageio
 import numpy as np
 from skimage import img_as_ubyte
 
 from eyepy.core.eyeenface import EyeEnface
-from eyepy.core.eyemeta import EyeBscanMeta, EyeEnfaceMeta, EyeVolumeMeta
+from eyepy.core.eyemeta import EyeBscanMeta
+from eyepy.core.eyemeta import EyeEnfaceMeta
+from eyepy.core.eyemeta import EyeVolumeMeta
 from eyepy.core.eyevolume import EyeVolume
-from eyepy.io.utils import (
-    _compute_localizer_oct_transform,
-    _get_date_from_xml,
-    _get_datetime_from_xml,
-    _get_first_as_float,
-    _get_first_as_int,
-    _get_first_as_str,
-)
+from eyepy.io.utils import _compute_localizer_oct_transform
+from eyepy.io.utils import _get_date_from_xml
+from eyepy.io.utils import _get_datetime_from_xml
+from eyepy.io.utils import _get_first_as_float
+from eyepy.io.utils import _get_first_as_int
+from eyepy.io.utils import _get_first_as_str
 
 logger = logging.getLogger(__name__)
 

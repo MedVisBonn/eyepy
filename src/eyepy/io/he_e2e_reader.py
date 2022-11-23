@@ -5,7 +5,9 @@ import construct as cs
 import numpy as np
 
 from eyepy.core.eyeenface import EyeEnface
-from eyepy.core.eyemeta import EyeBscanMeta, EyeEnfaceMeta, EyeVolumeMeta
+from eyepy.core.eyemeta import EyeBscanMeta
+from eyepy.core.eyemeta import EyeEnfaceMeta
+from eyepy.core.eyemeta import EyeVolumeMeta
 from eyepy.core.eyevolume import EyeVolume
 from eyepy.io.he_vol_reader import SEG_MAPPING
 from eyepy.io.utils import _compute_localizer_oct_transform

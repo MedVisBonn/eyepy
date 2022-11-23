@@ -1,5 +1,10 @@
-from .annotations import EyeVolumeLayerAnnotation, EyeVolumeVoxelAnnotation
-from .eyebscan import EyeBscan, EyeBscanLayerAnnotation
-from .eyeenface import EyeEnface, EyeEnfaceAreaAnnotation
-from .eyemeta import EyeBscanMeta, EyeEnfaceMeta, EyeVolumeMeta
+from .annotations import EyeVolumeLayerAnnotation
+from .annotations import EyeVolumeVoxelAnnotation
+from .eyebscan import EyeBscan
+from .eyebscan import EyeBscanLayerAnnotation
+from .eyeenface import EyeEnface
+from .eyeenface import EyeEnfaceAreaAnnotation
+from .eyemeta import EyeBscanMeta
+from .eyemeta import EyeEnfaceMeta
+from .eyemeta import EyeVolumeMeta
 from .eyevolume import EyeVolume

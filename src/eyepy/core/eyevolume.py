@@ -1,35 +1,30 @@
+from collections import defaultdict
 import json
 import logging
+from pathlib import Path
 import shutil
 import tempfile
+from typing import (Callable, List, Optional, overload, SupportsIndex, Tuple,
+                    TypedDict, Union)
 import warnings
 import zipfile
-from collections import defaultdict
-from pathlib import Path
-from typing import (
-    Callable,
-    List,
-    Optional,
-    SupportsIndex,
-    Tuple,
-    TypedDict,
-    Union,
-    overload,
-)
 
-import matplotlib.pyplot as plt
-import numpy as np
 from matplotlib import patches
+import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from numpy import typing as npt
+import numpy as np
 from skimage import transform
 from skimage.transform._geometric import GeometricTransform
 
 from eyepy import config
-from eyepy.core.annotations import EyeVolumeLayerAnnotation, EyeVolumeVoxelAnnotation
+from eyepy.core.annotations import EyeVolumeLayerAnnotation
+from eyepy.core.annotations import EyeVolumeVoxelAnnotation
 from eyepy.core.eyebscan import EyeBscan
 from eyepy.core.eyeenface import EyeEnface
-from eyepy.core.eyemeta import EyeBscanMeta, EyeEnfaceMeta, EyeVolumeMeta
+from eyepy.core.eyemeta import EyeBscanMeta
+from eyepy.core.eyemeta import EyeEnfaceMeta
+from eyepy.core.eyemeta import EyeVolumeMeta
 from eyepy.core.utils import intensity_transforms
 
 logger = logging.getLogger("eyepy.core.eyevolume")

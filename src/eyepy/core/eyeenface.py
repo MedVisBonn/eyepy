@@ -1,8 +1,8 @@
 from typing import Optional
 
 import matplotlib.pyplot as plt
-import numpy as np
 from numpy import typing as npt
+import numpy as np
 
 from eyepy.core.annotations import EyeEnfaceAreaAnnotation
 

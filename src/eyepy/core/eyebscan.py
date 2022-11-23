@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List
+from typing import List, TYPE_CHECKING
 
 import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches

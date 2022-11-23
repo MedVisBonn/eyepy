@@ -11,15 +11,17 @@ import construct as cs
 import numpy as np
 from skimage import transform
 
-from eyepy import EyeBscanMeta, EyeEnface, EyeEnfaceMeta, EyeVolume, EyeVolumeMeta
-from eyepy.io.utils import (
-    Bscan,
-    FloatDate,
-    IntDate,
-    Localizer,
-    Segmentations,
-    _compute_localizer_oct_transform,
-)
+from eyepy import EyeBscanMeta
+from eyepy import EyeEnface
+from eyepy import EyeEnfaceMeta
+from eyepy import EyeVolume
+from eyepy import EyeVolumeMeta
+from eyepy.io.utils import _compute_localizer_oct_transform
+from eyepy.io.utils import Bscan
+from eyepy.io.utils import FloatDate
+from eyepy.io.utils import IntDate
+from eyepy.io.utils import Localizer
+from eyepy.io.utils import Segmentations
 
 logger = logging.getLogger("eyepy.io.HeVolReader")
 

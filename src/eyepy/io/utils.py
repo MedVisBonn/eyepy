@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime
+from datetime import timedelta
+from datetime import timezone
 import logging
-from datetime import datetime, timedelta, timezone
 from typing import MutableMapping, Tuple, Union
 
 import construct as cs

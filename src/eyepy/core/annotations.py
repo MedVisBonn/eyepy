@@ -1,21 +1,24 @@
 from __future__ import annotations
 
-import logging
 from collections import defaultdict
-from typing import TYPE_CHECKING, List, Optional
+import logging
+from typing import List, Optional, TYPE_CHECKING
 
+from matplotlib import cm
+from matplotlib import colors
+from matplotlib import patches
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 import numpy.typing as npt
-from matplotlib import cm, colors, patches
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from skimage import transform
 from skimage.transform._geometric import GeometricTransform
 
 from eyepy import config
 
 if TYPE_CHECKING:
-    from eyepy import EyeEnface, EyeVolume
+    from eyepy import EyeEnface
+    from eyepy import EyeVolume
 
 logger = logging.getLogger("eyepy.core.annotations")
 

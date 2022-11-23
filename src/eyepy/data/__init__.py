@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import logging
+from pathlib import Path
 import urllib.request
 import zipfile
-from pathlib import Path
 
 import eyepy as ep
 
