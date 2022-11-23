@@ -1,0 +1,26 @@
+site_name: eyepy
+site_url: https://example.com/
+nav:
+    - Home: index.md
+    - Cookbook: cookbook.md
+    - File formats: formats.md
+    - Reference: reference/
+    - Changelog: changelog.md
+
+plugins:
+    - search
+    - autorefs
+    - gen-files:
+        scripts:
+            - docs/gen_ref_pages.py
+    - literate-nav:
+          nav_file: SUMMARY.md
+    - mkdocstrings:
+        handlers:
+          python:
+            paths: [.]
+
+markdown_extensions:
+    - pymdownx.magiclink
+    - pymdownx.snippets:
+        check_paths: true

@@ -1,6 +1,6 @@
 import numpy as np
 
-from eyepy.quantification.utils.grids import grid
+from eyepy.core.grids import grid
 
 
 def test_grid_1_circle():

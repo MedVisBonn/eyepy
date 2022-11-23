@@ -4,7 +4,6 @@
 [![DOI](https://zenodo.org/badge/292547201.svg)](https://zenodo.org/badge/latestdoi/292547201)
 
 
-
 This package is under active development and things might change without
 backwards compatibility. If you want to use eyepy in your project make sure to
 pin the version in your project requirements.
@@ -78,12 +77,13 @@ Here we compute and quantify drusen for our sample data which has manual layer a
 In the resulting plot on the left, the scale is the drusen height in voxel and on the right, the drusen volume in mm³
 
 ```python
+import eyepy.core.utils
 import matplotlib.pyplot as plt
 import eyepy as ep
 
 # Import example data
 ev = ep.data.load("drusen_patient")
-drusen_map = ep.drusen(ev.layers["RPE"], ev.layers["BM"], ev.shape, minimum_height=2)
+drusen_map = eyepy.core.utils.drusen(ev.layers["RPE"], ev.layers["BM"], ev.shape, minimum_height=2)
 ev.add_voxel_annotation(drusen_map, name="drusen")
 
 fig, axes = plt.subplots(1, 2, figsize=(5, 10))
