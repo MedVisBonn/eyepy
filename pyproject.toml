@@ -32,8 +32,8 @@ scikit-image = "^0.19.1"
 imagecodecs = "^2021.11.20"
 matplotlib = "^3.5.1"
 nptyping = "^2.3.1"
-construct = {extras = ["numpy"], version = "^2.10.68"}
 mkdocs-literate-nav = "^0.5.0"
+construct-typing = "^0.5.5"
 
 
 

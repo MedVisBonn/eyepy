@@ -93,7 +93,8 @@ class EyeVolume:
             np.save(tmpdirname / "raw_volume.npy", self._raw_data)
             with open(tmpdirname / "meta.json", "w") as meta_file:
                 if self.meta["intensity_transform"] == "custom":
-                    warnings.warn("Custom intensity transforms can not be saved.")
+                    warnings.warn(
+                        "Custom intensity transforms can not be saved.")
                     self.meta["intensity_transform"] = "default"
                 json.dump(self.meta.as_dict(), meta_file)
 
@@ -135,10 +136,12 @@ class EyeVolume:
                     np.stack([p.data for p in self.localizer._area_maps]),
                 )
                 with open(pixels_path / "meta.json", "w") as meta_file:
-                    json.dump([p.meta for p in self.localizer._area_maps], meta_file)
+                    json.dump([p.meta for p in self.localizer._area_maps],
+                              meta_file)
 
             # Zip and copy to location
-            name = shutil.make_archive(Path(path).stem, "zip", tmpdirname)
+            name = shutil.make_archive(str(tmpdirname / Path(path).stem),
+                                       "zip", tmpdirname)
             shutil.move(name, path)
 
     @classmethod
@@ -203,13 +206,13 @@ class EyeVolume:
                     pixels_meta = json.load(meta_file)
 
                 for i, pixel_meta in enumerate(pixels_meta):
-                    localizer.add_area_annotation(pixel_annotations[i], pixel_meta)
+                    localizer.add_area_annotation(pixel_annotations[i],
+                                                  pixel_meta)
 
             from eyepy.io.utils import _compute_localizer_oct_transform
 
             transformation = _compute_localizer_oct_transform(
-                volume_meta, localizer_meta, data.shape
-            )
+                volume_meta, localizer_meta, data.shape)
 
             ev = cls(
                 data=data,
@@ -227,16 +230,16 @@ class EyeVolume:
 
     def _default_meta(self, volume):
         bscan_meta = [
-            EyeBscanMeta(
-                start_pos=(0, i), end_pos=((volume.shape[2] - 1), i), pos_unit="pixel"
-            )
+            EyeBscanMeta(start_pos=(0, i),
+                         end_pos=((volume.shape[2] - 1), i),
+                         pos_unit="pixel")
             for i in range(volume.shape[0] - 1, -1, -1)
         ]
         meta = EyeVolumeMeta(
-            scale_x=np.nan,
-            scale_y=np.nan,
-            scale_z=np.nan,
-            scale_unit="",
+            scale_x=1.0,
+            scale_y=1.0,
+            scale_z=1.0,
+            scale_unit="pixel",
             intensity_transform="default",
             bscan_meta=bscan_meta,
         )
@@ -252,33 +255,29 @@ class EyeVolume:
         )
         localizer = EyeEnface(
             image,
-            meta=EyeEnfaceMeta(
-                scale_x=self.scale_x, scale_y=self.scale_x, scale_unit=self.scale_unit
-            ),
+            meta=EyeEnfaceMeta(scale_x=self.scale_x,
+                               scale_y=self.scale_x,
+                               scale_unit=self.scale_unit),
         )
         return localizer
 
     def _estimate_transform(self):
         # Compute a transform to map a 2D projection of the volume to a square
         # Points in oct space
-        src = np.array(
-            [
-                [0, 0],  # Top left
-                [0, self.size_x - 1],  # Top right
-                [self.size_z - 1, 0],  # Bottom left
-                [self.size_z - 1, self.size_x - 1],
-            ]
-        )  # Bottom right
+        src = np.array([
+            [0, 0],  # Top left
+            [0, self.size_x - 1],  # Top right
+            [self.size_z - 1, 0],  # Bottom left
+            [self.size_z - 1, self.size_x - 1],
+        ])  # Bottom right
 
         # Respective points in enface space
-        dst = np.array(
-            [
-                (0, 0),  # Top left
-                (0, self.size_x - 1),  # Top right
-                (self.size_x - 1, 0),  # Bottom left
-                (self.size_x - 1, self.size_x - 1),
-            ]
-        )  # Bottom right
+        dst = np.array([
+            (0, 0),  # Top left
+            (0, self.size_x - 1),  # Top right
+            (self.size_x - 1, 0),  # Bottom left
+            (self.size_x - 1, self.size_x - 1),
+        ])  # Bottom right
 
         # Switch from x/y coordinates to row/column coordinates for src and dst
         src = np.flip(src, axis=1)
@@ -297,8 +296,8 @@ class EyeVolume:
         ...
 
     def __getitem__(
-        self, index: Union[SupportsIndex, slice]
-    ) -> Union[List[EyeBscan], EyeBscan]:
+            self, index: Union[SupportsIndex,
+                               slice]) -> Union[List[EyeBscan], EyeBscan]:
         """
 
         Args:
@@ -346,8 +345,7 @@ class EyeVolume:
                 self._data = None
             elif func == "custom":
                 logger.warning(
-                    "Custom intensity transforms can not be loaded currently"
-                )
+                    "Custom intensity transforms can not be loaded currently")
             else:
                 logger.warning(
                     f"Provided intensity transform name {func} is not known. Valid names are 'vol' or 'default'. You can also pass your own function."
@@ -379,7 +377,8 @@ class EyeVolume:
 
     @shape.setter
     def shape(self, value):
-        raise AttributeError("Shape can not be set since it is derived from the data")
+        raise AttributeError(
+            "Shape can not be set since it is derived from the data")
 
     @property
     def scale(self):
@@ -641,7 +640,9 @@ class EyeVolume:
         for name in projections:
             if not name in projection_kwargs.keys():
                 projection_kwargs[name] = {}
-            self.volume_maps[name].plot(ax=ax, region=region, **projection_kwargs[name])
+            self.volume_maps[name].plot(ax=ax,
+                                        region=region,
+                                        **projection_kwargs[name])
 
         if line_kwargs is None:
             line_kwargs = config.line_kwargs
@@ -656,10 +657,13 @@ class EyeVolume:
                 line_kwargs=line_kwargs,
             )
         if bscan_region:
-            self._plot_bscan_region(region=region, ax=ax, line_kwargs=line_kwargs)
+            self._plot_bscan_region(region=region,
+                                    ax=ax,
+                                    line_kwargs=line_kwargs)
 
         if quantification:
-            self.volume_maps[quantification].plot_quantification(region=region, ax=ax)
+            self.volume_maps[quantification].plot_quantification(region=region,
+                                                                 ax=ax)
 
     def _plot_bscan_positions(
         self,

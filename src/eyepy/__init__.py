@@ -17,6 +17,7 @@ from eyepy.core import EyeVolumeMeta
 from eyepy.core import EyeVolumeVoxelAnnotation
 from eyepy.io import import_bscan_folder
 from eyepy.io import import_duke_mat
+from eyepy.io import import_heyex_e2e
 from eyepy.io import import_heyex_vol
 from eyepy.io import import_heyex_xml
 from eyepy.io import import_retouch

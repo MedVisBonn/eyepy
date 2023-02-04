@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from typing import Union
 
 import imageio
 import numpy as np
@@ -7,51 +8,77 @@ import numpy as np
 from eyepy import EyeBscanMeta
 from eyepy import EyeVolume
 from eyepy import EyeVolumeMeta
-from eyepy.io.he_vol_reader import HeVolReader
-from eyepy.io.he_xml_reader import HeXmlReader
+
+from .he import HeE2eReader
+from .he import HeVolReader
+from .he import HeVolWriter
+from .he import HeXmlReader
 
 logger = logging.getLogger("eyepy.io")
 
 
-def import_heyex_xml(path):
-    """
+def import_heyex_e2e(path: Union[str, Path]) -> EyeVolume:
+    """ Read a Heyex E2E file
+
+    This function is a thin wrapper around the HeE2eReader class and
+    returns the first of potentially multiple volumes. If you want to
+    read all volumes, use the HeE2eReader directly with the single=False parameter.
 
     Args:
-        path:
+        path: Path to the E2E file
 
-    Returns:
+    Returns: EyeVolume
+
+    """
+    return HeE2eReader(path).volume
+
+
+def import_heyex_xml(path: Union[str, Path]) -> EyeVolume:
+    """ Read a Heyex XML file
+
+    This function is a thin wrapper around the HeXmlReader class
+    which you can use directly if you need more control.
+
+    Args:
+        path: Path to the XML file or the folder containing the XML file
+
+    Returns: EyeVolume
 
     """
     return HeXmlReader(path).volume
 
 
-def import_heyex_vol(path):
-    """
+def import_heyex_vol(path: Union[str, Path]) -> EyeVolume:
+    """ Read a Heyex VOL file
+
+    This function is a thin wrapper around the HeVolReader class
+    which you can use directly if you need more control.
 
     Args:
-        path:
+        path: Path to the VOL file
 
-    Returns:
+    Returns: EyeVolume
 
     """
     return HeVolReader(path).volume
 
 
-def import_bscan_folder(path):
-    """
+def import_bscan_folder(path: Union[str, Path]) -> EyeVolume:
+    """ Read B-Scans from a folder
+
+    This function can be used to read B-scans from a folder in case that
+    there is no additional metadata available.
 
     Args:
-        path:
+        path: Path to the folder containing the B-Scans
 
-    Returns:
+    Returns: EyeVolume
 
     """
     path = Path(path)
     img_paths = sorted(list(path.iterdir()))
     img_paths = [
-        p
-        for p in img_paths
-        if p.is_file()
+        p for p in img_paths if p.is_file()
         and p.suffix.lower() in [".jpg", ".jpeg", ".tiff", ".tif", ".png"]
     ]
 
@@ -64,25 +91,31 @@ def import_bscan_folder(path):
 
     volume = np.stack(images, axis=0)
     bscan_meta = [
-        EyeBscanMeta(
-            start_pos=(0, i), end_pos=(volume.shape[2] - 1, i), pos_unit="pixel"
-        )
+        EyeBscanMeta(start_pos=(0, i),
+                     end_pos=(volume.shape[2] - 1, i),
+                     pos_unit="pixel")
         for i in range(volume.shape[0] - 1, -1, -1)
     ]
-    meta = EyeVolumeMeta(
-        scale_x=1, scale_y=1, scale_z=1, scale_unit="pixel", bscan_meta=bscan_meta
-    )
+    meta = EyeVolumeMeta(scale_x=1,
+                         scale_y=1,
+                         scale_z=1,
+                         scale_unit="pixel",
+                         bscan_meta=bscan_meta)
 
     return EyeVolume(data=volume, meta=meta)
 
 
-def import_duke_mat(path):
-    """
+def import_duke_mat(path: Union[str, Path]) -> EyeVolume:
+    """ Import an OCT volume from the Duke dataset
+
+    The dataset is available at https://people.duke.edu/~sf59/RPEDC_Ophth_2013_dataset.htm
+    OCT volumes are stored as .mat files which are parsed by this function and returned as
+    EyeVolume object.
 
     Args:
-        path:
+        path: Path to the .mat file
 
-    Returns:
+    Returns: EyeVolume
 
     """
     import scipy.io as sio
@@ -96,8 +129,7 @@ def import_duke_mat(path):
             start_pos=(0, 0.067 * i),
             end_pos=(0.0067 * (volume.shape[2] - 1), 0.067 * i),
             pos_unit="mm",
-        )
-        for i in range(volume.shape[0] - 1, -1, -1)
+        ) for i in range(volume.shape[0] - 1, -1, -1)
     ]
     meta = EyeVolumeMeta(
         scale_x=0.0067,
@@ -119,13 +151,18 @@ def import_duke_mat(path):
     return volume
 
 
-def import_retouch(path):
-    """
+def import_retouch(path: Union[str, Path]) -> EyeVolume:
+    """ Import an OCT volume from the Retouch dataset
+
+    The dataset is available upon request at https://retouch.grand-challenge.org/
+    Reading the data requires the ITK library to be installed. You can install it with pip:
+
+    `pip install itk`
 
     Args:
-        path:
+        path: Path to the folder containing the OCT volume
 
-    Returns:
+    Returns: EyeVolume
 
     """
     import itk
@@ -136,10 +173,10 @@ def import_retouch(path):
     bscan_meta = [
         EyeBscanMeta(
             start_pos=(0, data["spacing"][0] * i),
-            end_pos=(data["spacing"][2] * (data.shape[2] - 1), data["spacing"][0] * i),
+            end_pos=(data["spacing"][2] * (data.shape[2] - 1),
+                     data["spacing"][0] * i),
             pos_unit="mm",
-        )
-        for i in range(data.shape[0] - 1, -1, -1)
+        ) for i in range(data.shape[0] - 1, -1, -1)
     ]
 
     meta = EyeVolumeMeta(
@@ -150,21 +187,20 @@ def import_retouch(path):
         bscan_meta=bscan_meta,
     )
     # Todo: Add intensity transform instead. Topcon and Cirrus are stored as UCHAR while heidelberg is stored as USHORT
-    data = (data[...].astype(float) / np.iinfo(data[...].dtype).max * 255).astype(
-        np.uint8
-    )
+    data = (data[...].astype(float) / np.iinfo(data[...].dtype).max *
+            255).astype(np.uint8)
     eye_volume = EyeVolume(data=data[...], meta=meta)
 
     if (path / "reference.mhd").is_file():
         annotation = itk.imread(str(path / "reference.mhd"))
-        eye_volume.add_voxel_annotation(
-            np.equal(annotation, 1), name="IRF", current_color="FF0000"
-        )
-        eye_volume.add_voxel_annotation(
-            np.equal(annotation, 2), name="SRF", current_color="0000FF"
-        )
-        eye_volume.add_voxel_annotation(
-            np.equal(annotation, 3), name="PED", current_color="FFFF00"
-        )
+        eye_volume.add_voxel_annotation(np.equal(annotation, 1),
+                                        name="IRF",
+                                        current_color="FF0000")
+        eye_volume.add_voxel_annotation(np.equal(annotation, 2),
+                                        name="SRF",
+                                        current_color="0000FF")
+        eye_volume.add_voxel_annotation(np.equal(annotation, 3),
+                                        name="PED",
+                                        current_color="FFFF00")
 
     return eye_volume

@@ -222,6 +222,17 @@ python-versions = ">=3.6"
 extras = ["arrow", "cloudpickle", "enum34", "lz4", "numpy", "ruamel.yaml"]
 
 [[package]]
+name = "construct-typing"
+version = "0.5.5"
+description = "Extension for the python package 'construct' that adds typing features"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+construct = "2.10.68"
+
+[[package]]
 name = "coverage"
 version = "6.5.0"
 description = "Code coverage measurement for Python"
@@ -1777,7 +1788,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.11"
-content-hash = "691bfd1a1ac292da93d5a9b98ab1c0673616df91a02289442ef9ee585de3fca2"
+content-hash = "a915f5ea43ce4f577f946c09ab27eaadd2aa65e991471debf67694ca28599229"
 
 [metadata.files]
 anyio = [
@@ -1930,6 +1941,10 @@ commitizen = [
 ]
 construct = [
     {file = "construct-2.10.68.tar.gz", hash = "sha256:7b2a3fd8e5f597a5aa1d614c3bd516fa065db01704c72a1efaaeec6ef23d8b45"},
+]
+construct-typing = [
+    {file = "construct-typing-0.5.5.tar.gz", hash = "sha256:29d1a07df539ae096bd1388ad7f58714d229a303047425d3830b282d8b154572"},
+    {file = "construct_typing-0.5.5-py3-none-any.whl", hash = "sha256:bfce2fa170373abe782c2ebaa7f52e14e8f7863a437b7ab63bf74287f922a655"},
 ]
 coverage = [
     {file = "coverage-6.5.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:ef8674b0ee8cc11e2d574e3e2998aea5df5ab242e012286824ea3c6970580e53"},

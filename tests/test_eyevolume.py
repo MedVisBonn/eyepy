@@ -7,15 +7,6 @@ import eyepy as ep
 from eyepy.core.utils import DynamicDefaultDict
 
 
-@pytest.fixture(scope="module")
-def eyevolume():
-    n_bscans = 10
-    bscan_height = 50
-    bscan_width = 100
-    data = np.random.random((n_bscans, bscan_height, bscan_width)).astype(np.float32)
-    return ep.EyeVolume(data=data)
-
-
 def test_eyevolume_attributes_shape(eyevolume):
     assert eyevolume.size_z == 10
     assert eyevolume.size_x == 100
@@ -31,15 +22,16 @@ def test_eyevolume_attributes_shape(eyevolume):
     with pytest.raises(AttributeError):
         eyevolume.shape = (5, 5, 5)
 
-    assert eyevolume.shape == (eyevolume.size_z, eyevolume.size_y, eyevolume.size_x)
+    assert eyevolume.shape == (eyevolume.size_z, eyevolume.size_y,
+                               eyevolume.size_x)
 
 
 def test_eyevolume_attributes_scale(eyevolume):
     # The scale is np.nan if not specified
-    assert eyevolume.scale_z is np.nan
-    assert eyevolume.scale_x is np.nan
-    assert eyevolume.scale_y is np.nan
-    assert eyevolume.scale_unit == ""
+    assert eyevolume.scale_z == 1.0
+    assert eyevolume.scale_x == 1.0
+    assert eyevolume.scale_y == 1.0
+    assert eyevolume.scale_unit == "pixel"
 
     # Test setting scaling information
     eyevolume.scale_z = 0.5
@@ -51,7 +43,8 @@ def test_eyevolume_attributes_scale(eyevolume):
     assert eyevolume.scale_x == 0.5
     assert eyevolume.scale_y == 0.5
     assert eyevolume.scale_unit == "mm"
-    assert eyevolume.scale == (eyevolume.scale_z, eyevolume.scale_y, eyevolume.scale_x)
+    assert eyevolume.scale == (eyevolume.scale_z, eyevolume.scale_y,
+                               eyevolume.scale_x)
 
 
 def test_eyevolume_attributes(eyevolume):
@@ -85,9 +78,9 @@ def test_eyevolume_meta_exists(eyevolume):
 
 # Set layers on eyevolume
 def test_set_layers_on_eyevolume(eyevolume):
-    eyevolume.add_layer_annotation(
-        np.full((eyevolume.size_z, eyevolume.size_x), 25), name="test_layer"
-    )
+    eyevolume.add_layer_annotation(np.full(
+        (eyevolume.size_z, eyevolume.size_x), 25),
+                                   name="test_layer")
     assert type(eyevolume.layers["test_layer"]) == ep.EyeVolumeLayerAnnotation
     assert np.all(eyevolume[5].layers["test_layer"].data == 25)
     assert eyevolume.layers["test_layer"].data[5, 10] == 25
@@ -99,17 +92,16 @@ def test_set_layers_on_eyebscan(eyevolume):
     assert "test_layer_2" in eyevolume.layers.keys()
 
     bscan = eyevolume[5]
-    assert (
-        type(bscan.layers["test_layer_2"].eyevolumelayerannotation)
-        == ep.EyeVolumeLayerAnnotation
-    )
+    assert (type(bscan.layers["test_layer_2"].eyevolumelayerannotation) ==
+            ep.EyeVolumeLayerAnnotation)
     # Check that all heights are initially nan
     assert np.sum(~np.isnan(bscan.layers["test_layer_2"].data)) == 0
 
     # Check that correct values are set
-    bscan.layers["test_layer_2"].data = np.full((eyevolume.size_x,), 240)
+    bscan.layers["test_layer_2"].data = np.full((eyevolume.size_x, ), 240)
     assert np.all(bscan.layers["test_layer_2"].data == 240)
-    assert np.nansum(eyevolume.layers["test_layer_2"].data) == eyevolume.size_x * 240
+    assert np.nansum(
+        eyevolume.layers["test_layer_2"].data) == eyevolume.size_x * 240
     assert np.all(eyevolume.layers["test_layer_2"].data[-(5 + 1)] == 240)
 
 
@@ -147,3 +139,14 @@ def test_delete_voxel_annotation(eyevolume):
     assert "delete_volume" not in eyevolume.volume_maps
     # Test for references in the B-scans
     assert "delete_volume" not in eyevolume[2].area_maps
+
+
+def test_save_load(eyevolume, tmp_path):
+    # Save
+    eyevolume.save(tmp_path / "test.eye")
+    # Load
+    eyevolume2 = ep.EyeVolume.load(tmp_path / "test.eye")
+    # Test whether loaded eyevolume is the same as the original
+    assert len(eyevolume.meta) == len(eyevolume2.meta)
+    assert len(eyevolume.layers) == len(eyevolume2.layers)
+    assert len(eyevolume.volume_maps) == len(eyevolume2.volume_maps)

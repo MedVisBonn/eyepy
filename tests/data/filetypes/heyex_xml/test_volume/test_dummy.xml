@@ -44,6 +44,17 @@
                     <ModalityProcedure>IR_OCT</ModalityProcedure>
                     <Type>Volume</Type>
                     <Laterality>R</Laterality>
+                    <ReferenceSeries>
+                    <SeriesUID>LOC-000000001.0000000f-000f-000f-000f-00000000000f</SeriesUID>
+                    <ID>2909929</ID>
+                    <ExamDate>
+                    <Date>
+                    <Year>2000</Year>
+                    <Month>01</Month>
+                    <Day>01</Day>
+                    </Date>
+                    </ExamDate>
+                    </ReferenceSeries>
                     <GeneralEquipment>
                         <Manufacturer>Heidelberg Engineering</Manufacturer>
                         <ManufacturerModelName>Spectralis</ManufacturerModelName>
