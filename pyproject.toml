@@ -27,13 +27,15 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.7,<3.11"
+python = ">=3.8,<3.11"
 scikit-image = "^0.19.1"
 imagecodecs = "^2021.11.20"
 matplotlib = "^3.5.1"
 nptyping = "^2.3.1"
 mkdocs-literate-nav = "^0.5.0"
 construct-typing = "^0.5.5"
+mkdocs-material = "^9.0.11"
+pandas = "^1.5.3"
 
 
 
@@ -55,6 +57,7 @@ jupyter = "^1.0.0"
 
 [tool.poetry.group.dev.dependencies]
 yapf = {version = "^0.32.0", allow-prereleases = true}
+tabulate = "^0.9.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

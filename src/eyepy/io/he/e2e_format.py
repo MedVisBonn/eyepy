@@ -159,25 +159,10 @@ textdata = cs.Struct(
 )
 
 slodata = cs.Struct(
-    p=cs.Bytes(24),
+    unknown=cs.Bytes(24),
     windate=cs.Int64un,
     transform=cs.Array(6, cs.Float32n),
-    rest=cs.Bytes(cs.this._.header.size - 80),
-)
-
-version_structure = cs.Struct(
-    magic1=cs.PaddedString(12, "ascii"),
-    version=cs.Int32un,
-    unknown=cs.Array(10, cs.Int16un),
-)
-header_structure = cs.Struct(
-    magic2=cs.PaddedString(12, "ascii"),
-    version=cs.Int32un,
-    unknown=cs.Array(10, cs.Int16un),
-    num_entries=cs.Int32un,
-    current=cs.Int32un,
-    prev=cs.Int32un,
-    unknown3=cs.Int32un,
+    unknown1=cs.Bytes(cs.this._.header.size - 80),
 )
 
 types = cs.Enum(
@@ -225,43 +210,71 @@ item_switch = cs.Switch(cs.this.header.type, {
 
 raw_item_switch = cs.RawCopy(item_switch)
 
-data_container_structure = cs.Struct(
-    header=cs.Struct(
-        magic3=cs.PaddedString(12, "ascii"),
-        unknown=cs.Int32un,
-        unknown2=cs.Int32un,
-        pos=cs.Int32un,
-        size=cs.Int32un,
-        unknown3=cs.Int32un,
-        patient_id=cs.Int32sn,
-        study_id=cs.Int32sn,
-        series_id=cs.Int32sn,
-        slice_id=cs.Int32sn,
-        ind=cs.Int16un,  # 0 for enface and 1 for bscan for image containers
-        unknown4=cs.Int16un,
-        type=types,
-        unknown5=cs.Int32un,
-    ),
-    item=item_switch)
+container_header_structure = cs.Struct(
+    magic3=cs.PaddedString(12, "ascii"),
+    unknown=cs.Int32un,
+    header_pos=cs.Int32un,
+    pos=cs.Int32un,
+    size=cs.Int32un,
+    # Always 0 (b'\x00\x00\x00\x00')? At leat in our data
+    unknown3=cs.Int32un,
+    patient_id=cs.Int32sn,
+    study_id=cs.Int32sn,
+    series_id=cs.Int32sn,
+    # Has to be divided by 2 to get the correct slice number
+    slice_id=cs.Int32sn,
+    # Takes only values 65333, 0 and 1 (b'\xff\xff', b'\x00\x00', b'\x01\x00') at least in our data
+    # 0 for enface and 1 for bscan for image containers
+    ind=cs.Int16un,
+    # Always 0 (b'\x00\x00')? At leat in our data
+    unknown4=cs.Int16un,
+    type=types,
+    # Large integer that increases in steps of folder header size (=44) Maybe the folder header position in HEYEX database not in this file?
+    # Possibly related to the folder header unknown4 value
+    unknown5=cs.Int32un,
+)
+
+data_container_structure = cs.Struct(header=container_header_structure,
+                                     item=item_switch)
+
+folder_header_structure = cs.Struct(
+    # Position of the folder (In a chunk all 512 folder headers are stored sequentially, refering to the data that follows after this header block)
+    pos=cs.Int32un,
+    # Start of the data container, after the header block in the chunk
+    start=cs.Int32un,
+    # Size of the data container
+    size=cs.Int32un,
+    # Always 0 (b'\x00\x00')? At leat in our data
+    unknown=cs.Int32un,
+    patient_id=cs.Int32sn,
+    study_id=cs.Int32sn,
+    series_id=cs.Int32sn,
+    slice_id=cs.Int32sn,
+    # 0 for enface and 1 for bscan for image containers
+    ind=cs.Int16un,
+    unknown3=cs.Int16un,
+    type=types,
+    # Large integer possibly related to data_container.unknown5. Maybe the position in HEYEX DB?
+    unknown4=cs.Int32un,
+)
 
 folder_structure = cs.Struct(
-    header=cs.Struct(
-        pos=cs.Int32un,
-        start=cs.Int32un,
-        size=cs.Int32un,
-        unknown=cs.Int32un,
-        patient_id=cs.Int32sn,
-        study_id=cs.Int32sn,
-        series_id=cs.Int32sn,
-        slice_id=cs.Int32sn,
-        ind=cs.Int16un,  # 0 for enface and 1 for bscan for image containers
-        unknown3=cs.Int16un,
-        type=types,
-        unknown4=cs.Int32un,
-    ),
+    header=folder_header_structure,
     data_container=cs.If(
-        cs.this.header.start > cs.this.header.pos,
-        cs.Pointer(cs.this.header.start, data_container_structure)))
+        cs.this.header.start > cs.this.header.
+        pos,  # Sometimes the start is a small int like 0 or 3 which does not refer to a data container. Only allow start if it is after the header block.
+        cs.Pointer(cs.this.header.start, data_container_structure),
+    ))
+
+header_structure = cs.Struct(
+    magic2=cs.PaddedString(12, "ascii"),
+    version=cs.Int32un,
+    unknown=cs.Array(10, cs.Int16un),
+    num_entries=cs.Int32un,
+    current=cs.Int32un,
+    prev=cs.Int32un,
+    unknown3=cs.Int32un,
+)
 
 chunk_structure = cs.Struct(
     chunk_header=header_structure,
@@ -270,8 +283,12 @@ chunk_structure = cs.Struct(
                  cs.this.folders[-1].header.size +
                  data_container_structure.header.sizeof()))
 
-e2e_format = cs.Struct(
-    version=version_structure,
-    header=header_structure,
-    chunks=cs.GreedyRange(chunk_structure),
+version_structure = cs.Struct(
+    name=cs.PaddedString(12, "ascii"),
+    version=cs.Int32un,
+    unknown=cs.Array(10, cs.Int16un),
 )
+
+e2e_format = cs.Struct(version=version_structure,
+                       header=header_structure,
+                       chunks=cs.GreedyRange(chunk_structure))
