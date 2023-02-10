@@ -21,6 +21,7 @@ jobs:
       PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
 
   Documentation:
+    needs: Release
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -39,5 +40,6 @@ jobs:
               mkdocs-gen-files \
               mkdocs-literate-nav \
               mkdocs-section-index \
-              pymdown-extensions
+              pymdown-extensions \
+              eyepie
       - run: mkdocs gh-deploy --force

@@ -1,9 +1,11 @@
 # eyepy
 
+[![Documentation](https://img.shields.io/badge/docs-eyepy-blue)](https://MedVisBonn.github.io/eyepy)
 [![PyPI version](https://badge.fury.io/py/eyepie.svg)](https://badge.fury.io/py/eyepie)
 [![DOI](https://zenodo.org/badge/292547201.svg)](https://zenodo.org/badge/latestdoi/292547201)
 
-Here you can find the [Documentation](https://www.MedVisBonn.github.io/eyepy)
+The `eyepy` python package provides a simple interface to import and process OCT volumes. Everything you import with one of our import functions becomes an `EyeVolume` object which provides a unified interface to the data. The `EyeVolume` object provides methods to plot the localizer image and B-scans as well as to compute and plot quantifications of voxel annotations such as drusen. Check out the [documentation](https://MedVisBonn.github.io/eyepy), especially the [Cookbook](https://medvisbonn.github.io/eyepy/cookbook/) chapter, for more information.
+
 ## Features
 
 * Import HEYEY E2E, VOL and XML exports
@@ -21,7 +23,6 @@ Here you can find the [Documentation](https://www.MedVisBonn.github.io/eyepy)
 ### Installation
 To install the latest version of eyepy run `pip install -U eyepie`. It is `eyepie` and not `eyepy` for installation with pip.
 
-### Import Data
 When you don't hava a supported OCT volume at hand you can check out our sample dataset to get familiar with `eyepy`.
 ```python
 import eyepy as ep
@@ -29,92 +30,15 @@ import eyepy as ep
 ev = ep.data.load("drusen_patient")
 ```
 
-`eyepy` currently supports the HEYEX E2E, XML and VOL export format. Support for additional formats is easy to implement.
-
-```python
-import eyepy as ep
-# Import HEYEX VOL export
-ev = ep.import_heyex_e2e("path/to/file.e2e")
-# Import HEYEX XML export
-ev = ep.import_heyex_xml("path/to/folder")
-# Import HEYEX VOL export
-ev = ep.import_heyex_vol("path/to/file.vol")
-```
-
-When only B-scans exist in a folder `eyepy` might still be able to import them. B-scans are expected to be ordered and distributed with equal distance on a quadratic area.
-```python
-import eyepy as ep
-# Import B-scans from folder
-ev = ep.import_bscan_folder("path/to/folder")
-```
-
-Public OCT datasets often have their own data formats. `eyepy` can already import volumes from two of the biggest OCT datasets.
-```python
-import eyepy as ep
-# Import DUKE volume
-ev = ep.import_duke_mat("path/to/volume.mat")
-# Import RETOUCH volume
-ev = ep.import_retouch("path/to/folder")
-```
-
-### The EyeVolume Object
-When `eyepy` imports OCT data, it always returns an EyeVolume object. This object provides a unified interface to data imported from various sources.
-
-You can use this object to perform common actions on the OCT volume such as:
-
-+ Access Meta information from the loaded data if available `ev.meta`
-+ Access an associated localizer image `ev.localizer`. When no localizer image is available `eyepy` generates one using a mean projection.
-+ Access associated layer voxel and A-scan annotations
-+ Plot annotated localizer image associated to the volume `ev.plot()`
-+ Iterate over the volume to retrieve EyeBscan objects `for bscan in ev:`
-
-### Compute Drusen and Quantify
-Here we compute and quantify drusen for our sample data which has manual layer annotations for BM and RPE.
-
-In the resulting plot on the left, the scale is the drusen height in voxel and on the right, the drusen volume in mm³
-
-```python
-import eyepy.core.utils
-import matplotlib.pyplot as plt
-import eyepy as ep
-
-# Import example data
-ev = ep.data.load("drusen_patient")
-drusen_map = eyepy.core.utils.drusen(ev.layers["RPE"], ev.layers["BM"], ev.shape, minimum_height=2)
-ev.add_voxel_annotation(drusen_map, name="drusen")
-
-fig, axes = plt.subplots(1, 2, figsize=(5, 10))
-
-# Configure quantification grid for drusen quantification
-ev.volume_maps["drusen"].radii = [1.5, 2.5]
-ev.volume_maps["drusen"].n_sectors = [4, 8]
-ev.volume_maps["drusen"].offsets = [0, 45]
-
-# Plot drusen projection and quantification
-ev.plot(ax=axes[0], projections=["drusen"])
-ev.plot(ax=axes[1], quantification="drusen")
-axes[0].axis("off")
-axes[1].axis("off")
-```
-![Example quantification](examples/drusen_quantification.jpeg)
-
-To access the quantification as a dictionary use `ev.volume_maps["drusen"].quantification`
-
-### Interact with individual B-scans
-If you index into an EyeVolume object you get EyeBscan objects.
-
-```python
-import numpy as np
-
-fig, ax = plt.subplots(1,1, figsize=(9,3))
-bscan = ev[40]
-bscan.plot(layers=["BM", "RPE"], areas=["drusen"], region=np.s_[150:300, :], ax=ax)
-ax.axis("off")
-```
-
-![Example quantification](examples/bscan_visualization.jpeg)
-
 # Related Projects:
 
 + [OCT-Converter](https://github.com/marksgraham/OCT-Converter): Extract raw optical coherence tomography (OCT) and fundus data from proprietary file formats. (.fds/.fda/.e2e/.img/.oct/.dcm)
 + [eyelab](https://github.com/MedVisBonn/eyelab): A GUI for annotation of OCT data based on eyepy
++ Projects by the [Translational Neuroimaging Laboratory](https://github.com/neurodial)
+  + [LibOctData](https://github.com/neurodial/LibOctData)
+  + [LibE2E](https://github.com/neurodial/LibE2E)
+  + [OCT-Marker](https://github.com/neurodial/OCT-Marker)
++ [UOCTE](https://github.com/TSchlosser13/UOCTE) Unofficial continuation of https://bitbucket.org/uocte/uocte
++ [OCTAnnotate](https://github.com/krzyk87/OCTAnnotate)
++ [heyexReader](https://github.com/ayl/heyexReader)
++ [OCTExplorer](https://www.iibi.uiowa.edu/oct-reference) Iowa Reference Algorithm

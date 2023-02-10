@@ -16,7 +16,7 @@ nav = mkdocs_gen_files.Nav()
 for path in sorted(Path("src/eyepy").rglob("*.py")):  #
     if str(path) in excluded:
         continue
-    print(path)
+    #print(path)
     module_path = path.relative_to(".").with_suffix("")  #
     doc_path = path.relative_to(".").with_suffix(".md")  #
     full_doc_path = Path("reference", doc_path)  #
@@ -38,6 +38,6 @@ for path in sorted(Path("src/eyepy").rglob("*.py")):  #
 
     mkdocs_gen_files.set_edit_path(full_doc_path, path)  #
 
-print([x for x in nav.build_literate_nav()])
+#print([x for x in nav.build_literate_nav()])
 with mkdocs_gen_files.open("reference/SUMMARY.md", "w") as nav_file:
     nav_file.writelines(nav.build_literate_nav())

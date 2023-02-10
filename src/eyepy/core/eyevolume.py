@@ -547,7 +547,7 @@ class EyeVolume:
         self._volume_maps.append(voxel_annotation)
         return voxel_annotation
 
-    def delete_voxel_annotations(self, name):
+    def remove_voxel_annotations(self, name):
         """
 
         Args:
@@ -583,7 +583,7 @@ class EyeVolume:
         self._layers.append(layer_annotation)
         return layer_annotation
 
-    def delete_layer_annotation(self, name):
+    def remove_layer_annotation(self, name):
         """
 
         Args:
