@@ -255,9 +255,14 @@ class EyeVolume:
         )
         localizer = EyeEnface(
             image,
-            meta=EyeEnfaceMeta(scale_x=self.scale_x,
-                               scale_y=self.scale_x,
-                               scale_unit=self.scale_unit),
+            meta=EyeEnfaceMeta(
+                scale_x=self.scale_x,
+                scale_y=self.scale_x,
+                scale_unit=self.scale_unit,
+                field_size=0,
+                scan_focus=0,
+                laterality="NA",
+            ),
         )
         return localizer
 

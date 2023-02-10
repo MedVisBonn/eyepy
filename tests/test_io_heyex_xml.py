@@ -1,11 +1,11 @@
 import numpy as np
 
 import eyepy as ep
-from eyepy.io import he_xml_reader
+from eyepy.io import HeXmlReader
 
 
 def test_hexmlreader():
-    reader = he_xml_reader.HeXmlReader(
+    reader = HeXmlReader(
         "tests/data/filetypes/heyex_xml/test_volume")
     assert len(reader.meta) > 0
 

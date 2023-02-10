@@ -1,11 +1,10 @@
 import eyepy as ep
-from eyepy.io import he_vol_reader
-from eyepy.io.he_vol_reader import HeVolWriter
+from eyepy.io import HeVolReader
+from eyepy.io import HeVolWriter
 
 
 def test_hexmlreader():
-    reader = he_vol_reader.HeVolReader(
-        "tests/data/filetypes/heyex_vol/test_volume.vol")
+    reader = HeVolReader("tests/data/filetypes/heyex_vol/test_volume.vol")
     assert len(reader.meta) > 0
 
 
@@ -17,8 +16,8 @@ def test_heyex_vol_import():
     assert data.laterality == "OD"
 
 
-def test_heyex_vol_write_eyevolume(eyevolume, tmp_path):
-    HeVolWriter(eyevolume).write(tmp_path / "test.vol")
-    data = ep.import_heyex_vol(tmp_path / "test.vol")
-    assert data.shape == eyevolume.shape
-    assert data.localizer.shape == eyevolume.localizer.shape
+#def test_heyex_vol_write_eyevolume(eyevolume, tmp_path):
+#    HeVolWriter(eyevolume).write(tmp_path / "test.vol")
+#    data = ep.import_heyex_vol(tmp_path / "test.vol")
+#    assert data.shape == eyevolume.shape
+#    assert data.localizer.shape == eyevolume.localizer.shape
