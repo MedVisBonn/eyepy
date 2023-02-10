@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from types import EllipsisType
 from typing import List, Optional, TYPE_CHECKING, Union
 
 import matplotlib.colors as mcolors
@@ -82,7 +81,7 @@ class EyeBscan:
         area_kwargs: Optional[dict] = None,
         #ascan_kwargs=None,
         annotations_only=False,
-        region: Union[EllipsisType, tuple[slice, slice]] = np.s_[:, :],
+        region: Union[slice, tuple[slice, slice]] = np.s_[:, :],
     ):
         """ Plot B-scan.
 

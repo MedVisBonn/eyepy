@@ -4,7 +4,6 @@ import logging
 from pathlib import Path
 import shutil
 import tempfile
-from types import EllipsisType
 from typing import (Callable, List, Optional, overload, SupportsIndex, Tuple,
                     TypedDict, Union)
 import warnings
@@ -604,7 +603,7 @@ class EyeVolume:
         bscan_region: bool = False,
         bscan_positions: Union[bool, List[int]] = False,
         quantification: Optional[str] = None,
-        region: Union[EllipsisType, tuple[slice, slice]] = np.s_[:, :],
+        region: Union[slice, tuple[slice, slice]] = np.s_[:, :],
         annotations_only: bool = False,
         projection_kwargs: Optional[dict] = None,
         line_kwargs: Optional[dict] = None,
@@ -671,7 +670,7 @@ class EyeVolume:
         self,
         bscan_positions: Union[bool, List[int]] = True,
         ax=None,
-        region: Union[EllipsisType, tuple[slice, slice]] = np.s_[...],
+        region: Union[slice, tuple[slice, slice]] = np.s_[:, :],
         line_kwargs=None,
     ):
         if not bscan_positions:
@@ -706,8 +705,8 @@ class EyeVolume:
             ax.add_patch(polygon)
 
     def _plot_bscan_region(self,
-                           region: Union[EllipsisType,
-                                         tuple[slice, slice]] = np.s_[...],
+                           region: Union[slice, tuple[slice,
+                                                      slice]] = np.s_[:, :],
                            ax=None,
                            line_kwargs=None):
         if ax is None:
