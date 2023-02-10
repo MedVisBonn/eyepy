@@ -35,9 +35,9 @@ jobs:
           path: .cache
       - run: pip install \
               mkdocs-material \
-              mkdocstrings[python]" \
-              mkdocs-gen-files" \
-              mkdocs-literate-nav" \
-              mkdocs-section-index" \
-              pymdown-extensions"
+              mkdocstrings[python] \
+              mkdocs-gen-files \
+              mkdocs-literate-nav \
+              mkdocs-section-index \
+              pymdown-extensions
       - run: mkdocs gh-deploy --force
