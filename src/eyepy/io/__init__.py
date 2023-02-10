@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Union
+from typing import List, Union
 
 import imageio
 import numpy as np
@@ -18,7 +18,7 @@ logger = logging.getLogger("eyepy.io")
 
 
 def import_heyex_e2e(path: Union[str, Path],
-                     single=True) -> Union[EyeVolume, list[EyeVolume]]:
+                     single=True) -> Union[EyeVolume, List[EyeVolume]]:
     """ Read a Heyex E2E file
 
     This function is a thin wrapper around the HeE2eReader class and

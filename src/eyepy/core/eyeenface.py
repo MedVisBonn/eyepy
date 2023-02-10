@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 from numpy import typing as npt
@@ -105,7 +105,7 @@ class EyeEnface:
 
     def plot(self,
              ax: Optional[plt.Axes] = None,
-             region: Union[slice, tuple[slice, slice]] = np.s_[:, :]):
+             region: Union[slice, Tuple[slice, slice]] = np.s_[:, :]):
         """
 
         Args:

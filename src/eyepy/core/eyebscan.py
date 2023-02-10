@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, TYPE_CHECKING, Union
+from typing import List, Optional, Tuple, TYPE_CHECKING, Union
 
 import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
@@ -63,7 +63,7 @@ class EyeBscan:
     # return self.volume.ascan_maps[self.index]
 
     @property
-    def shape(self) -> tuple[int, int]:
+    def shape(self) -> Tuple[int, int]:
         """ Shape of the B-scan data
 
         Returns: Shape tuple (height, width)
@@ -74,14 +74,14 @@ class EyeBscan:
     def plot(
         self,
         ax: Optional[plt.Axes] = None,
-        layers: Union[bool, list[str]] = False,
-        areas: Union[bool, list[str]] = False,
+        layers: Union[bool, List[str]] = False,
+        areas: Union[bool, List[str]] = False,
         #ascans=None,
         layer_kwargs: Optional[dict] = None,
         area_kwargs: Optional[dict] = None,
         #ascan_kwargs=None,
         annotations_only=False,
-        region: Union[slice, tuple[slice, slice]] = np.s_[:, :],
+        region: Union[slice, Tuple[slice, slice]] = np.s_[:, :],
     ):
         """ Plot B-scan.
 
