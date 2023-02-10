@@ -3,7 +3,7 @@ name = "eyepie"
 packages = [
     {include = "eyepy", from = "src"},
 ]
-version = "0.7.0"
+version = "0.6.8"
 description = "The Python package for working with ophthalmological data."
 authors = ["Olivier Morelle <oli4morelle@gmail.com>"]
 license = "MIT"
@@ -34,6 +34,7 @@ matplotlib = "^3.5.1"
 nptyping = "^2.3.1"
 construct-typing = "^0.5.5"
 pandas = "^1.5.3"
+numpy = "^1.24.2"
 
 [tool.poetry.extras]
 #itk = "^5.2.1"

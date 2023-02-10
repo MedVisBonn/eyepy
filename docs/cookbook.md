@@ -37,12 +37,19 @@ ev = ep.import_duke_mat("path/to/volume.mat")
 ev = ep.import_retouch("path/to/folder")
 ```
 
+When you don't hava a supported OCT volume at hand you can check out our sample dataset to get familiar with `eyepy`.
+```python
+from eyepy.data import load
+# Import HEYEX XML export
+ev = load("drusen_patient")
+```
+
 ## Plot Localizer
 
 Most OCT volumes come with a localizer image. This image can be plotted using the `plot` method of the `EyeVolume` object:
 
 ```python
-eye_volume.plot()
+ev.plot()
 ```
 
 There are several options to customize the plot:
@@ -52,8 +59,9 @@ There are several options to customize the plot:
 
 The plotting function is documented here: [EyeVolume.plot][eyepy.core.EyeVolume.plot]
 
-!!! Warning `region` parameter
+!!! Warning "`region` parameter"
     The region parameter produces unexpected results in combination with `bscan_positions` and `bscan_region` parameters
+
 ## Plot Bscans
 
 B-scans can be plotted using the `plot` method of the `EyeBscan` object. You get `EyeBscan` objects by indexing the `EyeVolume` object or iterating over it. The following code plots the first B-scan of the volume together with the layer annotations for BM and RPE:
