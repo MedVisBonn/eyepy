@@ -2,6 +2,22 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.0 (2023-02-10)
+### Feature
+* **HeE2eReader:** Read E2E volumes ([`9094890`](https://github.com/MedVisBonn/eyepy/commit/9094890a5fd69335b741d238c1fa8661f83941c0))
+
+### Fix
+* **eyepy:** Do not use list and tuple for type annotations python 3.8 only supports List / Tuple ([`cc6dfee`](https://github.com/MedVisBonn/eyepy/commit/cc6dfee1098f6e962c2d5c09e33d5c82883000bf))
+* **region-plotting:** Remove EllipsisType from allowed types for the region parameter since its not supported in python 3.8 ([`fac7849`](https://github.com/MedVisBonn/eyepy/commit/fac78498c233f765eb06d5bc71b3d71a125626ae))
+
+### Breaking
+*  ([`c942c6b`](https://github.com/MedVisBonn/eyepy/commit/c942c6b1b65a9deef07e7e2bd6d10cc96e2b6059))
+
+### Documentation
+* **README-and-Cookbook:** Clean up ([`183b317`](https://github.com/MedVisBonn/eyepy/commit/183b317dee559a2da8cc0aec2f0df4b237d7d605))
+* **eyepy:** Add docstrings and cookbook examples ([`3b6ce5d`](https://github.com/MedVisBonn/eyepy/commit/3b6ce5d711f79794ffc1db91e1060a3a301bff40))
+* **formats:** E2e documentation ([`059d67b`](https://github.com/MedVisBonn/eyepy/commit/059d67b0d335e3b82c1d631c2be24176c4fa2435))
+
 ## v0.6.8 (2022-09-15)
 ### Fix
 * **eyepy:** Update pre-commit; remove itk from dependencies ([`0339fb6`](https://github.com/MedVisBonn/eyepy/commit/0339fb6f08aefd63027fb8213fc5da526a6890a7))
