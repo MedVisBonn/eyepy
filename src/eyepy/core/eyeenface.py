@@ -1,4 +1,5 @@
-from typing import Optional
+from types import EllipsisType
+from typing import Optional, Union
 
 import matplotlib.pyplot as plt
 from numpy import typing as npt
@@ -103,7 +104,9 @@ class EyeEnface:
         """
         return self.data.shape
 
-    def plot(self, ax=None, region=np.s_[...]):
+    def plot(self,
+             ax: Optional[plt.Axes] = None,
+             region: Union[EllipsisType, tuple[slice, slice]] = np.s_[:, :]):
         """
 
         Args:

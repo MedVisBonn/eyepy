@@ -1,21 +1,32 @@
-"""Generate the code reference pages."""
+"""Generate the code reference pages.
+
+Code reference should be grouped by package
+
+
+"""
 
 from pathlib import Path
 
 import mkdocs_gen_files
 
+excluded = ["src/eyepy/config.py"]
+
 nav = mkdocs_gen_files.Nav()
 
 for path in sorted(Path("src/eyepy").rglob("*.py")):  #
+    if str(path) in excluded:
+        continue
     print(path)
     module_path = path.relative_to(".").with_suffix("")  #
     doc_path = path.relative_to(".").with_suffix(".md")  #
     full_doc_path = Path("reference", doc_path)  #
 
-    parts = list(module_path.parts)[1:]
+    parts = tuple(module_path.parts)[1:]
 
     if parts[-1] == "__init__":  #
         parts = parts[:-1]
+        doc_path = doc_path.with_name("index.md")
+        full_doc_path = full_doc_path.with_name("index.md")
     elif parts[-1] == "__main__":
         continue
 

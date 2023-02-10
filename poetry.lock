@@ -880,6 +880,17 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+name = "mkdocs-section-index"
+version = "0.3.5"
+description = "MkDocs plugin to allow clickable sections that lead to an index page"
+category = "dev"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+mkdocs = ">=1.0.3"
+
+[[package]]
 name = "mkdocstrings"
 version = "0.19.0"
 description = "Automatic documentation from sources, for MkDocs."
@@ -1860,7 +1871,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.11"
-content-hash = "fceebe59567257c1e8933c8cec5073829370a46ce04b381415d57055595dc11f"
+content-hash = "f044eada255793f8d17d8602d9b78e166cfe08ccc450d82a2ee713a63da2da94"
 
 [metadata.files]
 anyio = [
@@ -2427,6 +2438,10 @@ mkdocs-material = [
 mkdocs-material-extensions = [
     {file = "mkdocs_material_extensions-1.1.1-py3-none-any.whl", hash = "sha256:e41d9f38e4798b6617ad98ca8f7f1157b1e4385ac1459ca1e4ea219b556df945"},
     {file = "mkdocs_material_extensions-1.1.1.tar.gz", hash = "sha256:9c003da71e2cc2493d910237448c672e00cefc800d3d6ae93d2fc69979e3bd93"},
+]
+mkdocs-section-index = [
+    {file = "mkdocs_section_index-0.3.5-py3-none-any.whl", hash = "sha256:1f6359287b0a823d6297cf1cb6c0a49ed75851d0d1cea8b425b207a45ce10141"},
+    {file = "mkdocs_section_index-0.3.5.tar.gz", hash = "sha256:fa8b1ce0649326b1873c6460c1df2bb0c4825fd21e3dd416f13ec212d31edf12"},
 ]
 mkdocstrings = [
     {file = "mkdocstrings-0.19.0-py3-none-any.whl", hash = "sha256:3217d510d385c961f69385a670b2677e68e07b5fea4a504d86bf54c006c87c7d"},

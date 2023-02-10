@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 import shutil
 import tempfile
+from types import EllipsisType
 from typing import (Callable, List, Optional, overload, SupportsIndex, Tuple,
                     TypedDict, Union)
 import warnings
@@ -598,36 +599,37 @@ class EyeVolume:
 
     def plot(
         self,
-        ax=None,
-        localizer=True,
-        projections=False,
-        bscan_region=False,
-        bscan_positions=False,
-        quantification=None,
-        region=np.s_[...],
-        projection_kwargs=None,
-        line_kwargs=None,
+        ax: Optional[plt.Axes] = None,
+        projections: Union[bool, List[str]] = False,
+        bscan_region: bool = False,
+        bscan_positions: Union[bool, List[int]] = False,
+        quantification: Optional[str] = None,
+        region: Union[EllipsisType, tuple[slice, slice]] = np.s_[:, :],
+        annotations_only: bool = False,
+        projection_kwargs: Optional[dict] = None,
+        line_kwargs: Optional[dict] = None,
     ):
-        """
+        """ Plot an annotated OCT localizer image. If the volume does not provide a localizer image an enface projection of the OCT volume is used instead.
 
         Args:
-            ax:
-            localizer:
-            projections:
-            bscan_region:
-            bscan_positions:
-            quantification:
-            region:
-            projection_kwargs:
-            line_kwargs:
+            ax: Axes to plot on. If not provided plot on the current axes (plt.gca()).
+            projections: If `True` plot all projections (default: `False`). If a list of strings is given, plot the projections with the given names. Projections are 2D enface views on oct volume annotations such as drusen.
+            bscan_region: If `True` plot the region B-scans are located in (default: `False`)
+            bscan_positions: If `True` plot positions of all B-scan (default: `False`). If a list of integers is given, plot the B-scans with the respective indices. Indexing starts at the bottom of the localizer.
+            quantification: Name of the OCT volume annotations to plot a quantification for (default: `None`). Quantifications are performed on circular grids.
+            region: Region of the localizer to plot (default: `np.s_[...]`)
+            annotations_only: If `True` localizer image is not plotted (defaualt: `False`)
+            projection_kwargs: Optional keyword arguments for the projection plots. If `None` default values are used (default: `None`). If a dictionary is given, the keys are the projection names and the values are dictionaries of keyword arguments.
+            line_kwargs: Optional keyword arguments for customizing the lines to show B-scan region and positions plots. If `None` default values are used which are {"linewidth": 0.2, "linestyle": "-", "color": "green"}
 
-        Returns:
+        Returns: None
 
         """
+
         if ax is None:
             ax = plt.gca()
 
-        if localizer:
+        if not annotations_only:
             self.localizer.plot(ax=ax, region=region)
 
         if projections is True:
@@ -669,7 +671,7 @@ class EyeVolume:
         self,
         bscan_positions: Union[bool, List[int]] = True,
         ax=None,
-        region=np.s_[...],
+        region: Union[EllipsisType, tuple[slice, slice]] = np.s_[...],
         line_kwargs=None,
     ):
         if not bscan_positions:
@@ -703,7 +705,11 @@ class EyeVolume:
             )
             ax.add_patch(polygon)
 
-    def _plot_bscan_region(self, region=np.s_[...], ax=None, line_kwargs=None):
+    def _plot_bscan_region(self,
+                           region: Union[EllipsisType,
+                                         tuple[slice, slice]] = np.s_[...],
+                           ax=None,
+                           line_kwargs=None):
         if ax is None:
             ax = plt.gca()
 

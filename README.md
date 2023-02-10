@@ -3,15 +3,10 @@
 [![PyPI version](https://badge.fury.io/py/eyepie.svg)](https://badge.fury.io/py/eyepie)
 [![DOI](https://zenodo.org/badge/292547201.svg)](https://zenodo.org/badge/latestdoi/292547201)
 
-
-This package is under active development and things might change without
-backwards compatibility. If you want to use eyepy in your project make sure to
-pin the version in your project requirements.
-
-
+Here you can find the [Documentation](https://www.MedVisBonn.github.io/eyepy)
 ## Features
 
-* Import HEYEY XML and VOL exports
+* Import HEYEY E2E, VOL and XML exports
 * Import B-Scans from a folder
 * Import public [AMD Dataset from Duke University](https://people.duke.edu/~sf59/RPEDC_Ophth_2013_dataset.htm)
 * Import data of the [RETOUCH Challenge](https://retouch.grand-challenge.org/).
@@ -34,10 +29,12 @@ import eyepy as ep
 ev = ep.data.load("drusen_patient")
 ```
 
-`eyepy` currently supports the HEYEX XML and VOL export format. Support for additional formats is easy to implement.
+`eyepy` currently supports the HEYEX E2E, XML and VOL export format. Support for additional formats is easy to implement.
 
 ```python
 import eyepy as ep
+# Import HEYEX VOL export
+ev = ep.import_heyex_e2e("path/to/file.e2e")
 # Import HEYEX XML export
 ev = ep.import_heyex_xml("path/to/folder")
 # Import HEYEX VOL export

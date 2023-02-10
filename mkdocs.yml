@@ -7,9 +7,21 @@ nav:
     - File formats:
         #- formats.md
         - Heidelberg E2E: formats/he_e2e.md
-        - Heidelberg VOL: formats/he_vol.md
-        - Heidelberg XML: formats/he_xml.md
-    - Reference: reference/
+        #- Heidelberg VOL: formats/he_vol.md
+        #- Heidelberg XML: formats/he_xml.md
+        - E2E Structures:
+            - Version: formats/he_e2e_structures/version.md
+            - Header: formats/he_e2e_structures/header.md
+            - Folder Header: formats/he_e2e_structures/folder_header.md
+            - Container Header: formats/he_e2e_structures/container_header.md
+            - Bscan Meta: formats/he_e2e_structures/bscanmeta.md
+            - Layer Annotation: formats/he_e2e_structures/layer_annotation.md
+            - Image Data: formats/he_e2e_structures/image.md
+            - Laterality: formats/he_e2e_structures/laterality.md
+            - Text Data: formats/he_e2e_structures/textdata.md
+            - Measurement Data: formats/he_e2e_structures/measurements.md
+            - Patient data: formats/he_e2e_structures/patient.md
+    #- Reference: reference/
     - Changelog: changelog.md
 
 plugins:
@@ -20,10 +32,12 @@ plugins:
             - docs/gen_ref_pages.py
     - literate-nav:
           nav_file: SUMMARY.md
+    - section-index
     - mkdocstrings:
         handlers:
           python:
             paths: [.]
+
 
 markdown_extensions:
     - admonition

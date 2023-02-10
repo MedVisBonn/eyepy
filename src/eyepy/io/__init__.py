@@ -17,20 +17,21 @@ from .he import HeXmlReader
 logger = logging.getLogger("eyepy.io")
 
 
-def import_heyex_e2e(path: Union[str, Path]) -> EyeVolume:
+def import_heyex_e2e(path: Union[str, Path],
+                     single=True) -> Union[EyeVolume, list[EyeVolume]]:
     """ Read a Heyex E2E file
 
     This function is a thin wrapper around the HeE2eReader class and
     returns the first of potentially multiple volumes. If you want to
-    read all volumes, use the HeE2eReader directly with the single=False parameter.
+    read all volumes, set the parameter `single` to `False`.
 
     Args:
         path: Path to the E2E file
 
-    Returns: EyeVolume
+    Returns: EyeVolume or List[EyeVolume]
 
     """
-    return HeE2eReader(path).volume
+    return HeE2eReader(path, single=single).volume
 
 
 def import_heyex_xml(path: Union[str, Path]) -> EyeVolume:

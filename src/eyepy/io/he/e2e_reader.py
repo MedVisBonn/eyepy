@@ -211,7 +211,7 @@ class HeE2eReader:
     def layers(self):
         layer_segmentations = {}
 
-        folders = self._folders["layer", "bscan"]
+        folders = self._folders["layer_annotation", "bscan"]
         idset = set()
 
         for folder in folders:
