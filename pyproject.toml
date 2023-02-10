@@ -60,7 +60,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.semantic_release]
 major_on_zero = false
-version_variable = ['eyepy/__init__.py:__version__']
+version_variable = ['src/eyepy/__init__.py:__version__']
 version_toml = "pyproject.toml:tool.poetry.version"
 version_pattern = ["CITATION.cff:v(\\d+\\.\\d+\\.\\d+)"]
 upload_to_pypi = true
