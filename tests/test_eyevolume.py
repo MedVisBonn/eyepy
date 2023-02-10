@@ -120,7 +120,7 @@ def test_delete_layers(eyevolume):
     eyevolume[2].layers["delete_layer"].data = 20
     assert "delete_layer" in eyevolume[2].layers
 
-    eyevolume.delete_layer_annotation("delete_layer")
+    eyevolume.remove_layer_annotation("delete_layer")
 
     assert "delete_layer" not in eyevolume.layers
     # Test for references in the B-scans
@@ -134,7 +134,7 @@ def test_delete_voxel_annotation(eyevolume):
     eyevolume[2].area_maps["delete_volume"][:5, :5] = 20
     assert "delete_volume" in eyevolume[2].area_maps
 
-    eyevolume.delete_voxel_annotations("delete_volume")
+    eyevolume.remove_voxel_annotations("delete_volume")
 
     assert "delete_volume" not in eyevolume.volume_maps
     # Test for references in the B-scans
