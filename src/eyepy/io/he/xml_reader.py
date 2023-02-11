@@ -317,7 +317,7 @@ class HeXmlReader:
         data = np.stack(bscans, axis=0)
 
         layer_height_maps = {
-            name: np.full((data.shape[2], data.shape[0]),
+            name: np.full((data.shape[0], data.shape[2]),
                           np.nan,
                           dtype=np.float32)
             for name in layer_heights
@@ -325,7 +325,7 @@ class HeXmlReader:
 
         for name, heights in layer_heights.items():
             for index, layer_height in heights:
-                layer_height_maps[name][:, index] = layer_height
+                layer_height_maps[name][index, :] = layer_height
 
         localizer = self.localizer
         volume_meta = self.meta

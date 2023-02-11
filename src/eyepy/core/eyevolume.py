@@ -569,7 +569,7 @@ class EyeVolume:
         """
 
         Args:
-            height_map: Height in shape (n_Bscans, Bscan_width)
+            height_map: Height in shape (n_Bscans, Bscan_width) The first index refers to the bottom most B-scan
             meta: name, current_color, and knots
             **kwargs:
 

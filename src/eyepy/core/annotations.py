@@ -104,16 +104,16 @@ class EyeVolumeVoxelAnnotation:
     """ """
 
     def __init__(
-        self,
-        volume: EyeVolume,
-        # Type hint for an optional boolean numpy array
-        data: Optional[npt.NDArray[np.bool_]] = None,
-        meta: Optional[dict] = None,
-        radii=(1.5, 2.5),
-        n_sectors=(1, 4),
-        offsets=(0, 45),
-        center=None,
-        **kwargs,
+            self,
+            volume: EyeVolume,
+            # Type hint for an optional boolean numpy array
+            data: Optional[npt.NDArray[np.bool_]] = None,
+            meta: Optional[dict] = None,
+            radii=(1.5, 2.5),
+            n_sectors=(1, 4),
+            offsets=(0, 45),
+            center=None,
+            **kwargs,
     ):
         """
 
@@ -130,7 +130,9 @@ class EyeVolumeVoxelAnnotation:
         self.volume = volume
 
         if data is None:
-            self.data = np.full(self.volume.shape, fill_value=False, dtype=bool)
+            self.data = np.full(self.volume.shape,
+                                fill_value=False,
+                                dtype=bool)
         else:
             self.data = data
 
@@ -149,8 +151,7 @@ class EyeVolumeVoxelAnnotation:
                 "n_sectors": n_sectors,
                 "offsets": offsets,
                 "center": center,
-            }
-        )
+            })
 
         if "name" not in self.meta:
             self.meta["name"] = "Voxel Annotation"
@@ -296,7 +297,8 @@ class EyeVolumeVoxelAnnotation:
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="5%", pad=0.05)
             plt.colorbar(
-                cm.ScalarMappable(colors.Normalize(vmin=vmin, vmax=vmax), cmap=cmap),
+                cm.ScalarMappable(colors.Normalize(vmin=vmin, vmax=vmax),
+                                  cmap=cmap),
                 cax=cax,
             )
 
@@ -343,32 +345,21 @@ class EyeVolumeVoxelAnnotation:
         return self._quantification
 
     def _quantify(self):
-        enface_voxel_size_ym3 = (
-            self.volume.localizer.scale_x
-            * 1e3
-            * self.volume.localizer.scale_y
-            * 1e3
-            * self.volume.scale_y
-            * 1e3
-        )
-        oct_voxel_size_ym3 = (
-            self.volume.scale_x
-            * 1e3
-            * self.volume.scale_z
-            * 1e3
-            * self.volume.scale_y
-            * 1e3
-        )
+        enface_voxel_size_ym3 = (self.volume.localizer.scale_x * 1e3 *
+                                 self.volume.localizer.scale_y * 1e3 *
+                                 self.volume.scale_y * 1e3)
+        oct_voxel_size_ym3 = (self.volume.scale_x * 1e3 * self.volume.scale_z *
+                              1e3 * self.volume.scale_y * 1e3)
 
         enface_projection = self.enface
 
         results = {}
         for name, mask in self.masks.items():
-            results[f"{name} [mm³]"] = (
-                (enface_projection * mask).sum() * enface_voxel_size_ym3 / 1e9
-            )
+            results[f"{name} [mm³]"] = ((enface_projection * mask).sum() *
+                                        enface_voxel_size_ym3 / 1e9)
 
-        results["Total [mm³]"] = enface_projection.sum() * enface_voxel_size_ym3 / 1e9
+        results["Total [mm³]"] = enface_projection.sum(
+        ) * enface_voxel_size_ym3 / 1e9
         results["Total [OCT voxels]"] = self.projection.sum()
         results["OCT Voxel Size [µm³]"] = oct_voxel_size_ym3
         results["Laterality"] = self.volume.laterality
@@ -451,10 +442,8 @@ class EyeVolumeVoxelAnnotation:
         mask_img = np.zeros(self.volume.localizer.shape, dtype=float)[region]
         visible = np.zeros_like(mask_img)
         for mask_name in self.masks.keys():
-            mask_img += (
-                self.masks[mask_name][region]
-                * self.quantification[mask_name + " [mm³]"]
-            )
+            mask_img += (self.masks[mask_name][region] *
+                         self.quantification[mask_name + " [mm³]"])
             visible += self.masks[mask_name][region]
 
         if vmin is None:
@@ -466,7 +455,8 @@ class EyeVolumeVoxelAnnotation:
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="5%", pad=0.05)
             plt.colorbar(
-                cm.ScalarMappable(colors.Normalize(vmin=vmin, vmax=vmax), cmap=cmap),
+                cm.ScalarMappable(colors.Normalize(vmin=vmin, vmax=vmax),
+                                  cmap=cmap),
                 cax=cax,
             )
 
@@ -513,11 +503,11 @@ class EyeBscanLayerAnnotation:
         Returns:
 
         """
-        return self.eyevolumelayerannotation.data[-(self.index + 1), :]
+        return self.eyevolumelayerannotation.data[self.index, :]
 
     @data.setter
     def data(self, value):
-        self.eyevolumelayerannotation.data[-(self.index + 1), :] = value
+        self.eyevolumelayerannotation.data[self.index, :] = value
 
     @property
     def knots(self):
@@ -554,7 +544,9 @@ class EyeEnfaceAreaAnnotation:
         self.enface = enface
 
         if data is None:
-            self.data = np.full(self.enface.shape, fill_value=False, dtype=bool)
+            self.data = np.full(self.enface.shape,
+                                fill_value=False,
+                                dtype=bool)
         else:
             self.data = data
 

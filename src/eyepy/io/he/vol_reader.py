@@ -204,7 +204,7 @@ class HeVolReader:
     @property
     def layers(self):
         return np.stack(
-            [b.layer_segmentations for b in self.parsed_file.bscans], axis=1)
+            [b.layer_segmentations for b in self.parsed_file.bscans], axis=0)
 
     @property
     def localizer_meta(self) -> EyeEnfaceMeta:

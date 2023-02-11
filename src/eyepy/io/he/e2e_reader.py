@@ -226,7 +226,7 @@ class HeE2eReader:
         for i in idset:
             layer = np.full((n_bscans, size_x), np.nan)
             for sl in range(n_bscans):
-                layer[i, :] = layer_segmentations[i, sl]
+                layer[sl, :] = layer_segmentations[i, sl]
 
             layers[i] = layer
 
