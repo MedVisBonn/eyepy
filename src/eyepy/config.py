@@ -9,7 +9,7 @@ area_kwargs = {"alpha": 0.5}
 ascan_kwargs = {"alpha": 0.5}
 
 # Line Style for B-Scan positions on Slo
-line_kwargs = {"linewidth": 0.2, "linestyle": "-", "color": "green"}
+line_kwargs = {"linewidth": 0.2, "linestyle": "-", "color": "limegreen"}
 
 # Colors for different Layers
 _layer_colors = {
