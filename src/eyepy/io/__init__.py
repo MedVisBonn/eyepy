@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import List, Union
 
-import imageio
+import imageio.v2 as imageio
 import numpy as np
 
 from eyepy import EyeBscanMeta

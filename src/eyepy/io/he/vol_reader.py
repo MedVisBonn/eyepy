@@ -178,10 +178,13 @@ class HeVolReader:
 
     @property
     def volume(self) -> EyeVolume:
-        ## Check if scan is a volume scan
-        if not self.parsed_file.scan_pattern in [1, 3, 4]:
-            msg = f"Only volumes with ScanPattern 1, 3 or 4 are supported. The ScanPattern is {self.parsed_file.scan_pattern} which might lead to exceptions or unexpected behaviour."
-            logger.warning(msg)
+        ## Check if scan pattern is supported by EyeVolume
+        if self.parsed_file.scan_pattern == 2:
+            msg = f"The EyeVolume object does not support scan pattern 2 (one Circular B-scan)."
+            raise ValueError(msg)
+        elif self.parsed_file.scan_pattern == 5:
+            msg = f"The EyeVolume object does not support scan pattern 5 (Radial scan - star pattern)."
+            raise ValueError(msg)
 
         data = np.stack([bscan.data for bscan in self.parsed_file.bscans],
                         axis=0)
@@ -203,8 +206,12 @@ class HeVolReader:
 
     @property
     def layers(self):
-        return np.stack(
+        layers = np.stack(
             [b.layer_segmentations for b in self.parsed_file.bscans], axis=0)
+
+        # Currently the shape is (n_bscans, n_layers, width). Swap the first two axes
+        # to get (n_layers, n_bscans, width)
+        return np.swapaxes(layers, 0, 1)
 
     @property
     def localizer_meta(self) -> EyeEnfaceMeta:

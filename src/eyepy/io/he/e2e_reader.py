@@ -176,10 +176,13 @@ class HeE2eReader:
             self.bscan_meta
         ) != 1 else 1  # n_bscans is 0 instead of 1 for single B-scan Volumes in the e2e file.
 
-        # Check if scan is a volume scan
-        if not scan_pattern in [1, 3, 4]:
-            msg = f"Only volumes with ScanPattern 1, 3 or 4 are supported. The ScanPattern is {scan_pattern} which might lead to exceptions or unexpected behaviour."
-            logger.warning(msg)
+        ## Check if scan pattern is supported by EyeVolume
+        if scan_pattern == 2:
+            msg = f"The EyeVolume object does not support scan pattern 2 (one Circular B-scan)."
+            raise ValueError(msg)
+        elif scan_pattern == 5:
+            msg = f"The EyeVolume object does not support scan pattern 5 (Radial scan - star pattern)."
+            raise ValueError(msg)
 
         data = np.zeros((n_bscans, size_y, size_x))
         folders = self._folders["image", "bscan"]

@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List
 import xml.etree.ElementTree as ElementTree
 
-import imageio
+import imageio.v2 as imageio
 import numpy as np
 from skimage import img_as_ubyte
 
@@ -287,10 +287,13 @@ class HeXmlReader:
 
     @property
     def volume(self) -> EyeVolume:
-        ## Check if scan is a volume scan
-        if not self.parsed_values["scan_pattern"] in [1, 3, 4]:
-            msg = f"Only volumes with ScanPattern 1, 3 or 4 are supported. The ScanPattern is {self.parsed_values['scan_pattern']} which might lead to exceptions or unexpected behaviour."
-            logger.warning(msg)
+        ## Check if scan pattern is supported by EyeVolume
+        if self.parsed_values["scan_pattern"] == 2:
+            msg = f"The EyeVolume object does not support scan pattern 2 (one Circular B-scan)."
+            raise ValueError(msg)
+        elif self.parsed_values["scan_pattern"] == 5:
+            msg = f"The EyeVolume object does not support scan pattern 5 (Radial scan - star pattern)."
+            raise ValueError(msg)
 
         bscans = []
         layer_heights = {}
@@ -310,6 +313,7 @@ class HeXmlReader:
                 name = segline.find("./Name").text
                 data = np.array(segline.find("./Array").text.split()).astype(
                     np.float32)
+                data[data == 3.0e+38] = np.nan
                 if name not in layer_heights:
                     layer_heights[name] = []
                 layer_heights[name].append((index, data))
