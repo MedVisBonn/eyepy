@@ -1,6 +1,7 @@
 .idea/
 .vscode/
 examples/notebooks
+examples/*.gif
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
