@@ -2,6 +2,21 @@
 
 <!--next-version-placeholder-->
 
+## v0.8.0 (2023-02-13)
+### Feature
+* **eyepy.core:** Reflect plotted region in x and y axis for both localizer and B-scan; check if bscan_region bscan position indicators are in plotting region ([`2842424`](https://github.com/MedVisBonn/eyepy/commit/284242439163a0148d144938674fe98f10413fa9))
+* **eyepy.io:** Fix imagio warnings; raise ValueError for scan-pattern 2 and 5 instead of warning; set maxint to NAN when reading XML layers; fix bscan order in layer data (vol_reader) ([`c4a88e7`](https://github.com/MedVisBonn/eyepy/commit/c4a88e7f390f10000e190c5345a5b465d0def7d2))
+
+### Fix
+* **src/eyepy/io:** Convert very large layer heights indicating no valid layer to np.nan ([`352a984`](https://github.com/MedVisBonn/eyepy/commit/352a98425dfa327d3fba7821986673bbd90802c6))
+* **eyepy.core:** Make sure ticklabels match plotted image region for EyeEnfac ande EyeBscan plots ([`f389f47`](https://github.com/MedVisBonn/eyepy/commit/f389f476018db51ceb0554c23d9f9af94393a85c))
+* **eyepy.core.utils.py:** Ignore nans in layers when computing drusen from layer heights ([`3c4efcd`](https://github.com/MedVisBonn/eyepy/commit/3c4efcdd30bbe491cf0f323be7359257ba8ce263))
+* **eyepy.core:** Set axis in all layer height maps to (n_bscans, width) ([`3493b0e`](https://github.com/MedVisBonn/eyepy/commit/3493b0e259a18435b8c537839a359cb1c03e2d66))
+
+### Documentation
+* **README.md-/-Cookbook:** Add header image to README ([`7501dde`](https://github.com/MedVisBonn/eyepy/commit/7501dde6dabc48ccf6b905985888fa06ca34d6da))
+* **README-and-Cookbook:** Fix import of load function in examples ([`e623c4b`](https://github.com/MedVisBonn/eyepy/commit/e623c4bed6f586c3c11ceba0801d4727da08cff8))
+
 ## v0.7.0 (2023-02-10)
 ### Feature
 * **HeE2eReader:** Read E2E volumes ([`9094890`](https://github.com/MedVisBonn/eyepy/commit/9094890a5fd69335b741d238c1fa8661f83941c0))
