@@ -630,6 +630,16 @@ class EyeVolume:
 
         """
 
+        # Complete region index expression
+        y_start = region[0].start if region[0].start is not None else 0
+        y_stop = region[0].stop if region[
+            0].stop is not None else self.localizer.shape[0]
+        x_start = region[1].start if region[1].start is not None else 0
+        x_stop = region[1].stop if region[
+            1].stop is not None else self.localizer.shape[1]
+
+        region = np.s_[y_start:y_stop, x_start:x_stop]
+
         if ax is None:
             ax = plt.gca()
 
@@ -694,9 +704,15 @@ class EyeVolume:
             start = self[i].meta["start_pos"] / scale
             end = self[i].meta["end_pos"] / scale
 
-            # x = [start[0], end[0]]
-            # y = [start[1], end[1]]
-            # ax.plot(x, y, **line_kwargs)
+            for pos in [start, end]:
+                # Check for both axis if pos is in region
+                if not (region[0].start <= pos[0] <= region[0].stop
+                        and region[1].start <= pos[1] <= region[1].stop):
+                    logger.warning(
+                        "B-scan position can not be plotted because the visualized region does not contain the complete B-scan."
+                    )
+                    return
+
             polygon = patches.Polygon(
                 [start, end],
                 closed=False,
@@ -726,6 +742,15 @@ class EyeVolume:
         lower_left = self[0].meta["start_pos"] / scale
         lower_right = self[0].meta["end_pos"] / scale
         upper_right = self[-1].meta["end_pos"] / scale
+
+        for pos in [upper_left, lower_left, lower_right, upper_right]:
+            # Check for both axis if pos is in region
+            if not (region[0].start <= pos[0] <= region[0].stop
+                    and region[1].start <= pos[1] <= region[1].stop):
+                logger.warning(
+                    "B-scan region can not be plotted because the visualized region does not contain the complete B-scan region."
+                )
+                return
 
         polygon = patches.Polygon(
             [upper_left, lower_left, lower_right, upper_right],

@@ -118,3 +118,12 @@ class EyeEnface:
         if ax is None:
             ax = plt.gca()
         ax.imshow(self.data[region], cmap="gray")
+
+        ax.set_yticks(ax.get_yticks())
+        ax.set_xticks(ax.get_xticks())
+
+        y_start = region[0].start if region[0].start is not None else 0
+        x_start = region[1].start if region[1].start is not None else 0
+
+        ax.set_yticklabels((ax.get_yticks() + y_start).astype(int))
+        ax.set_xticklabels((ax.get_xticks() + x_start).astype(int))

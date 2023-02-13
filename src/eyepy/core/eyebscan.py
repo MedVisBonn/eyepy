@@ -103,23 +103,12 @@ class EyeBscan:
             ax = plt.gca()
 
         # Complete region index expression
-        if region[0].start is None:
-            r0_start = 0
-        else:
-            r0_start = region[0].start
-        if region[1].start is None:
-            r1_start = 0
-        else:
-            r1_start = region[1].start
-        if region[0].stop is None:
-            r0_stop = self.shape[0]
-        else:
-            r0_stop = region[0].stop
-        if region[1].stop is None:
-            r1_stop = self.shape[1]
-        else:
-            r1_stop = region[1].stop
-        region = np.s_[r0_start:r0_stop, r1_start:r1_stop]
+        y_start = region[0].start if region[0].start is not None else 0
+        y_stop = region[0].stop if region[0].stop is not None else self.shape[0]
+        x_start = region[1].start if region[1].start is not None else 0
+        x_stop = region[1].stop if region[1].stop is not None else self.shape[1]
+
+        region = np.s_[y_start:y_stop, x_start:x_stop]
 
         if not layers:
             layers = []
@@ -202,3 +191,11 @@ class EyeBscan:
                 label=layer,
                 **layer_kwargs,
             )
+
+        # Hack to avoid a warning when setting the tick labels later
+        # Warning: FixedFormatter should only be used together with FixedLocator
+        ax.set_yticks(ax.get_yticks())
+        ax.set_xticks(ax.get_xticks())
+
+        ax.set_yticklabels((ax.get_yticks() + y_start).astype(int))
+        ax.set_xticklabels((ax.get_xticks() + x_start).astype(int))

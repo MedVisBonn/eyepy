@@ -236,6 +236,9 @@ class EyeVolumeVoxelAnnotation:
         Returns:
 
         """
+
+        # The flip is required because in the volume the bottom most B-scan has the lowest index
+        # while in the enface projection the bottom most position should have the biggest index.
         return np.flip(np.nansum(self.data, axis=1), axis=0)
 
     @property
