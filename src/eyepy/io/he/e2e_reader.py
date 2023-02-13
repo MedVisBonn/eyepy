@@ -233,6 +233,7 @@ class HeE2eReader:
 
             layers[i] = layer
 
+        layers[layers >= 3.0e+38] = np.nan
         return layers
 
     @property

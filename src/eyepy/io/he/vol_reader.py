@@ -208,7 +208,7 @@ class HeVolReader:
     def layers(self):
         layers = np.stack(
             [b.layer_segmentations for b in self.parsed_file.bscans], axis=0)
-
+        layers[layers >= 3.0e+38] = np.nan
         # Currently the shape is (n_bscans, n_layers, width). Swap the first two axes
         # to get (n_layers, n_bscans, width)
         return np.swapaxes(layers, 0, 1)
