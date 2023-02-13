@@ -67,7 +67,7 @@ The plotting function is documented here: [EyeVolume.plot][eyepy.core.EyeVolume.
 B-scans can be plotted using the `plot` method of the `EyeBscan` object. You get `EyeBscan` objects by indexing the `EyeVolume` object or iterating over it. The following code plots the first B-scan of the volume together with the layer annotations for BM and RPE:
 
 ``` python
-eye_volume[0].plot(layers=["BM", "RPE"])
+ev[0].plot(layers=["BM", "RPE"])
 ```
 
 The plotting function is documented here: [EyeBscan.plot][eyepy.core.EyeBscan.plot]
@@ -79,13 +79,12 @@ The plotting function is documented here: [EyeBscan.plot][eyepy.core.EyeBscan.pl
 Here we compute drusen for our sample data which has manual layer annotations for BM and RPE.
 
 ``` python
-import eyepy.core.utils
 import eyepy as ep
 
 # Import example data
 ev = ep.data.load("drusen_patient")
 # Compute drusen
-drusen_map = eyepy.core.utils.drusen(ev.layers["RPE"], ev.layers["BM"], ev.shape, minimum_height=2)
+drusen_map = ep.drusen(ev.layers["RPE"].data, ev.layers["BM"].data, ev.shape, minimum_height=2)
 ```
 
 ### Add / Remove Layer Annotations
