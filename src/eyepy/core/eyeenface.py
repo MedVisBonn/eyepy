@@ -119,11 +119,24 @@ class EyeEnface:
             ax = plt.gca()
         ax.imshow(self.data[region], cmap="gray")
 
-        ax.set_yticks(ax.get_yticks())
-        ax.set_xticks(ax.get_xticks())
-
+        # Make sure tick labels match the image region
         y_start = region[0].start if region[0].start is not None else 0
         x_start = region[1].start if region[1].start is not None else 0
+        y_end = region[0].stop if region[0].stop is not None else self.size_y
+        x_end = region[1].stop if region[1].stop is not None else self.size_x
 
-        ax.set_yticklabels((ax.get_yticks() + y_start).astype(int))
-        ax.set_xticklabels((ax.get_xticks() + x_start).astype(int))
+        # Ticks are not clipped to the image region. Clip them here.
+        yticks = ax.get_yticks()
+        yticks = yticks[np.nonzero(
+            np.logical_and(yticks >= 0, yticks <= y_end - y_start - 1))]
+        xticks = ax.get_xticks()
+        xticks = xticks[np.nonzero(
+            np.logical_and(xticks >= 0, xticks <= x_end - x_start - 1))]
+
+        # Set clipped ticks (this is only necessary because we change the labels later)
+        ax.set_yticks(yticks)
+        ax.set_xticks(xticks)
+
+        # Set labels to ticks + start of the region as an offset
+        ax.set_yticklabels([str(int(t + y_start)) for t in yticks])
+        ax.set_xticklabels([str(int(t + x_start)) for t in xticks])
