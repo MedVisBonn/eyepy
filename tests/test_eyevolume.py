@@ -102,7 +102,7 @@ def test_set_layers_on_eyebscan(eyevolume):
     assert np.all(bscan.layers["test_layer_2"].data == 240)
     assert np.nansum(
         eyevolume.layers["test_layer_2"].data) == eyevolume.size_x * 240
-    assert np.all(eyevolume.layers["test_layer_2"].data[-(5 + 1)] == 240)
+    assert np.all(eyevolume.layers["test_layer_2"].data[5] == 240)
 
 
 # Test Bscan iteration
