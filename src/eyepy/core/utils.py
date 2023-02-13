@@ -127,19 +127,27 @@ def drusen(rpe_height, bm_height, volume_shape, minimum_height=2):
     """
     # Estimate ideal RPE
     if isinstance(rpe_height, EyeVolumeLayerAnnotation):
-        rpe_height = rpe_height.data
+        rpe_height = np.copy(rpe_height.data)
     if isinstance(bm_height, EyeVolumeLayerAnnotation):
-        bm_height = bm_height.data
+        bm_height = np.copy(bm_height.data)
 
-    idealrpe = ideal_rpe(rpe_height, bm_height, volume_shape)
+    irpe = ideal_rpe(rpe_height, bm_height, volume_shape)
     # Create drusen map
     drusen_map = np.zeros(volume_shape, dtype=bool)
     # Exclude normal RPE and RPE from the drusen area.
-    rpe = np.rint(rpe_height + 1).astype(int)
-    irpe = np.rint(idealrpe).astype(int)
+    nans = np.isnan(rpe_height + irpe)
+
+    rpe = np.rint(rpe_height + 1)
+    rpe[nans] = 0
+    rpe = rpe.astype(int)
+
+    irpe = np.rint(irpe)
+    irpe[nans] = 0
+    irpe = irpe.astype(int)
+
     for sli in range(drusen_map.shape[0]):
         for col in range(drusen_map.shape[2]):
-            if not rpe[sli, col] == -9223372036854775808:
+            if not nans[sli, col]:
                 drusen_map[sli, rpe[sli, col]:irpe[sli, col], col] = 1
 
     drusen_map = filter_by_height_enface(drusen_map, minimum_height)
