@@ -31,11 +31,12 @@ python = ">=3.8,<3.11"
 numpy = ">=1.22.0"
 pandas = "^1.5.3"
 scikit-image = "^0.19.1"
-imagecodecs = "^2021.11.20"
+imagecodecs = "^2023.1.23"
 matplotlib = "^3.5.1"
 nptyping = "^2.3.1"
 construct-typing = "^0.5.5"
 itk = {version = "^5.3.0", optional = true}
+imageio = "^2.25.1"
 
 [tool.poetry.extras]
 itk = ["itk"]
