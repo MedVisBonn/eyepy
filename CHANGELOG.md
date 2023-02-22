@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.8.1 (2023-02-22)
+### Fix
+* **pyproject.toml:** Increase allowed version range for numpy (fixes #10) ([`c66f6f6`](https://github.com/MedVisBonn/eyepy/commit/c66f6f65909aef7b086b62f66d6ce55f0b04220e))
+
 ## v0.8.0 (2023-02-13)
 ### Feature
 * **eyepy.core:** Reflect plotted region in x and y axis for both localizer and B-scan; check if bscan_region bscan position indicators are in plotting region ([`2842424`](https://github.com/MedVisBonn/eyepy/commit/284242439163a0148d144938674fe98f10413fa9))
