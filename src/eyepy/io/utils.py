@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 import logging
-from typing import List, MutableMapping, Tuple, Union
+import sys
+from typing import List, MutableMapping, Optional, Tuple, Union
 
 import construct as cs
 import numpy as np
@@ -11,7 +11,6 @@ from skimage import transform
 from skimage.transform._geometric import GeometricTransform
 
 from eyepy.core.eyemeta import EyeBscanMeta
-from eyepy.core.eyemeta import EyeVolumeMeta
 
 logger = logging.getLogger(__name__)
 
@@ -196,7 +195,140 @@ def get_bscan_spacing(bscan_meta: List[EyeBscanMeta]):
         for i in range(len(bscan_meta) - 1)
     ]
     if not np.allclose(start_distances[0],
-                       np.array(start_distances + end_distances)):
+                       np.array(start_distances + end_distances),
+                       rtol=4e-2):
         msg = "B-scans are not equally spaced. Projections into the enface space are distorted."
         logger.warning(msg)
     return np.mean(start_distances + end_distances)
+
+
+def find_int(bytestring: bytes,
+             value: int,
+             signed: Optional[Union[bool, str, List[str]]] = None,
+             endian: Optional[str] = None,
+             bits: Optional[Union[int, List[int], str, List[str]]] = None,
+             rtol=1e-05,
+             atol=1e-08) -> List[Tuple[str, int]]:
+    """Find all occurrences of an integer in a byte string.
+
+    Args:
+        bytestring: The byte string to search.
+        value: The integer to search for.
+        signed: Whether the integer is signed or not. If not specified, the
+            integer is assumed to be signed if it is negative, otherwise signed and unsigned are searched for.
+        endian: "l" for little and "b" for big, the endianness of the integer.
+            If not specified, the endianness is assumed to be the same as the endianness of the system.
+        bits: The number of bits in the integer. If not specified, 8, 16, 24, 32, and 64
+            bit integers are searched for.
+        rtol: The relative tolerance parameter for matching a value (see numpy.isclose).
+        atol: The absolute tolerance parameter for matching a value (see numpy.isclose).
+
+    Returns: A list containing a tuple for every find.
+        Every tuple has the following format: (type, position)
+    """
+
+    # construct format strings
+    if signed is None:
+        signed = ["s"] if value < 0 else ["s", "u"]
+    elif isinstance(signed, bool):
+        signed = ["s"] if signed else ["u"]
+    elif isinstance(signed, str):
+        signed = [signed]
+    if endian is None:
+        endian = sys.byteorder[0]  # first letter of endianness
+    if bits is None:
+        bits = ["8", "16", "24", "32", "64"]
+    elif isinstance(bits, int):
+        bits = [str(bits)]
+    elif isinstance(bits, str):
+        bits = [bits]
+    elif isinstance(bits, list):
+        bits = [str(b) for b in bits]
+
+    # Build a list of all format strings
+    formats = [(int(b), f"Int{b}{s}{endian}") for b in bits for s in signed]
+
+    # find all occurrences
+    results = []
+    for bts, fmt_string in formats:
+        format = getattr(cs, fmt_string)
+
+        # Parse the bytestring with multiple byte offsets depending on the format
+        for offset in range(bts // 8):
+
+            # Calculate the number of items that can be parsed
+            count = (len(bytestring) - offset) // (bts // 8)
+            if count <= 0:
+                continue
+            data = np.array(cs.Array(count, format).parse(bytestring[offset:]))
+
+            # Find all occurrences
+            hits = np.nonzero(np.isclose(data, value, rtol=rtol, atol=atol))
+            res = [(fmt_string, (pos * (bts // 8)) + offset + 1)
+                   for pos in hits[0]]
+            if res:
+                results.append(res)
+
+    return results
+
+
+def find_float(bytestring: bytes,
+               value: float,
+               endian: Optional[str] = None,
+               bits: Optional[Union[int, List[int], str, List[str]]] = None,
+               rtol=1e-05,
+               atol=1e-08) -> List[Tuple[str, int]]:
+    """Find all occurrences of a float in a byte string.
+
+    Args:
+        bytestring: The byte string to search.
+        value: The float to search for.
+        signed: Whether the float is signed or not. If not specified, the
+            float is assumed to be signed if it is negative, otherwise signed and unsigned are searched for.
+        endian: "l" for little and "b" for big, the endianness of the float.
+            If not specified, the endianness is assumed to be the same as the endianness of the system.
+        bits: The number of bits in the float. If not specified, 16, 32 and 64
+            bit floats are searched for.
+        rtol: The relative tolerance parameter for matching a value (see numpy.isclose).
+        atol: The absolute tolerance parameter for matching a value (see numpy.isclose).
+
+    Returns: A list containing a tuple for every find.
+        Every tuple has the following format: (type, position)
+    """
+
+    # construct format strings
+    if endian is None:
+        endian = sys.byteorder[0]  # first letter of endianness
+    if bits is None:
+        bits = ["16", "32", "64"]
+    elif isinstance(bits, int):
+        bits = [str(bits)]
+    elif isinstance(bits, str):
+        bits = [bits]
+    elif isinstance(bits, list):
+        bits = [str(b) for b in bits]
+
+    # Build a list of all format strings
+    formats = [(int(b), f"Float{b}{endian}") for b in bits]
+
+    # find all occurrences
+    results = []
+    for bts, fmt_string in formats:
+        format = getattr(cs, fmt_string)
+
+        # Parse the bytestring with multiple byte offsets depending on the format
+        for offset in range(bts // 8):
+            # Calculate the number of items that can be parsed
+            count = (len(bytestring) - offset) // (bts // 8)
+            if count <= 0:
+                continue
+            data = np.array(cs.Array(count, format).parse(bytestring[offset:]))
+
+            # Find all occurrences
+            hits = np.nonzero(np.isclose(data, value, rtol, atol))
+            res = [(fmt_string, (pos * (bts // 8)) + offset + 1)
+                   for pos in hits[0]]
+            if res:
+                results.append(res)
+
+    return results
