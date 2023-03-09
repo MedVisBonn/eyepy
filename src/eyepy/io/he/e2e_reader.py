@@ -1,179 +1,424 @@
 from collections import defaultdict
+from contextlib import AbstractContextManager
+import dataclasses
+from io import BufferedReader
 import logging
-from typing import List, Tuple, Union
+from pathlib import Path
+from textwrap import indent
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import construct as cs
 import numpy as np
+import pandas as pd
+from skimage.transform import AffineTransform
+from skimage.transform import warp
 
 from eyepy.core.eyeenface import EyeEnface
 from eyepy.core.eyemeta import EyeBscanMeta
 from eyepy.core.eyemeta import EyeEnfaceMeta
 from eyepy.core.eyemeta import EyeVolumeMeta
 from eyepy.core.eyevolume import EyeVolume
+from eyepy.io.he.e2e_format import \
+    containerheader_format  # data_container_structure, container_header_structure
+from eyepy.io.he.e2e_format import datacontainer_format
+from eyepy.io.he.e2e_format import TypesEnum
 from eyepy.io.utils import _compute_localizer_oct_transform
+from eyepy.io.utils import find_float
+from eyepy.io.utils import find_int
 from eyepy.io.utils import get_bscan_spacing
 
+from .e2e_format import ContainerHeader
+from .e2e_format import DataContainer
 from .e2e_format import e2e_format
+from .e2e_format import Type10025
 from .vol_reader import SEG_MAPPING
 
 logger = logging.getLogger(__name__)
 
+# Occurence of type ids. This is used by the inspect function.
+type_occurence = {
+    "E2EFile": [0, 9011],
+    "E2EPatient": [9, 17, 29, 31, 52, 9010],
+    "E2EStudy": [7, 10, 13, 30, 53, 58, 1000, 9000, 9001],
+    "E2ESeries": [
+        2, 3, 11, 54, 59, 61, 62, 1000, 1001, 1003, 1008, 9005, 9006, 9007,
+        9008, 10005, 10009, 10010, 10011, 10013, 10025, 1073741824, 1073751824,
+        1073751825, 1073751826
+    ],
+    "E2ESlice": [
+        2, 3, 5, 39, 40, 10004, 10012, 10013, 10019, 10020, 10032, 1073741824,
+        1073751824, 1073751825, 1073751826
+    ]
+}
 
-def split_e2e(parsed_file) -> Tuple[List]:
-    """Split an e2e file into a list of e2e files.
 
-    We split e2e files with possibly multiple volumes into a list of e2e files of single volumes.
-    Therefore we prepend and append patient and study information as in the original file but only keep series data of a single volume.
+class E2EStructureMixin:
+    """A Mixin for shared functionality between structures in the E2E hierarchy."""
 
-    Steps are:
-    sorting all folders
-    put folders in new chunks
-        set chunk header according to content
-    assemble new e2e file
+    def inspect(self,
+                recursive: bool = False,
+                ind_prefix: str = "",
+                tables: bool = False) -> str:
+        """Inspect the E2E structure.
+
+        Args:
+            recursive: If True inspect lower level structures recursively.
+            ind_prefix: Indentation for showing information from lower level structures.
+            tables: If True add markdown table overview of the contained folder types.
+
+        Returns:
+            Information about the E2E structure."""
+        text = self._get_section_title() + "\n"
+        text += self._get_section_description() + "\n"
+        if tables:
+            text += self._get_folder_summary() + "\n"
+
+        if not recursive:
+            return text
+
+        for s in self.substructure.values():
+            text += "\n"
+            text += indent(s.inspect(recursive, ind_prefix, tables),
+                           ind_prefix)
+        return text
+
+    def get_folder_data(
+        self,
+        folder_type: Union[TypesEnum, int],
+        offset: int = 0,
+        data_construct: Optional[Union[cs.Construct, str]] = None,
+    ) -> Any:
+        """Return the data of a folder type.
+
+        Args:
+            folder_type: Either one of [TypesEnum][eyepy.io.he.e2e_format.TypesEnum] or the type id (int).
+            offset: Offset to the data in bytes.
+            data_construct: A construct to parse the data with (Python construct package) or a string describing one of the basic constructs from the construct package like "Int8ul", or "Float32l"
+
+        Returns:
+            Parsed data or None if no folder of the given type was found.
+        """
+
+        folders: List[E2EFolder] = self.folders[folder_type]
+
+        if len(folders) == 0:
+            return None
+
+        if data_construct is None:
+            return [f.data for f in folders]
+        elif type(data_construct) == str:
+            data_construct = getattr(cs, data_construct)
+
+        return [f.parse_spec(offset, data_construct) for f in folders]
+
+    def __str__(self):
+        return self.inspect()
+
+    def _get_section_title(self) -> str:
+        """Make a title for describing the structure.
+
+        Used by the inspect function.
+        """
+        if not self._section_title:
+            try:
+                self._section_title = f"{self.__class__.__name__}({self.id})"
+            except:
+                self._section_title = f"{self.__class__.__name__}"
+
+        return self._section_title
+
+    def _get_table(self, data, structure=None) -> str:
+        """Make a markdown table
+
+        Used by the inspect function.
+        """
+        if structure is None:
+            structure = self.__class__.__name__
+        data = [[
+            f'{TypesEnum(k).name} ({k})' if k in TypesEnum else f'{k}',
+            len(v),
+            np.mean(v),
+            np.min(v),
+            np.max(v), False if k not in type_occurence[structure] else True
+        ] for k, v in data.items()]
+        text = pd.DataFrame.from_records(data,
+                                         columns=[
+                                             "Type", "Count", "Mean Size",
+                                             "Min Size", "Max Size",
+                                             "described"
+                                         ]).to_markdown(index=False)
+        return text
+
+    def _get_folder_summary(self) -> str:
+        """Make a markdown table with folder type summary for the structure.
+
+        Used by the inspect function.
+        """
+        data = defaultdict(list)
+        for f_list in self.folders.values():
+            for f in f_list:
+                data[f.type].append(f.size)
+
+        text = self._get_table(data)
+        return text
+
+    def _get_section_description(self) -> str:
+        """Make a description for describing the structure.
+
+        This uses the _section_description_parts attribute that can be defined in a structure to make a description.
+
+        Used by the inspect function."""
+        if not self._section_description:
+            self._section_description = ""
+            for part in self._section_description_parts:
+                try:
+                    self._section_description += f"{part[0]} {self.folders[part[1]][0].data.text[part[2]]} - "
+                except:
+                    pass
+            self._section_description = self._section_description.rstrip(" - ")
+        return self._section_description
 
 
-    Args:
-        parsed_file (e2e_format): The parsed e2e file.
+@dataclasses.dataclass
+class E2EFolder():
+    """Folder data class.
 
-    Returns:
-        List: A list of parsed e2e files.
+    !!! Note
+
+        Folders are created during initialization of the HeE2eReader. For accessing the data the
+        respective HeE2eReader has to be used as a Context Manager. This opens the E2E file and
+        allows the E2EFolder to access the data.
+
+
+        ```python
+        with HeE2eReader("path/to/e2e") as reader:
+            folder_dict = reader.file_hierarchy.folders
+            folder = folder_dict[TypesEnum.YOURTYPE][0]
+            data = folder.data
+        ```
     """
-    e2e_volumes = []
-    e2e_enface = []
+    patient_id: int
+    study_id: int
+    series_id: int
+    slice_id: int
+    pos: int
+    start: int
+    type: int
+    size: int
+    ind: int
+    reader: "HeE2eReader"
 
-    general_data = []
-    patient_data = []
-    study_data = []
-    series_dict = defaultdict(list)
-
-    for chunk in parsed_file.chunks:
-        for folder in chunk.folders:
-            patient = folder.header.patient_id
-            study = folder.header.study_id
-            series = folder.header.series_id
-            sli = folder.header.slice_id
-            t = folder.header.type
-
-            if patient != -1 and study != -1:
-                # Series specific data or slice data
-                if series != -1:
-                    series_dict[series].append(folder)
-                else:
-                    study_data.append(folder)
-            elif patient != -1 and study == -1:
-                patient_data.append(folder)
-            elif patient == -1:
-                # General data
-                if t == 9011:
-                    general_data.append(folder)
-                # Ignore chunk filler folders
-                elif t == "empty_folder":
-                    filler = folder
-                else:
-                    print(t)
-
-                    print("Unknown folder", folder.header)
-            else:
-                print("Unknown folder", folder.header)
-
-    for key, series_data in series_dict.items():
-        folders = study_data + series_data + patient_data + general_data
-        if "bscanmeta" in [f.header.type for f in series_data]:
-            e2e_volumes.append(folders)
-        else:
-            e2e_enface.append(folders)
-
-    return e2e_volumes, e2e_enface
-
-
-class HeE2eReader:
-
-    def __init__(self, path, single=True):
-        self.path = path
-        with open(self.path, "rb") as e2e_file:
-            self.parsed_file = e2e_format.parse_stream(e2e_file)
-            self._single_volumes, self._single_series = split_e2e(
-                self.parsed_file
-            )  # Split into single series (volumes and series without bscanmeta-probably not volumes)
-            if len(self._single_volumes) > 1 and single:
-                logger.warning(
-                    "File contains more than one series. If you want to read all series, set single=False."
-                )
-            self.single = single
-
-            self._meta = None
-            self._bscan_meta = None
-
-            self._current_volume_index = 0
-            self._sort_folders(self.current_volume_index)
-            #self._current_fundus_index = 0
-            #self._sort_fundus_folders(self.current_fundus_index)
+    _data = None
+    _header = None
 
     @property
-    def current_volume_index(self):
-        return self._current_volume_index
+    def file_object(self) -> BufferedReader:
+        """Return the file object
 
-    @current_volume_index.setter
-    def current_volume_index(self, value):
-        if 0 <= value < len(self._single_volumes):
-            self._current_volume_index = value
-            self._sort_folders(self._current_volume_index)
-            self._meta = None
-            self._bscan_meta = None
-        else:
+        This refers to the the HeE2eReader file object.
+        """
+        return self.reader.file_object
+
+    @property
+    def data(self) -> Any:
+        """Return the data"""
+        if not self._data:
+            parsed = self._parse_data()
+            self._data = parsed.item
+            self._header = parsed.header
+        return self._data
+
+    @property
+    def header(self) -> ContainerHeader:
+        """Return the data header"""
+        if not self._header:
+            parsed = self._parse_data()
+            self._data = parsed.item
+            self._header = parsed.header
+        return self._header
+
+    def _parse_data(self) -> DataContainer:
+        """Parse the data
+
+        This only works if the HeE2eReader is used as a Context Manager or during initialization of the HeE2eReader.
+        Otherwise the E2E file is not open.
+        """
+        self.file_object.seek(self.start)
+        return datacontainer_format.parse_stream(self.file_object)
+
+    def parse_spec(self, data_construct: cs.Construct, offset: int = 0) -> Any:
+        """Parse a data specification.
+
+        This only works if the HeE2eReader is used as a Context Manager or during initialization of the HeE2eReader.
+        Otherwise the E2E file is not open.
+
+
+
+        Args:
+            data_construct: The construct to parse the data with. You can Constructs defined in the construct library or those defined in the [e2e_format][eyepy.io.he.e2e_format] module.
+            offset: The offset in bytes, 0 by default.
+        """
+        b = self.get_bytes()
+        return data_construct.parse(b[offset:])
+
+    def get_bytes(self) -> bytes:
+        """Return the bytes of the data
+
+        This only works if the HeE2eReader is used as a Context Manager or during initialization of the HeE2eReader.
+        Otherwise the E2E file is not open.
+
+        """
+
+        self.file_object.seek(self.start + containerheader_format.sizeof())
+        return self.file_object.read(self.size)
+
+
+class E2ESlice(E2EStructureMixin):
+    """E2E Slice Structure
+
+    This structure contains folders with data for a single Slice/B-csan and provide
+    convenience functions for accessing the data.
+    """
+
+    def __init__(self, id: int) -> None:
+        self.id = id
+        self.folders: Dict[Union[int, str], List[E2EFolder]] = {}
+
+        # Empty so inspect() does not fail
+        self.substructure = {}
+
+    def add_folder(self, folder: E2EFolder) -> None:
+        """ Add a folder to the slice.
+
+        Args:
+            folder: The folder to add.
+        """
+        try:
+            self.folders[folder.type].append(folder)
+        except KeyError:
+            self.folders[folder.type] = [folder]
+
+    def get_layers(self) -> Dict[int, np.ndarray]:
+        """Return the layers as a dictionary of layer id and layer data"""
+        layers = {}
+        for layer_folder in self.folders[TypesEnum.layer_annotation]:
+            layers[layer_folder.data.id] = layer_folder.data.data
+        return layers
+
+    def get_meta(self) -> EyeBscanMeta:
+        """Return the slice meta data"""
+        if len(self.folders[TypesEnum.bscanmeta]) > 1:
             logger.warning(
-                f"Can not set current volume to {value}. There are only {len(self._single_volumes)} volumes in the file."
+                "There is more than one bscanmeta object. This is not expected."
             )
+        meta = self.folders[TypesEnum.bscanmeta][0].data
+        return EyeBscanMeta(  #quality=meta.quality,
+            start_pos=((meta["start_x"] + 14.86 * 0.29),
+                       (meta["start_y"] + 15.02) * 0.29),
+            end_pos=((meta["end_x"] + 14.86 * 0.29),
+                     (meta["end_y"] + 15.02) * 0.29),
+            pos_unit="mm",
+            **dataclasses.asdict(meta))
 
-    def _sort_folders(self, index):
-        self._folders = defaultdict(list)
-        for folder in self._single_volumes[index]:
-            t = folder.header.type
-            s = "enface" if folder.header.ind == 0 else "bscan"
-            self._folders[t, s].append(folder)
-
-    """
-    @property
-    def current_fundus_index(self):
-        return self._current_fundus_index
-
-    @current_fundus_index.setter
-    def current_fundus_index(self, value):
-        if 0 <= value < len(self._single_fundus):
-            self._current_fundus_index = value
-            self._sort_fundus_folders(self._current_volume_index)
-        else:
+    def get_image(self) -> np.ndarray:
+        """Return the slice image (B-scan)"""
+        if len(self.folders[TypesEnum.image]) > 1:
             logger.warning(
-                f"Can not set current fundus to {value}. There are only {len(self._single_volumes)} fundus images in the file."
-            )
+                "There is more than one image object. This is not expected.")
+        return self.folders[TypesEnum.image][0].data.data
 
-    def _sort_fundus_folders(self, index):
-        self._fundus_folders = defaultdict(list)
-        for folder in self._single_fundus[index]:
-            t = folder.header.type
-            self._fundus_folders[t].append(folder)
+
+class E2ESeriesStructure(E2EStructureMixin):
+    """E2E Series Structure.
+
+    This structure contains folders with data for a single Series/OCT-Volume and provides
+    convenience functions for accessing the data.
     """
 
-    @property
-    def volume(self) -> Union[EyeVolume, List[EyeVolume]]:
-        if self.single:
-            return self._get_volume()
-        else:
-            v = []
-            for i in range(len(self._single_volumes)):
-                self.current_volume_index = i
-                v.append(self._get_volume())
-            return v
+    def __init__(self, id: int) -> None:
+        self.id = id
+        self.substructure: Dict[int, E2ESlice] = {}
+        self.folders: Dict[Union[int, str], List[E2EFolder]] = {}
 
-    def _get_volume(self) -> EyeVolume:
+        self._meta = None
+        self._bscan_meta = None
+        self._localizer_meta = None
+        self._section_title = ""
+        self._section_description = ""
+
+        # Description used in inspect()
+        # Parts are (name, folder_id, index in list of strings)
+        self._section_description_parts = [
+            ("Structure:", 9005, 0),
+            ("Scanpattern:", 9006, 0),
+            ("Oct Modality:", 9008, 1),
+            ("Enface Modality:", 9007, 1),
+        ]
+
+    def add_folder(self, folder: E2EFolder) -> None:
+        """Add a folder to the Series.
+
+        Args:
+            folder: The folder to add.
+        """
+        if folder.slice_id == -1:
+            try:
+                self.folders[folder.type].append(folder)
+            except KeyError:
+                self.folders[folder.type] = [folder]
+        else:
+            if folder.slice_id not in self.slices:
+                self.slices[folder.slice_id] = E2ESlice(folder.slice_id)
+            self.slices[folder.slice_id].add_folder(folder)
+
+    def inspect(self,
+                recursive: bool = False,
+                ind_prefix: str = "",
+                tables: bool = False) -> str:
+        """Inspect the series.
+
+        Custom `inspect` method to print a summary table for the slices belonging to the series.
+
+        Args:
+            recursive: If True inspect lower level structures recursively.
+            ind_prefix: Indentation for showing information from lower level structures.
+            tables: If True add markdown table overview of the contained folder types.
+
+        """
+        text = self._get_section_title(
+        ) + f" - Laterality: {self.folders[TypesEnum.laterality][0].data.laterality.name} - B-scans: {self.folders[10013][0].data.n_bscans}\n"
+        text += self._get_section_description() + "\n"
+        if tables:
+            text += self._get_folder_summary() + "\n"
+
+        if not recursive:
+            return text
+
+        # Describe all slices in one table
+        s_data = defaultdict(list)
+        for sl in self.slices.values():
+            for f_list in sl.folders.values():
+                for f in f_list:
+                    s_data[f.type].append(f.size)
+
+        if len(s_data) == 0 or tables == False:
+            text += ""
+        else:
+            text += "\nE2ESlice Summary:\n"
+            text += indent(self._get_table(s_data, "E2ESlice"), ind_prefix)
+            text += "\n"
+        return text
+
+    def get_volume(self) -> EyeVolume:
+        """Return EyeVolume object for the series."""
         ## Check if scan is a volume scan
-        volume_meta = self.meta
+        volume_meta = self.get_meta()
 
         size_x = volume_meta["bscan_meta"][0]["size_x"]
         size_y = volume_meta["bscan_meta"][0]["size_y"]
         scan_pattern = volume_meta["bscan_meta"][0]["scan_pattern"]
         n_bscans = volume_meta["bscan_meta"][0]["n_bscans"] if len(
-            self.bscan_meta
+            self.get_bscan_meta()
         ) != 1 else 1  # n_bscans is 0 instead of 1 for single B-scan Volumes in the e2e file.
 
         ## Check if scan pattern is supported by EyeVolume
@@ -185,16 +430,15 @@ class HeE2eReader:
             raise ValueError(msg)
 
         data = np.zeros((n_bscans, size_y, size_x))
-        folders = self._folders["image", "bscan"]
-        for folder in folders:
-            if folder.data_container.item.type == 35652097:
-                s = folder.data_container.header.slice_id // 2 if len(
-                    self.bscan_meta
-                ) != 1 else 0  # Slice id for single B-scan Volumes is 2 and not 0 in the e2e file.
-                data[s] = folder.data_container.item.data
+        for ind, sl in self.slices.items():
+            bscan = sl.get_image()
+            i = ind // 2 if len(
+                self.get_bscan_meta()
+            ) != 1 else 0  # Slice id for single B-scan Volumes is 2 and not 0 in the e2e file.
+            data[i] = bscan
 
-        volume_meta = self.meta
-        localizer = self.localizer
+        volume_meta = self.get_meta()
+        localizer = self.get_localizer()
         volume = EyeVolume(
             data=data,
             meta=volume_meta,
@@ -203,133 +447,108 @@ class HeE2eReader:
                 volume_meta, localizer.meta, data.shape),
         )
 
-        layer_height_maps = self.layers
+        layer_height_maps = self.get_layers()
         for name, i in SEG_MAPPING.items():
             if i in layer_height_maps:
                 volume.add_layer_annotation(layer_height_maps[i], name=name)
 
         return volume
 
-    @property
-    def layers(self):
-        layer_segmentations = {}
+    def get_layers(self) -> Dict[int, np.ndarray]:
+        """Return layer height maps for the series as dict of numpy arrays where the key is the layer id."""
+        slice_layers = {}
+        layer_ids = set()
 
-        folders = self._folders["layer_annotation", "bscan"]
-        idset = set()
-
-        for folder in folders:
-            item = folder.data_container.item
-            layer_segmentations[item.id,
-                                folder.header.slice_id / 2] = item.data
-            idset.add(item.id)
+        for ind, sl in self.slices.items():
+            layers = sl.get_layers()
+            [layer_ids.add(k) for k in layers.keys()]
+            slice_layers[ind // 2] = sl.get_layers()
 
         layers = {}
-        n_bscans = self.bscan_meta[0]["n_bscans"]
-        size_x = self.bscan_meta[0]["size_x"]
-        for i in idset:
+        n_bscans = self.get_bscan_meta()[0]["n_bscans"]
+        size_x = self.get_bscan_meta()[0]["size_x"]
+        for i in layer_ids:
             layer = np.full((n_bscans, size_x), np.nan)
             for sl in range(n_bscans):
-                layer[sl, :] = layer_segmentations[i, sl]
+                layer[sl, :] = slice_layers[sl][i]
 
+            layer[layer >= 3.0e+38] = np.nan
             layers[i] = layer
 
-        layers[layers >= 3.0e+38] = np.nan
         return layers
 
-    @property
-    def enface_modality(self):
-        folders = self._folders["enface_modality", "enface"]
+    def enface_modality(self) -> str:
+        folders = self.folders[TypesEnum.enface_modality]
         if len(folders) > 1:
             logger.debug(
                 "There is more than one enface modality stored. This is not expected."
             )
-        text = folders[0].data_container.item.text[1]
+        text = folders[0].data.text[1]
         return "NIR" if text == "IR" else text
 
-    @property
-    def laterality(self):
-        folders = self._folders["laterality", "enface"]
+    def laterality(self) -> str:
+        folders = self.folders[TypesEnum.laterality]
         if len(folders) > 1:
             logger.debug(
                 "There is more than one laterality stored. This is not expected."
             )
-        return str(folders[0].data_container.item.laterality)
+        return str(folders[0].data.laterality)
 
-    @property
+    def slo_data(self) -> Type10025:
+        folders = self.folders[TypesEnum.slodata]
+        if len(folders) > 1:
+            logger.debug(
+                "There is more than one SLO data folder. This is not expected."
+            )
+        return folders[0].data
+
     def localizer_meta(self) -> EyeEnfaceMeta:
+        """Return EyeEnfaceMeta object for the localizer image."""
+        if self._localizer_meta is None:
+            self._localizer_meta = EyeEnfaceMeta(
+                scale_x=0.0114,  # Todo: Where is this in E2E?
+                scale_y=0.0114,  # Todo: Where is this in E2E?
+                scale_unit="mm",
+                modality=self.enface_modality(),
+                laterality=self.laterality(),
+                field_size=None,
+                scan_focus=None,
+                visit_date=None,
+                exam_time=None,
+            )
+        return self._localizer_meta
 
-        return EyeEnfaceMeta(
-            scale_x=0.0114,  # Todo: Where is this in E2E?
-            scale_y=0.0114,  # Todo: Where is this in E2E?
-            scale_unit="mm",
-            modality=self.enface_modality,
-            laterality=self.laterality,
-            field_size=None,
-            scan_focus=None,
-            visit_date=None,
-            exam_time=None,
-        )
-
-    @property
-    def localizer(self) -> EyeEnface:
-        folders = self._folders["image", "enface"]
+    def get_localizer(self) -> EyeEnface:
+        """Return EyeEnface object for the localizer image."""
+        folders = self.folders[TypesEnum.image]
         if len(folders) > 1:
             logger.warning(
                 "There is more than one enface localizer image stored. This is not expected."
             )
-        localizer = folders[0].data_container.item.data
-        return EyeEnface(localizer, self.localizer_meta)
+        transform = np.array(list(self.slo_data().transform) +
+                             [0, 0, 1]).reshape((3, 3))
+        # transfrom localizer with transform from E2E file
+        transformed_localizer = warp(folders[0].data.data,
+                                     AffineTransform(transform),
+                                     order=1,
+                                     preserve_range=True)
+        return EyeEnface(transformed_localizer, self.localizer_meta())
 
-    """
-    @property
-    def fundus(self) -> EyeEnface:
-        if self.single:
-            return self._get_fundus()
-        else:
-            f = []
-            for i in range(len(self._single_enface)):
-                self.current_volume_index = i
-                f.append(self._get_fundus())
-            return f
-
-    def _get_fundus(self):
-        folders = self._fundus_folders["fundus"]
-        if len(folders) > 1:
-            logger.warning(
-                "There is more than one enface localizer image stored. This is not expected."
-            )
-        return EyeEnface(folders[0].data_container.item.data,
-                         EyeEnfaceMeta(scale_unit="px", scale_x=1, scale_y=1))
-    """
-
-    @property
-    def bscan_meta(self) -> List[EyeBscanMeta]:
+    def get_bscan_meta(self) -> List[EyeBscanMeta]:
+        """Return EyeBscanMeta objects for all B-scans in the series."""
         if self._bscan_meta is None:
-            meta_objects = []
-            folders = self._folders["bscanmeta", "bscan"]
-
-            meta_objects = [
-                EyeBscanMeta(  #quality=meta.quality,
-                    start_pos=((meta.pop("start_x") + 14.86 * 0.29),
-                               (meta.pop("start_y") + 15.02) * 0.29),
-                    end_pos=((meta.pop("end_x") + 14.86 * 0.29),
-                             (meta.pop("end_y") + 15.02) * 0.29),
-                    pos_unit="mm",
-                    **meta)
-                for meta in [f.data_container.item for f in folders]
-            ]
-            #return meta_objects
-            self._bscan_meta = sorted(meta_objects,
-                                      key=lambda x: x["aktImage"])
+            self._bscan_meta = sorted(
+                [sl.get_meta() for sl in self.slices.values()],
+                key=lambda x: x["aktImage"])
         return self._bscan_meta
 
-    @property
-    def meta(self) -> EyeVolumeMeta:
+    def get_meta(self) -> EyeVolumeMeta:
+        """Return EyeVolumeMeta object for the series."""
         if self._meta is None:
-            bscan_meta = self.bscan_meta
+            bscan_meta = self.get_bscan_meta()
             self._meta = EyeVolumeMeta(
                 scale_x=0.0114,  # Todo: Where is this in E2E?
-                scale_y=self.bscan_meta[0]["scale_y"],
+                scale_y=bscan_meta[0]["scale_y"],
                 scale_z=get_bscan_spacing(bscan_meta) if
                 (bscan_meta[0]["scan_pattern"] not in [1, 2]) else 0.03,
                 scale_unit="mm",
@@ -340,3 +559,332 @@ class HeE2eReader:
                 intensity_transform="vol",
             )
         return self._meta
+
+    @property
+    def slices(self) -> Dict[int, E2ESlice]:
+        """Alias for substructure"""
+        return self.substructure
+
+
+class E2EStudyStructure(E2EStructureMixin):
+    """E2E Study Structure"""
+
+    def __init__(self, id) -> None:
+        self.id = id
+        self.substructure: Dict[int, E2ESeriesStructure] = {}
+        self.folders: Dict[Union[int, str], List[E2EFolder]] = {}
+
+        self._section_description_parts = [("Device:", 9000, 0),
+                                           ("Studyname:", 9001, 0)]
+        self._section_title = ""
+        self._section_description = ""
+
+    @property
+    def series(self) -> Dict[int, E2ESeriesStructure]:
+        return self.substructure
+
+    def add_folder(self, folder: E2EFolder) -> None:
+        """Add a folder to the Study.
+
+        Args:
+            folder: The folder to add.
+        """
+        if folder.series_id == -1:
+            try:
+                self.folders[folder.type].append(folder)
+            except KeyError:
+                self.folders[folder.type] = [folder]
+        else:
+            if folder.series_id not in self.series:
+                self.series[folder.series_id] = E2ESeriesStructure(
+                    folder.series_id)
+            self.series[folder.series_id].add_folder(folder)
+
+
+class E2EPatientStructure(E2EStructureMixin):
+    """E2E Patient Structure"""
+
+    def __init__(self, id) -> None:
+
+        self.id = id
+        self.substructure: Dict[int, E2EStudyStructure] = {}
+        self.folders: Dict[Union[int, str], List[E2EFolder]] = {}
+
+        self_section_description_parts = []
+        self._section_title = ""
+        self._section_description = ""
+
+    @property
+    def studies(self) -> Dict[int, E2EStudyStructure]:
+        return self.substructure
+
+    def add_folder(self, folder: E2EFolder) -> None:
+        """Add a folder to the Patient Structure.
+
+        Args:
+            folder: The folder to add.
+        """
+        if folder.study_id == -1:
+            try:
+                self.folders[folder.type].append(folder)
+            except KeyError:
+                self.folders[folder.type] = [folder]
+        else:
+            if folder.study_id not in self.studies:
+                self.studies[folder.study_id] = E2EStudyStructure(
+                    folder.study_id)
+            self.studies[folder.study_id].add_folder(folder)
+
+
+class E2EFileStructure(E2EStructureMixin):
+    """E2E File Structure"""
+
+    def __init__(self):
+        self.substructure: Dict[int, E2EPatientStructure] = {}
+        self.folders: Dict[Union[int, str], List[E2EFolder]] = {}
+
+        self._section_description_parts = []
+        self._section_title = ""
+        self._section_description = ""
+
+    @property
+    def patients(self) -> Dict[int, E2EPatientStructure]:
+        return self.substructure
+
+    def add_folder(self, folder: E2EFolder):
+        """Add a folder to the File Structure.
+
+        Args:
+            folder: The folder to add.
+        """
+        try:
+            self.all_folders.append(folder)
+        except:
+            self.all_folders = [folder]
+
+        if folder.patient_id == -1:
+            try:
+                self.folders[folder.type].append(folder)
+            except KeyError:
+                self.folders[folder.type] = [folder]
+        else:
+            if folder.patient_id not in self.patients:
+                self.patients[folder.patient_id] = E2EPatientStructure(
+                    folder.patient_id)
+            self.patients[folder.patient_id].add_folder(folder)
+
+
+class HeE2eReader(AbstractContextManager):
+
+    def __init__(self, path: Union[str, Path]):
+        """Index an E2E file.
+
+        Initialization of the HeE2eReader class indexes the specified E2E file. This allows for printing the reader object
+        for a quick overview of the files contents. If you want to access the data, the reader has to be used as a Context Manager.
+
+        ```python
+        with HeE2eReader("path/to/file.e2e") as reader:
+            data = reader.volumes
+        ```
+
+        Args:
+            path: Path to the e2e file.
+        """
+        self.path = Path(path)
+        self.file_object: BufferedReader
+
+        # Index file to create hierarchy
+        self.file_hierarchy = E2EFileStructure()
+        self._index_file()
+
+    def _index_file(self) -> None:
+        with open(self.path, "rb") as f:
+            parsed = e2e_format.parse_stream(f)
+
+            # Get the position, IDs and types of all folders
+            for chunk in parsed.chunks:
+                for fh in chunk.folders:
+                    folder = E2EFolder(
+                        **{
+                            "patient_id": fh.patient_id,
+                            "study_id": fh.study_id,
+                            "series_id": fh.series_id,
+                            "slice_id": fh.slice_id,
+                            "pos": fh.pos,
+                            "start": fh.start,
+                            "type": fh.type,
+                            "size": fh.size,
+                            "ind": fh.ind,
+                            "reader": self,
+                        })
+                    self.file_hierarchy.add_folder(folder)
+
+            # Read and cache information required for __str__
+            self.file_object = f
+            self.inspect(recursive=True, ind_prefix="  ", tables=False)
+
+    def inspect(self,
+                recursive: bool = False,
+                ind_prefix: str = "",
+                tables: bool = True) -> str:
+        """Inspect the file hierarchy (contents) of the file.
+
+        Args:
+            recursive: If True inspect lower level structures recursively.
+            ind_prefix: Indentation for showing information from lower level structures.
+            tables: If True add markdown table overview of the contained folder types.
+
+        """
+        return self.file_hierarchy.inspect(recursive, ind_prefix, tables)
+
+    def __str__(self) -> str:
+        return self.inspect(recursive=True, ind_prefix="  ", tables=False)
+
+    def __repr__(self) -> str:
+        return f'HeE2eReader(path="{self.path}")'
+
+    @property
+    def patients(self) -> List[E2EPatientStructure]:
+        """List of all patients in the file as E2EPatient objects."""
+        return [p for p in self.file_hierarchy.patients.values()]
+
+    @property
+    def studies(self) -> List[E2EStudyStructure]:
+        """List of all studies in the file as E2EStudy objects."""
+        studies = []
+        for p in self.patients:
+            studies += p.studies.values()
+        return studies
+
+    @property
+    def series(self) -> List[E2ESeriesStructure]:
+        """List of all series in the file as E2ESeries objects."""
+        series = []
+        for s in self.studies:
+            series += s.series.values()
+        return sorted(series, key=lambda s: s.id)
+
+    def __enter__(self) -> "HeE2eReader":
+        self.file_object = open(self.path, "rb")
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.file_object.close()
+
+    def find_int(self,
+                 value: int,
+                 excluded_folders: List[Union[int,
+                                              str]] = ["images", "layers"],
+                 slice_id: Optional[int] = None,
+                 **kwargs) -> Dict[int, Dict[int, Dict[str, List[int]]]]:
+        """Find an integer value in the e2e file.
+
+        Args:
+            value: The value to find.
+            excluded_folders: A list of folders to exclude from the search.
+                None: Exclude no folders.
+                "images": Exclude image data from search.
+                "layers": Exclude layer data from search.
+            slice_id: The slice id to search in.
+            **kwargs: Keyword arguments passed to [`find_int`][eyepy.io.utils.find_int].
+
+        Returns:
+            A dictionary of the form {series_id(int): {folder_type(int): {fmt_string(str): [positions(int)]}}}
+        """
+        if "images" in excluded_folders:
+            excluded_folders[excluded_folders.index("images")] = 1073741824
+        if "layers" in excluded_folders:
+            excluded_folders[excluded_folders.index("layers")] = 10019
+
+        results = defaultdict(dict)
+        for folder in self.file_hierarchy.all_folders:
+            if not int(folder.type) in excluded_folders and (
+                    True if slice_id is None else folder.slice_id == slice_id):
+                res = find_int(folder.get_bytes(), value, **kwargs)
+                if res:
+                    results[folder.series_id][folder.type] = res
+        results = {**results}
+        return results
+
+    def find_float(self,
+                   value: float,
+                   excluded_folders: List[Union[int,
+                                                str]] = ["images", "layers"],
+                   slice_id: Optional[int] = None,
+                   **kwargs) -> Dict[int, Dict[int, Dict[str, List[int]]]]:
+        """Find a float value in the e2e file.
+
+        Args:
+            value: The value to find.
+            excluded_folders: A list of folders to exclude from the search.
+                None: Exclude no folders.
+                "images": Exclude image data from search.
+                "layers": Exclude layer data from search.
+            slice_id: The slice to search in. Specify 0 if you do not want to search through all slices but one slice per volume is enough.
+            **kwargs: Keyword arguments passed to [`find_float`][eyepy.io.utils.find_float].
+
+        Returns:
+            A dictionary of the form {series_id(int): {folder_type(int): {fmt_string(str): [positions(int)]}}}
+        """
+        if "images" in excluded_folders:
+            excluded_folders[excluded_folders.index("images")] = 1073741824
+        if "layers" in excluded_folders:
+            excluded_folders[excluded_folders.index("layers")] = 10019
+
+        results = defaultdict(dict)
+        for folder in self.file_hierarchy.all_folders:
+            if not int(folder.type) in excluded_folders and (
+                    True if slice_id is None else folder.slice_id == slice_id):
+                res = find_float(folder.get_bytes(), value, **kwargs)
+                if res:
+                    results[folder.series_id][folder.type] = res
+        results = {**results}
+        return results
+
+    def find_number(self,
+                    value: Union[int, float],
+                    excluded_folders: List[Union[int,
+                                                 str]] = ["images", "layers"],
+                    slice_id: Optional[int] = None,
+                    **kwargs) -> Dict[int, Dict[int, Dict[str, List[int]]]]:
+        """Find a number value in the e2e file.
+
+        Use this function if you don't know if the value is an integer or a float.
+        This is just a shortcut for calling [`find_int`][eyepy.io.he.e2e_reader.HeE2eReader.find_int]
+        and [`find_float`][eyepy.io.he.e2e_reader.HeE2eReader.find_float] individually.
+
+        Args:
+            value: The value to find.
+            excluded_folders: A list of folders to exclude from the search.
+                None: Exclude no folders.
+                "images": Exclude image data from search.
+                "layers": Exclude layer data from search.
+            slice_id: The slice to search in. Specify 0 if you do not want to search through all slices but one slice per volume is enough.
+            **kwargs: Keyword arguments passed to [`find_int`][eyepy.io.utils.find_int] and [`find_float`][eyepy.io.utils.find_float].
+
+        Returns:
+            A dictionary of the form {series_id(int): {folder_type(int): {fmt_string(str): [positions(int)]}}}
+        """
+        results = {
+            **self.find_float(value, excluded_folders, slice_id, **kwargs),
+            **self.find_int(round(value), excluded_folders, slice_id, **kwargs)
+        }
+        return results
+
+    @property
+    def volume(self) -> EyeVolume:
+        """ First EyeVolume object in the E2E file.
+
+        Returns:
+            EyeVolume object for the first Series in the e2e file.
+        """
+        return self.series[0].get_volume()
+
+    @property
+    def volumes(self) -> List[EyeVolume]:
+        """All EyeVolume objects in the E2E file.
+
+        Returns:
+            List with EyeVolume objects for every Series in the e2e file.
+        """
+        return [s.get_volume() for s in self.series]

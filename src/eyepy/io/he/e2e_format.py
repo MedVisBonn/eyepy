@@ -1,17 +1,16 @@
-from collections import defaultdict
+import dataclasses
+import datetime
 import logging
-from typing import List, Tuple, Union
+import typing as t
 
 import construct as cs
+from construct_typed import csfield
+from construct_typed import DataclassMixin
+from construct_typed import DataclassStruct
+from construct_typed import EnumBase
+from construct_typed import EnumValue
+from construct_typed import TEnum
 import numpy as np
-
-from eyepy.core.eyeenface import EyeEnface
-from eyepy.core.eyemeta import EyeBscanMeta
-from eyepy.core.eyemeta import EyeEnfaceMeta
-from eyepy.core.eyemeta import EyeVolumeMeta
-from eyepy.core.eyevolume import EyeVolume
-from eyepy.io.utils import _compute_localizer_oct_transform
-from eyepy.io.utils import get_bscan_spacing
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +20,7 @@ class BscanAdapter(cs.Adapter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.LUT = self._make_LUT()
+        self.inv_LUT = self._make_inv_LUT()
 
     def _uint16_to_ufloat16(self, uint_16):
         """Implementation of custom float type used in .e2e files.
@@ -49,237 +49,729 @@ class BscanAdapter(cs.Adapter):
             LUT.append(self._uint16_to_ufloat16(i))
         return np.array(LUT)
 
-    def _decode(self, obj, context, path):
+    def _make_inv_LUT(self):
+        return {f: i for i, f in enumerate(self.LUT)}
+
+    def _decode(self, obj: bytes, context, path):
         return self.LUT[np.ndarray(buffer=obj,
                                    dtype=np.uint16,
                                    shape=(context.height, context.width))]
 
-    def _encode(self, obj, context, path):
-        return obj.tobytes()
+    def _encode(self, obj: np.ndarray, context, path):
+        return np.array([self.inv_LUT[f] for f in obj.flatten()],
+                        dtype=np.uint16).tobytes()
 
 
 class LocalizerNIRAdapter(cs.Adapter):
 
-    def _decode(self, obj, context, path):
+    def _decode(self, obj: bytes, context, path):
         return np.ndarray(buffer=obj,
                           dtype="uint8",
                           shape=(context.height, context.width))
 
-    def _encode(self, obj, context, path):
-        return obj.tobytes()
+    def _encode(self, obj: np.ndarray, context, path):
+        return obj.astype(np.uint8).tobytes()
 
 
 class SegmentationAdapter(cs.Adapter):
 
-    def _decode(self, obj, context, path):
+    def _decode(self, obj: bytes, context, path):
         return np.ndarray(buffer=obj, dtype="float32", shape=(context.width))
 
-    def _encode(self, obj, context, path):
-        return obj.tobytes()
+    def _encode(self, obj: np.ndarray, context, path):
+        return obj.astype(np.float32).tobytes()
+
+
+class DateTimeAdapter(cs.Adapter):
+    # with utc bias 120
+    start_epoch = datetime.datetime(year=1601,
+                                    month=1,
+                                    day=1,
+                                    hour=0,
+                                    minute=0)
+
+    def _decode(self, obj: bytes, context, path):
+        return self.start_epoch + datetime.timedelta(
+            seconds=cs.Int64ul.parse(obj) * 1e-7)
+
+    def _encode(self, obj: datetime.datetime, context, path):
+        return cs.Int64ul.build(
+            int((obj - self.start_epoch).total_seconds() * 1e7))
 
 
 LocalizerNIR = LocalizerNIRAdapter(cs.Bytes(cs.this.n_values))
 Segmentation = SegmentationAdapter(cs.Bytes(cs.this.width * 4))
 Bscan = BscanAdapter(cs.Bytes(cs.this.n_values * 2))
+DateTime = DateTimeAdapter(cs.Bytes(8))
 
-image_structure = cs.Struct(size=cs.Int32ul,
-                            type=cs.Int32ul,
-                            n_values=cs.Int32ul,
-                            height=cs.Int32ul,
-                            width=cs.Int32ul,
-                            data=cs.Switch(cs.this.type, {
-                                33620481: LocalizerNIR,
-                                35652097: Bscan,
-                            },
-                                           default=cs.Bytes(cs.this.size)))
 
-patient_structure = cs.LazyStruct(first_name=cs.PaddedString(31, "ascii"),
-                                  surname=cs.PaddedString(66, "ascii"),
-                                  birthdate=cs.Int32ul,
-                                  sex=cs.PaddedString(1, "ascii"),
-                                  patient_id=cs.PaddedString(25, "ascii"),
-                                  rest=cs.Bytes(4))
-laterality_structure = cs.Struct(unknown0=cs.Bytes(14),
-                                 laterality=cs.Enum(cs.Int8ul, OS=76, OD=82),
-                                 rest=cs.Bytes(12))
+class LateralityEnum(EnumBase):
+    """Enum for laterality of eye.
 
-layer_structure = cs.Struct(unknown0=cs.Int32ul,
-                            id=cs.Int32ul,
-                            unknown1=cs.Int32ul,
-                            width=cs.Int32ul,
-                            data=Segmentation)
+    The laterality is stored as single character in ASCII code.
+    """
+    OD = EnumValue(82, doc="82 is the ASCII code for 'R'")
+    OS = EnumValue(76, doc="76 is the ASCII code for 'L'")
 
-bscanmeta_structure = cs.Struct(
-    unknown0=cs.Int32ul,
-    size_y=cs.Int32ul,
-    size_x=cs.Int32ul,
-    start_x=cs.Float32l,
-    start_y=cs.Float32l,
-    end_x=cs.Float32l,
-    end_y=cs.Float32l,
-    zero1=cs.Int32ul,
-    unknown1=cs.Float32l,
-    scale_y=cs.Float32l,
-    unknown2=cs.Float32l,
-    zero2=cs.Int32ul,
-    unknown3=cs.Array(2, cs.Float32l),
-    zero3=cs.Int32ul,
-    imgSizeWidth=cs.Int32ul,
-    n_bscans=cs.Int32ul,
-    aktImage=cs.Int32ul,
-    scan_pattern=cs.Int32ul,
-    center_x=cs.Float32l,
-    center_y=cs.Float32l,
-    unknown4=cs.Int32ul,
-    acquisitionTime=cs.Int64ul,
-    numAve=cs.Int32ul,
-    quality=cs.Float32l,
-)
 
-measurements = cs.Struct(eye_side=cs.PaddedString(1, "ascii"),
-                         c_curve_mm=cs.Float64l,
-                         refraction_dpt=cs.Float64l,
-                         cylinder_dpt=cs.Float64l,
-                         axis_deg=cs.Float64l,
-                         pupil_size_mm=cs.Float64l,
-                         iop_mmHg=cs.Float64l,
-                         vfield_mean=cs.Float64l,
-                         vfield_var=cs.Float64l,
-                         corrective_lens=cs.Int16ul,
-                         rest=cs.Bytes(1))
+class TypesEnum(EnumBase):
+    """Enum for types of data stored in .e2e files"""
+    patient = EnumValue(9)
+    laterality = EnumValue(11)
+    diagnose = EnumValue(17)
+    bscanmeta = EnumValue(10004)
+    layer_annotation = EnumValue(10019)
+    slodata = EnumValue(10025)
+    image = EnumValue(1073741824)
+    measurements = EnumValue(7)
+    studyname = EnumValue(9000)
+    n_bscans = EnumValue(10013)
+    device = EnumValue(9001, doc="eg. Heidelberg Retina Angiograph HRA")
+    examined_structure = EnumValue(9005, doc="eg. Retina")
+    scanpattern = EnumValue(9006, doc="eg. OCT ART Volume")
+    enface_modality = EnumValue(9007, doc="?enface modality eg Infra-Red IR")
+    oct_modality = EnumValue(9008,
+                             doc="?OCT modality eg OCT-OCT or OCT-Angio?")
 
-textdata = cs.Struct(
-    n_strings=cs.Int32ul,
-    string_size=cs.Int32ul,
-    text=cs.Array(cs.this.n_strings,
-                  cs.PaddedString(cs.this.string_size, "utf16")),
-)
 
-slodata = cs.Struct(
-    unknown0=cs.Bytes(24),
-    windate=cs.Int64ul,
-    transform=cs.Array(6, cs.Float32l),
-    unknown1=cs.Bytes(cs.this._.header.size - 80),
-)
+class TypeMixin:
 
-types = cs.Enum(
-    cs.Int32un,
-    patient=9,
-    laterality=11,
-    diagnose=17,
-    bscanmeta=10004,
-    layer_annotation=10019,
-    slodata=10025,
-    image=1073741824,
-    measurements=7,
-    studyname=9000,
-    device=9001,  # eg. Heidelberg Retina Angiograph HRA
-    examined_structure=9005,  # eg. Retina
-    scanpattern=9006,  # eg. OCT ART Volume
-    enface_modality=9007,  # ?enface modality eg Infra-Red IR
-    oct_modality=9008,  # ?OCT modality eg OCT-OCT or OCT-Angio?
-    empty_folder=0,  # Data of size 0, so probably not important
-)
+    @property
+    def type_id(self) -> int:
+        return int(self.__class__.__name__.lstrip("Type"))
+
+
+@dataclasses.dataclass
+class Type10004(DataclassMixin, TypeMixin):
+    """B-scan Metadata
+    Metadata for a single B-scan.
+
+    Size: 428 bytes
+
+    Notes:
+    The current Bscan-Meta structure builds on the implementation found in [LibE2E](https://github.com/neurodial/LibE2E/blob/d26d2d9db64c5f765c0241ecc22177bb0c440c87/E2E/dataelements/bscanmetadataelement.cpp#L75).
+    """
+    unknown0: int = csfield(cs.Int32ul, )
+    size_y: int = csfield(cs.Int32ul, doc="Bscan height")
+    size_x: int = csfield(cs.Int32ul, doc="Bscan width")
+    start_x: float = csfield(cs.Float32l, doc="Start X coordinate of Bscan")
+    start_y: float = csfield(cs.Float32l, doc="Start Y coordinate of Bscan")
+    end_x: float = csfield(cs.Float32l, doc="End X coordinate of Bscan")
+    end_y: float = csfield(cs.Float32l, doc="End Y coordinate of Bscan")
+    zero1: int = csfield(cs.Int32ul)
+    unknown1: float = csfield(cs.Float32l)
+    scale_y: float = csfield(cs.Float32l, doc="Scale of Bscan y-axis (height)")
+    unknown2: float = csfield(cs.Float32l)
+    zero2: int = csfield(cs.Int32ul)
+    unknown3: t.List[float] = csfield(cs.Array(2, cs.Float32l))
+    zero3: int = csfield(cs.Int32ul)
+    imgSizeWidth: int = csfield(
+        cs.Int32ul,
+        doc=
+        "This might differ from size_x, the actual meaning of this value is unclear, maybe you can compute the x-axis scale from this value."
+    )
+    n_bscans: int = csfield(cs.Int32ul,
+                            doc="Number of Bscans in the respective volume")
+    aktImage: int = csfield(cs.Int32ul,
+                            doc="Index of the current Bscan in the volume")
+    scan_pattern: int = csfield(
+        cs.Int32ul,
+        doc=
+        "Scan pattern of the volume. <br>**Does this corresponds to the scan pattterns in VOL and XML export?**"
+    )
+    center_x: float = csfield(cs.Float32l,
+                              doc="Exactly the average of start_x and end_x.")
+    center_y: float = csfield(cs.Float32l,
+                              doc="Exactly the average of start_y and end_y.")
+    unknown4: int = csfield(cs.Int32ul, doc="Maybe the UTC bias?")
+    acquisitionTime: int = csfield(DateTime, doc="Acquisition time of Bscan")
+    numAve: int = csfield(
+        cs.Int32ul,
+        doc=
+        "Number of averages according to LibE2E<br>**Not coherent with XML export**"
+    )
+    quality: float = csfield(
+        cs.Float32l,
+        doc=
+        "Quality according to LibE2E<br>**Does not match the quality value in the XML export which is an integer compared to a float here with value 0.84 for a complete volume. Maybe this is the focus length, at least it is similar to the value given in the XML (0.87)**"
+    )
+    scale_x: float = csfield(cs.Float32l, doc="Scale of Bscan x-axis (width)")
+
+
+type10004_format = DataclassStruct(Type10004)
+
+
+@dataclasses.dataclass
+class Type7(DataclassMixin, TypeMixin):
+    """Measurements
+    Global measurements of the eye.
+
+    Size: 68 bytes
+
+    Notes:
+    """
+    eye_side: LateralityEnum = csfield(TEnum(cs.Int8ul, LateralityEnum))
+    c_curve_mm: float = csfield(cs.Float64l)
+    refraction_dpt: float = csfield(cs.Float64l)
+    cylinder_dpt: float = csfield(cs.Float64l)
+    axis_deg: float = csfield(cs.Float64l)
+    pupil_size_mm: float = csfield(cs.Float64l)
+    iop_mmHg: float = csfield(cs.Float64l)
+    vfield_mean: float = csfield(cs.Float64l)
+    vfield_var: float = csfield(cs.Float64l)
+    corrective_lens: int = csfield(cs.Int16ul)
+    rest: bytes = csfield(cs.Bytes(1))
+
+
+type7_format = DataclassStruct(Type7)
+
+
+@dataclasses.dataclass
+class Type1073741824(DataclassMixin, TypeMixin):
+    """Image data
+    Stores various kinds of images.
+
+    Size: variable
+
+    Notes:
+    Different kinds of images are stored in this structure. Currently we know the following types:
+
+    * 33620481: LocalizerNIR (`int8u`)
+    * 35652097: Bscan (`float16u`)
+
+    The custom `float16u` used to store the Bscan data, has no sign, a 6-bit exponent und 10-bit mantissa.
+    """
+    size: int = csfield(cs.Int32ul, doc="Size of the data")
+    type: int = csfield(cs.Int32ul, doc="Type of the data")
+    n_values: int = csfield(cs.Int32ul, doc="Number of values in the data")
+    height: int = csfield(cs.Int32ul, doc="Height of the image")
+    width: int = csfield(cs.Int32ul, doc="Width of the image")
+    data: t.Any = csfield(cs.Switch(cs.this.type, {
+        33620481: LocalizerNIR,
+        35652097: Bscan,
+    },
+                                    default=cs.Bytes(cs.this.size)),
+                          doc="Image data")
+
+
+type1073741824_format = DataclassStruct(Type1073741824)
+
+
+@dataclasses.dataclass
+class Type9(DataclassMixin, TypeMixin):
+    """Patient data
+    Personal data of the patient.
+
+    Size: 131 bytes
+
+    Notes:
+    """
+    firstname: str = csfield(cs.PaddedString(31, "ascii"))
+    surname: str = csfield(cs.PaddedString(66, "ascii"))
+    birthdate: int = csfield(cs.Int32ul)
+    sex: str = csfield(cs.PaddedString(1, "ascii"))
+    patient_id: str = csfield(cs.PaddedString(25, "ascii"))
+
+
+type9_format = DataclassStruct(Type9)
+
+
+@dataclasses.dataclass
+class Type10019(DataclassMixin, TypeMixin):
+    """Layer Annotation
+    Stores one layer for one Bscan.
+
+    Size: variable
+
+    Notes:
+    """
+    unknown0: int = csfield(cs.Int32ul)
+    id: int = csfield(cs.Int32ul, doc="ID of the layer")
+    unknown1: int = csfield(cs.Int32ul)
+    width: int = csfield(cs.Int32ul, doc="Width of the layer")
+    data: t.List[float] = csfield(Segmentation, doc="Layer annotation data")
+
+
+type10019_format = DataclassStruct(Type10019)
+
+
+@dataclasses.dataclass
+class Type11(DataclassMixin, TypeMixin):
+    """Type 11
+
+    Size: 27 bytes
+
+    Notes:
+    We don't know what this data is used for, only that the 15th byte indicates the laterality of the eye.
+    """
+    unknown: bytes = csfield(cs.Bytes(14))
+    laterality: LateralityEnum = csfield(TEnum(cs.Int8ul, LateralityEnum))
+
+
+type11_format = DataclassStruct(Type11)
+
+
+@dataclasses.dataclass
+class Type59(DataclassMixin, TypeMixin):
+    """Type 59
+
+    Size: 27 bytes
+
+    Notes:
+    We don't know what this data is used for, only that the 14th byte indicates the laterality of the eye.
+    """
+    unknown: bytes = csfield(cs.Bytes(14))
+    laterality: LateralityEnum = csfield(TEnum(cs.Int8ul, LateralityEnum))
+
+
+type59_format = DataclassStruct(Type59)
+
+
+@dataclasses.dataclass
+class Type3(DataclassMixin, TypeMixin):
+    """Type 3
+
+    Size: 96 bytes
+
+    Notes:
+    We don't know what this data is used for, only that the 5th byte indicates the laterality of the eye.
+    """
+    unknown: bytes = csfield(cs.Bytes(4))
+    laterality: LateralityEnum = csfield(TEnum(cs.Int8ul, LateralityEnum))
+
+
+type3_format = DataclassStruct(Type3)
+
+
+@dataclasses.dataclass
+class Type5(DataclassMixin, TypeMixin):
+    """Type 5
+
+    Size: 59 bytes
+
+    Notes:
+    We don't know what this data is used for, only that the 3rd byte indicates the laterality of the eye.
+    """
+    unknown: bytes = csfield(cs.Bytes(2))
+    laterality: LateralityEnum = csfield(TEnum(cs.Int8ul, LateralityEnum))
+
+
+type5_format = DataclassStruct(Type5)
+
+
+@dataclasses.dataclass
+class Type10013(DataclassMixin, TypeMixin):
+    """Type 10013
+
+    Size: variable
+
+    Notes:
+    """
+    unknown: bytes = csfield(cs.Bytes(12))
+    n_bscans: int = csfield(cs.Int32ul)
+
+
+type10013_format = DataclassStruct(Type10013)
+
+
+@dataclasses.dataclass
+class Type10012(DataclassMixin, TypeMixin):
+    """ Type 10012
+
+    Size: variable
+
+    Notes:
+    """
+    unknown0: bytes = csfield(cs.Bytes(28))
+    value_1: float = csfield(cs.Float32l)
+    unknown1: bytes = csfield(cs.Bytes(1))
+    value_2: float = csfield(cs.Float32l)
+
+
+type10012_format = DataclassStruct(Type10012)
+
+
+@dataclasses.dataclass
+class Type10010(DataclassMixin, TypeMixin):
+    """Type 10010
+
+    Size: variable
+
+    Notes:
+    """
+    unknown: bytes = csfield(cs.Bytes(12))
+    n_bscans: int = csfield(cs.Int32ul)
+
+
+type10010_format = DataclassStruct(Type10010)
+
+
+@dataclasses.dataclass
+class Type9000(DataclassMixin, TypeMixin):
+    """Studyname
+    Name of the study/visit
+
+    Size: 264 bytes
+
+    Notes:
+    """
+    n_strings: int = csfield(cs.Int32ul)
+    string_size: int = csfield(cs.Int32ul)
+    text: t.List[str] = csfield(
+        cs.Array(cs.this.n_strings,
+                 cs.PaddedString(cs.this.string_size, "utf16")))
+
+
+type9000_format = DataclassStruct(Type9000)
+
+
+@dataclasses.dataclass
+class Type9006(DataclassMixin, TypeMixin):
+    """Scan pattern
+    Bscan pattern used for the aquisition
+
+    Size: 520 bytes
+
+    Notes:
+    """
+    n_strings: int = csfield(cs.Int32ul)
+    string_size: int = csfield(cs.Int32ul)
+    text: t.List[str] = csfield(
+        cs.Array(cs.this.n_strings,
+                 cs.PaddedString(cs.this.string_size, "utf16")))
+
+
+type9006_format = DataclassStruct(Type9006)
+
+
+@dataclasses.dataclass
+class Type9001(DataclassMixin, TypeMixin):
+    """Device
+    Name of the used device
+
+    Size: 776 bytes
+
+    Notes:
+    """
+    n_strings: int = csfield(cs.Int32ul)
+    string_size: int = csfield(cs.Int32ul)
+    text: t.List[str] = csfield(
+        cs.Array(cs.this.n_strings,
+                 cs.PaddedString(cs.this.string_size, "utf16")))
+
+
+type9001_format = DataclassStruct(Type9001)
+
+
+@dataclasses.dataclass
+class Type9005(DataclassMixin, TypeMixin):
+    """Examined structure
+    Name of the examined structure
+
+    Size: 264 bytes
+
+    Notes:
+    """
+    n_strings: int = csfield(cs.Int32ul)
+    string_size: int = csfield(cs.Int32ul)
+    text: t.List[str] = csfield(
+        cs.Array(cs.this.n_strings,
+                 cs.PaddedString(cs.this.string_size, "utf16")))
+
+
+type9005_format = DataclassStruct(Type9005)
+
+
+@dataclasses.dataclass
+class Type9007(DataclassMixin, TypeMixin):
+    """Enface Modality
+    Modality of the enface (eg IR)
+
+    Size: 520 bytes
+
+    Notes:
+    """
+    n_strings: int = csfield(cs.Int32ul)
+    string_size: int = csfield(cs.Int32ul)
+    text: t.List[str] = csfield(
+        cs.Array(cs.this.n_strings,
+                 cs.PaddedString(cs.this.string_size, "utf16")))
+
+
+type9007_format = DataclassStruct(Type9007)
+
+
+@dataclasses.dataclass
+class Type9008(DataclassMixin, TypeMixin):
+    """OCT Modality
+    Modality of the OCT (eg OCT)
+
+    Size: 520 bytes
+
+    Notes:
+    """
+    n_strings: int = csfield(cs.Int32ul)
+    string_size: int = csfield(cs.Int32ul)
+    text: t.List[str] = csfield(
+        cs.Array(cs.this.n_strings,
+                 cs.PaddedString(cs.this.string_size, "utf16")))
+
+
+type9008_format = DataclassStruct(Type9008)
+
+
+@dataclasses.dataclass
+class Type17(DataclassMixin, TypeMixin):
+    """Diagnose data
+
+    Size: variable
+
+    Notes:
+    """
+    n_strings: int = csfield(cs.Int32ul)
+    string_size: int = csfield(cs.Int32ul)
+    text: t.List[str] = csfield(
+        cs.Array(cs.this.n_strings,
+                 cs.PaddedString(cs.this.string_size, "utf16")))
+
+
+type17_format = DataclassStruct(Type17)
+
+
+@dataclasses.dataclass
+class Type10025(DataclassMixin, TypeMixin):
+    """Localizer Metadata
+
+    Size: 100 bytes
+
+    Notes:
+    """
+    unknown: bytes = csfield(cs.Bytes(24))
+    windate: int = csfield(DateTime)
+    transform: t.List[float] = csfield(
+        cs.Array(6, cs.Float32l), doc="Parameters of affine transformation")
+
+
+type10025_format = DataclassStruct(Type10025)
 
 item_switch = cs.Switch(cs.this.header.type, {
-    "patient": patient_structure,
-    "laterality": laterality_structure,
-    "bscanmeta": bscanmeta_structure,
-    "layer_annotation": layer_structure,
-    "image": image_structure,
-    "measurements": measurements,
-    "studyname": textdata,
-    "scanpattern": textdata,
-    "device": textdata,
-    "examined_structure": textdata,
-    "enface_modality": textdata,
-    "oct_modality": textdata,
-    "diagnose": textdata,
-    "slodata": slodata,
+    TypesEnum.patient: type9_format,
+    TypesEnum.laterality: type11_format,
+    TypesEnum.bscanmeta: type10004_format,
+    TypesEnum.layer_annotation: type10019_format,
+    TypesEnum.image: type1073741824_format,
+    TypesEnum.measurements: type7_format,
+    TypesEnum.studyname: type9000_format,
+    TypesEnum.scanpattern: type9006_format,
+    TypesEnum.device: type9001_format,
+    TypesEnum.examined_structure: type9005_format,
+    TypesEnum.enface_modality: type9007_format,
+    TypesEnum.oct_modality: type9008_format,
+    TypesEnum.diagnose: type17_format,
+    TypesEnum.slodata: type10025_format,
+    TypesEnum.n_bscans: type10013_format
 },
                         default=cs.Bytes(cs.this.header.size))
 
-raw_item_switch = cs.RawCopy(item_switch)
 
-container_header_structure = cs.Struct(
-    magic3=cs.PaddedString(12, "ascii"),
-    unknown0=cs.Int32ul,
-    header_pos=cs.Int32ul,
-    pos=cs.Int32ul,
-    size=cs.Int32ul,
-    # Always 0 (b'\x00\x00\x00\x00')? At leat in our data
-    unknown1=cs.Int32ul,
-    patient_id=cs.Int32sl,
-    study_id=cs.Int32sl,
-    series_id=cs.Int32sl,
-    # Has to be divided by 2 to get the correct slice number
-    slice_id=cs.Int32sl,
-    # Takes only values 65333, 0 and 1 (b'\xff\xff', b'\x00\x00', b'\x01\x00') at least in our data
-    # 0 for enface and 1 for bscan for image containers
-    ind=cs.Int16ul,
-    # Always 0 (b'\x00\x00')? At leat in our data
-    unknown2=cs.Int16ul,
-    type=types,
-    # Large integer that increases in steps of folder header size (=44) Maybe the folder header position in HEYEX database not in this file?
-    # Possibly related to the folder header unknown4 value
-    unknown3=cs.Int32ul,
-)
+@dataclasses.dataclass
+class ContainerHeader(DataclassMixin):
+    """Container header data
 
-data_container_structure = cs.Struct(header=container_header_structure,
-                                     item=item_switch)
+    Size: 60 bytes
 
-folder_header_structure = cs.Struct(
-    # Position of the folder (In a chunk all 512 folder headers are stored sequentially, refering to the data that follows after this header block)
-    pos=cs.Int32ul,
-    # Start of the data container, after the header block in the chunk
-    start=cs.Int32ul,
-    # Size of the data container
-    size=cs.Int32ul,
-    # Always 0 (b'\x00\x00')? At leat in our data
-    unknown0=cs.Int32ul,
-    patient_id=cs.Int32sl,
-    study_id=cs.Int32sl,
-    series_id=cs.Int32sl,
-    slice_id=cs.Int32sl,
-    # 0 for enface and 1 for bscan for image containers
-    ind=cs.Int16un,
-    unknown1=cs.Int16ul,
-    type=types,
-    # Large integer possibly related to data_container.unknown5. Maybe the position in HEYEX DB?
-    unknown2=cs.Int32ul,
-)
+    Notes:
+    """
+    magic3: str = csfield(cs.PaddedString(12, "ascii"))
+    unknown0: int = csfield(cs.Int32ul)
+    header_pos: int = csfield(cs.Int32ul, doc="Position of the header")
+    pos: int = csfield(cs.Int32ul, doc="Position of the data")
+    size: int = csfield(cs.Int32ul, doc="Size of the container")
+    unknown1: int = csfield(
+        cs.Int32ul,
+        doc="Always 0 (b'\\x00\\x00\\x00\\x00')? At least in our data")
+    patient_id: int = csfield(cs.Int32sl, doc="Patient ID")
+    study_id: int = csfield(cs.Int32sl, doc="Study ID")
+    series_id: int = csfield(cs.Int32sl, doc="Series ID")
+    slice_id: int = csfield(
+        cs.Int32sl,
+        doc="Slice ID, has to be divided by 2 to get the correct slice number")
+    ind: int = csfield(
+        cs.Int16ul,
+        doc=
+        "Takes only values 65333, 0 and 1 (b'\xff\xff', b'\x00\x00', b'\x01\x00') at least in our data - 0 for enface and 1 for bscan for image containers"
+    )
+    unknown2: int = csfield(cs.Int16ul,
+                            doc="Always 0 (b'\x00\x00')? At least in our data")
+    type: TypesEnum = csfield(TEnum(cs.Int32ul, TypesEnum),
+                              doc="Type ID of the contained data")
+    unknown3: int = csfield(
+        cs.Int32ul,
+        doc=
+        "Large integer that increases in steps of folder header size (=44) Maybe the folder header position in HEYEX database not in this file? - Possibly related to the folder header unknown4 value"
+    )
 
-folder_structure = cs.Struct(
-    header=folder_header_structure,
-    data_container=cs.If(
-        cs.this.header.start > cs.this.header.
-        pos,  # Sometimes the start is a small int like 0 or 3 which does not refer to a data container. Only allow start if it is after the header block.
-        cs.Pointer(cs.this.header.start, data_container_structure),
-    ))
 
-header_structure = cs.Struct(
-    magic2=cs.PaddedString(12, "ascii"),
-    version=cs.Int32ul,
-    unknown0=cs.Array(10, cs.Int16ul),
-    num_entries=cs.Int32ul,
-    current=cs.Int32ul,
-    prev=cs.Int32ul,
-    unknown1=cs.Int32ul,
-)
+containerheader_format = DataclassStruct(ContainerHeader)
 
-chunk_structure = cs.Struct(
-    chunk_header=header_structure,
-    folders=cs.Array(cs.this.chunk_header.num_entries, folder_structure),
-    jump=cs.Seek(cs.this.folders[-1].header.start +
-                 cs.this.folders[-1].header.size +
-                 data_container_structure.header.sizeof()))
 
-version_structure = cs.Struct(
-    name=cs.PaddedString(12, "ascii"),
-    version=cs.Int32ul,
-    unknown0=cs.Array(10, cs.Int16ul),
-)
+@dataclasses.dataclass
+class DataContainer(DataclassMixin):
+    """Data container
 
-e2e_format = cs.Struct(version=version_structure,
-                       header=header_structure,
-                       chunks=cs.GreedyRange(chunk_structure))
+    Size: variable
+
+    Notes:
+    """
+    header: ContainerHeader = csfield(containerheader_format)
+    item: t.Any = csfield(
+        item_switch,
+        doc=
+        "There are many kinds of DataItems indicated by different type IDs in the folder/container header"
+    )
+
+
+datacontainer_format = DataclassStruct(DataContainer)
+
+
+@dataclasses.dataclass
+class FolderHeader(DataclassMixin):
+    """Folder header
+
+    Size: 44 bytes
+
+    Notes:
+    """
+    pos: int = csfield(
+        cs.Int32ul,
+        doc=
+        "Position of the folder (In a chunk all 512 folder headers are stored sequentially, refering to the data that follows after this header block)"
+    )
+    start: int = csfield(
+        cs.Int32ul,
+        doc="Start of the data container, after the header block in the chunk")
+    size: int = csfield(cs.Int32ul, doc="Size of the data container")
+    unknown0: int = csfield(cs.Int32ul,
+                            doc="Always 0 (b'\x00\x00')? At leat in our data")
+    patient_id: int = csfield(cs.Int32sl, doc="Patient ID")
+    study_id: int = csfield(cs.Int32sl, doc="Study ID")
+    series_id: int = csfield(cs.Int32sl, doc="Series ID")
+    slice_id: int = csfield(
+        cs.Int32sl,
+        doc="Slice ID, has to be divided by 2 to get the correct slice number")
+    ind: int = csfield(cs.Int16ul,
+                       doc="0 for enface and 1 for bscan for image containers")
+    unknown1: int = csfield(cs.Int16ul)
+    type: TypesEnum = csfield(TEnum(cs.Int32ul, TypesEnum),
+                              doc="Type ID of the contained data")
+    unknown3: int = csfield(
+        cs.Int32ul,
+        doc=
+        "Large integer possibly related to data_container.unknown5. Maybe the position in HEYEX DB?"
+    )
+
+
+folderheader_format = DataclassStruct(FolderHeader)
+
+
+@dataclasses.dataclass
+class Header(DataclassMixin):
+    """Chunk header
+
+    Size: 52 bytes
+
+    Notes:
+    """
+    magic2: str = csfield(cs.PaddedString(12, "ascii"))
+    version: int = csfield(cs.Int32ul)
+    unknown0: t.List[int] = csfield(cs.Array(10, cs.Int16ul))
+    num_entries: int = csfield(cs.Int32ul,
+                               doc="Number of entries in the chunk")
+    current: int = csfield(cs.Int32ul, doc="Position of the current chunk")
+    prev: int = csfield(cs.Int32ul, doc="Position of the previous chunk")
+    unknown1: int = csfield(cs.Int32ul)
+
+
+header_format = DataclassStruct(Header)
+
+
+@dataclasses.dataclass
+class Chunk(DataclassMixin):
+    """Data chunk
+
+    Size: variable
+
+    Notes:
+    Every chunk has a header similar to the file header. A chunk then holds the headers of all contained folders sequentially, followed by data containers, that are referenced by the folder headers. A chunk can contain folders with data of different patients, studies, series, slices and types. Each folder contains data for a single (patient, study, series, slice, type) combination which is given in the folder header as well as the data container header. For the last chunk to have 512 folders, empty folders of type=0 are appended.
+    """
+    chunk_header: Header = csfield(
+        header_format,
+        doc=
+        "Each chunk refers to the start position of the previous chunk (`prev` field)"
+    )
+    folders: t.List[FolderHeader] = csfield(
+        cs.Array(cs.this.chunk_header.num_entries, folderheader_format),
+        doc=
+        "In the data we have seen each chunk has 512 folders with headers of size 44"
+    )
+    jump: int = csfield(
+        cs.Seek(cs.this.folders[-1].start + cs.this.folders[-1].size +
+                datacontainer_format.header.sizeof()))
+
+
+chunk_format = DataclassStruct(Chunk)
+
+
+@dataclasses.dataclass
+class Version(DataclassMixin):
+    """Version header
+
+    Size: 36 bytes
+
+    Notes:
+    """
+    name: str = csfield(cs.PaddedString(12, "ascii"),
+                        doc="Name of the version")
+    version: int = csfield(cs.Int32ul, doc="Verion of the file")
+    unknown0: t.List[int] = csfield(cs.Array(10, cs.Int16ul))
+
+
+version_format = DataclassStruct(Version)
+
+
+@dataclasses.dataclass
+class E2EFile(DataclassMixin):
+    """E2E file format
+
+    Size: variable
+
+    Notes:
+    An E2E file starts with a version structure, followed by a header structure. After that the data comes in chunks of 512 folders.
+    """
+    version: Version = csfield(version_format)
+    header: Header = csfield(
+        header_format,
+        doc=
+        "The `prev` field in the main header refers to the start position of the last chunk"
+    )
+    chunks: t.List[Chunk] = csfield(
+        cs.GreedyRange(chunk_format),
+        doc="The number and size of the chunks depends on the data")
+
+
+e2e_format = DataclassStruct(E2EFile)
+
+__e2efile_structures__ = [
+    E2EFile,
+    Version,
+    Chunk,
+    Header,
+    FolderHeader,
+    DataContainer,
+    ContainerHeader,
+]
+__all_types__ = [
+    Type3, Type5, Type7, Type9, Type11, Type17, Type59, Type9000, Type9001,
+    Type9005, Type9006, Type9007, Type9008, Type10004, Type10010, Type10012,
+    Type10013, Type10019, Type10025, Type1073741824
+]
