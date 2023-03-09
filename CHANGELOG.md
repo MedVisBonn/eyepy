@@ -2,6 +2,22 @@
 
 <!--next-version-placeholder-->
 
+## v0.9.0 (2023-03-09)
+### Feature
+* **HeE2EReader:** Switch to construct_typed for describing structures; create file hierarchy when parsing the E2E file; add search functions to the HeE2eReader ([`45578a5`](https://github.com/MedVisBonn/eyepy/commit/45578a5a9949a2722a03c1fe4bdef228c3a980c0))
+* **eyepy.io.utils.py:** Add functions to search for integer/float values in binary data; set relative tolerance for Bscan distance to 4% (fixes sample data warning) ([`96fd58b`](https://github.com/MedVisBonn/eyepy/commit/96fd58bf1146b6f9b60d63cdb8abbbc8704f6bde))
+
+### Fix
+* **HeE2eReader:** Fix issues with inspect after renaming classes ([`891c79c`](https://github.com/MedVisBonn/eyepy/commit/891c79ceb2f0417c5b1b003fa1332ce1d4572b1b))
+* **__init__.py:** Exclude __init__.py from isort to prevent circular import ([`9254231`](https://github.com/MedVisBonn/eyepy/commit/92542318b23098323855abf410c5c294ff956466))
+* **pyproject.toml:** Add imageio as dependency and umpgrade imagecodecs to latest version ([`bef44a0`](https://github.com/MedVisBonn/eyepy/commit/bef44a0cca752e280f5a405a9b9c4e4d0590f292))
+
+### Breaking
+*  ([`45578a5`](https://github.com/MedVisBonn/eyepy/commit/45578a5a9949a2722a03c1fe4bdef228c3a980c0))
+
+### Documentation
+* **documentation:** Improve documentation; rename Voxel/Area Annotation to PixelAnnotation for consistency ([`ab38837`](https://github.com/MedVisBonn/eyepy/commit/ab388378522f4be7f1fc55725a101a6483c1893b))
+
 ## v0.8.1 (2023-02-22)
 ### Fix
 * **pyproject.toml:** Increase allowed version range for numpy (fixes #10) ([`c66f6f6`](https://github.com/MedVisBonn/eyepy/commit/c66f6f65909aef7b086b62f66d6ce55f0b04220e))
