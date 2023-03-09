@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import numpy as np
 import numpy.typing as npt
 from skimage import img_as_float32
@@ -78,7 +80,7 @@ intensity_transforms = {
 
 
 def ideal_rpe(rpe_height: NDArrayFloat, bm_height: NDArrayFloat,
-              volume_shape: tuple[int, int, int]) -> NDArrayFloat:
+              volume_shape: Tuple[int, int, int]) -> NDArrayFloat:
     """ Compute the ideal RPE from an RPE with Drusen.
 
     Args:
@@ -121,7 +123,7 @@ def ideal_rpe(rpe_height: NDArrayFloat, bm_height: NDArrayFloat,
 
 def drusen(rpe_height: NDArrayFloat,
            bm_height: NDArrayFloat,
-           volume_shape: tuple[int, int, int],
+           volume_shape: Tuple[int, int, int],
            minimum_height: int = 2) -> NDArrayBool:
     """Compute drusen from the RPE and BM layer segmentation.
 

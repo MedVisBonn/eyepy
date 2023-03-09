@@ -37,15 +37,15 @@ logger = logging.getLogger(__name__)
 
 # Occurence of type ids. This is used by the inspect function.
 type_occurence = {
-    "E2EFile": [0, 9011],
-    "E2EPatient": [9, 17, 29, 31, 52, 9010],
-    "E2EStudy": [7, 10, 13, 30, 53, 58, 1000, 9000, 9001],
-    "E2ESeries": [
+    "E2EFileStructure": [0, 9011],
+    "E2EPatientStructure": [9, 17, 29, 31, 52, 9010],
+    "E2EStudyStructure": [7, 10, 13, 30, 53, 58, 1000, 9000, 9001],
+    "E2ESeriesStructure": [
         2, 3, 11, 54, 59, 61, 62, 1000, 1001, 1003, 1008, 9005, 9006, 9007,
         9008, 10005, 10009, 10010, 10011, 10013, 10025, 1073741824, 1073751824,
         1073751825, 1073751826
     ],
-    "E2ESlice": [
+    "E2ESliceStructure": [
         2, 3, 5, 39, 40, 10004, 10012, 10013, 10019, 10020, 10032, 1073741824,
         1073751824, 1073751825, 1073751826
     ]
@@ -109,7 +109,7 @@ class E2EStructureMixin:
         elif type(data_construct) == str:
             data_construct = getattr(cs, data_construct)
 
-        return [f.parse_spec(offset, data_construct) for f in folders]
+        return [f.parse_spec(data_construct, offset) for f in folders]
 
     def __str__(self):
         return self.inspect()
@@ -273,7 +273,7 @@ class E2EFolder():
         return self.file_object.read(self.size)
 
 
-class E2ESlice(E2EStructureMixin):
+class E2ESliceStructure(E2EStructureMixin):
     """E2E Slice Structure
 
     This structure contains folders with data for a single Slice/B-csan and provide
@@ -337,7 +337,7 @@ class E2ESeriesStructure(E2EStructureMixin):
 
     def __init__(self, id: int) -> None:
         self.id = id
-        self.substructure: Dict[int, E2ESlice] = {}
+        self.substructure: Dict[int, E2ESliceStructure] = {}
         self.folders: Dict[Union[int, str], List[E2EFolder]] = {}
 
         self._meta = None
@@ -368,7 +368,8 @@ class E2ESeriesStructure(E2EStructureMixin):
                 self.folders[folder.type] = [folder]
         else:
             if folder.slice_id not in self.slices:
-                self.slices[folder.slice_id] = E2ESlice(folder.slice_id)
+                self.slices[folder.slice_id] = E2ESliceStructure(
+                    folder.slice_id)
             self.slices[folder.slice_id].add_folder(folder)
 
     def inspect(self,
@@ -385,8 +386,11 @@ class E2ESeriesStructure(E2EStructureMixin):
             tables: If True add markdown table overview of the contained folder types.
 
         """
+        laterality = self.folders[TypesEnum.laterality][
+            0].data.laterality.name if TypesEnum.laterality in self.folders else "Unknown"
+        n_bscans = len(self.substructure.keys())
         text = self._get_section_title(
-        ) + f" - Laterality: {self.folders[TypesEnum.laterality][0].data.laterality.name} - B-scans: {self.folders[10013][0].data.n_bscans}\n"
+        ) + f" - Laterality: {laterality} - B-scans: {n_bscans}\n"
         text += self._get_section_description() + "\n"
         if tables:
             text += self._get_folder_summary() + "\n"
@@ -405,7 +409,8 @@ class E2ESeriesStructure(E2EStructureMixin):
             text += ""
         else:
             text += "\nE2ESlice Summary:\n"
-            text += indent(self._get_table(s_data, "E2ESlice"), ind_prefix)
+            text += indent(self._get_table(s_data, "E2ESliceStructure"),
+                           ind_prefix)
             text += "\n"
         return text
 
@@ -561,7 +566,7 @@ class E2ESeriesStructure(E2EStructureMixin):
         return self._meta
 
     @property
-    def slices(self) -> Dict[int, E2ESlice]:
+    def slices(self) -> Dict[int, E2ESliceStructure]:
         """Alias for substructure"""
         return self.substructure
 
@@ -574,8 +579,8 @@ class E2EStudyStructure(E2EStructureMixin):
         self.substructure: Dict[int, E2ESeriesStructure] = {}
         self.folders: Dict[Union[int, str], List[E2EFolder]] = {}
 
-        self._section_description_parts = [("Device:", 9000, 0),
-                                           ("Studyname:", 9001, 0)]
+        self._section_description_parts = [("Device:", 9001, 0),
+                                           ("Studyname:", 9000, 0)]
         self._section_title = ""
         self._section_description = ""
 
@@ -610,7 +615,7 @@ class E2EPatientStructure(E2EStructureMixin):
         self.substructure: Dict[int, E2EStudyStructure] = {}
         self.folders: Dict[Union[int, str], List[E2EFolder]] = {}
 
-        self_section_description_parts = []
+        self._section_description_parts = []
         self._section_title = ""
         self._section_description = ""
 
