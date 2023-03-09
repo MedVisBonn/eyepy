@@ -17,16 +17,13 @@ The eyepy top
 
 + [EyeVolumePixelAnnotation][eyepy.core.annotations.EyeVolumePixelAnnotation]
 
-
-
-
 """
+# isort: skip_file
 
 __author__ = """Olivier Morelle"""
 __email__ = "oli4morelle@gmail.com"
 __version__ = "0.8.1"
 
-from eyepy import data
 from eyepy.core import drusen
 from eyepy.core import EyeBscan
 from eyepy.core import EyeBscanLayerAnnotation
@@ -44,3 +41,4 @@ from eyepy.io import import_heyex_e2e
 from eyepy.io import import_heyex_vol
 from eyepy.io import import_heyex_xml
 from eyepy.io import import_retouch
+from eyepy import data

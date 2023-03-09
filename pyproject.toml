@@ -30,7 +30,7 @@ classifiers = [
 python = ">=3.8,<3.11"
 numpy = ">=1.22.0"
 pandas = "^1.5.3"
-scikit-image = "^0.19.1"
+scikit-image = "0.20.0"
 imagecodecs = "^2023.1.23"
 matplotlib = "^3.5.1"
 nptyping = "^2.3.1"
