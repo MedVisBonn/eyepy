@@ -2,17 +2,15 @@ from __future__ import annotations
 
 from collections import defaultdict
 import logging
-from typing import List, Optional, TYPE_CHECKING
+from typing import List, Optional, Tuple, TYPE_CHECKING
 
 from matplotlib import cm
 from matplotlib import colors
-from matplotlib import patches
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 import numpy.typing as npt
 from skimage import transform
-from skimage.transform._geometric import GeometricTransform
 
 from eyepy import config
 
@@ -86,21 +84,42 @@ class EyeVolumeLayerAnnotation:
         """
         return self.meta["knots"]
 
-    def layer_indices(self):
-        """
+    def layer_indices(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """ Returns pixel indices of the layer in the volume
+
+        While the layer is stored as the offset from the bottom of the OCT volume, some applications require
+        layer discretized to voxel positions. This method returns the layer as indices into the OCT volume.
+
+        The indices can be used for example to create layer maps for semantic segmentation.
+
+        ```python
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import eyepy as ep
+
+        eye_volume = ep.data.load("drusen_patient")
+        rpe_annotation = eye_volume.layers["RPE"]
+        rpe_indices = rpe_annotation.layer_indices()
+        rpe_map = np.zeros(eye_volume.shape)
+        rpe_map[rpe_indices] = 1
+        plt.imshow(rpe_map[0]) # (1)
+        ```
+
+        1.  Visualize layer map for the first B-scan
 
         Returns:
-
+            A tuple with indices for the layers position in the volume - Tuple[bscan_indices, row_indices, column_indices]
         """
-        layer = self.data
+        layer = self.data[:, np.newaxis, :]
         nan_indices = np.isnan(layer)
-        col_indices = np.arange(len(layer))[~nan_indices]
         row_indices = np.rint(layer).astype(int)[~nan_indices]
+        x = np.ones(layer.shape)
+        x[nan_indices] = 0
+        bscan_indices, _, col_indices = np.nonzero(x)
+        return (bscan_indices, row_indices, col_indices)
 
-        return (row_indices, col_indices)
 
-
-class EyeVolumeVoxelAnnotation:
+class EyeVolumePixelAnnotation:
     """ """
 
     def __init__(
@@ -475,7 +494,8 @@ class EyeVolumeVoxelAnnotation:
 class EyeBscanLayerAnnotation:
     """ """
 
-    def __init__(self, eyevolumelayerannotation, index):
+    def __init__(self, eyevolumelayerannotation: EyeVolumeLayerAnnotation,
+                 index: int) -> None:
         """
 
         Args:
@@ -526,7 +546,7 @@ class EyeBscanLayerAnnotation:
         self.eyevolumelayerannotation.knots[self.index] = value
 
 
-class EyeEnfaceAreaAnnotation:
+class EyeEnfacePixelAnnotation:
     """ """
 
     def __init__(

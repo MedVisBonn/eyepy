@@ -1,10 +1,14 @@
 import numpy as np
+import numpy.typing as npt
 from skimage import img_as_float32
 from skimage import img_as_ubyte
 
 from eyepy.core.filter import filter_by_height_enface
 
 from .annotations import EyeVolumeLayerAnnotation
+
+NDArrayFloat = npt.NDArray[np.float_]
+NDArrayBool = npt.NDArray[np.bool_]
 
 
 class DynamicDefaultDict(dict):
@@ -18,14 +22,16 @@ class DynamicDefaultDict(dict):
         return self[key]
 
 
-def vol_intensity_transform(data):
-    """ Wrapper around from_vol_intensity might be removed in future
+def vol_intensity_transform(data: np.ndarray) -> np.ndarray:
+    """ Wrapper around from_vol_intensity
+
+    Transform intensities from Heyex VOL exports to achieve a constrast similar to the one used in Heyex.
 
     Args:
-        data:
+        data: Input data
 
     Returns:
-
+        Transformed data
     """
     return from_vol_intensity(data)
 
@@ -51,14 +57,16 @@ def to_vol_intensity(data):
     return data
 
 
-def default_intensity_transform(data):
-    """
+def default_intensity_transform(data: np.ndarray) -> np.ndarray:
+    """ Default intensity transform
+
+    By default intensities are not changed.
 
     Args:
-        data:
+        data: Input data
 
     Returns:
-
+        Input data unchanged
     """
     return data
 
@@ -69,16 +77,17 @@ intensity_transforms = {
 }
 
 
-def ideal_rpe(rpe_height, bm_height, volume_shape):
-    """
+def ideal_rpe(rpe_height: NDArrayFloat, bm_height: NDArrayFloat,
+              volume_shape: tuple[int, int, int]) -> NDArrayFloat:
+    """ Compute the ideal RPE from an RPE with Drusen.
 
     Args:
-        rpe_height:
-        bm_height:
-        volume_shape:
+        rpe_height: The RPE height as offset from the lower border of the B-Scan
+        bm_height: The BM height as offset from the lower border of the B-Scan
+        volume_shape: Shape of the OCT volume (number of B-Scans, height, width)
 
     Returns:
-
+        The ideal RPE height as offset from the lower border of the B-Scan
     """
     d, h, w = volume_shape
 
@@ -110,20 +119,24 @@ def ideal_rpe(rpe_height, bm_height, volume_shape):
     return ideal_rpe
 
 
-def drusen(rpe_height, bm_height, volume_shape, minimum_height=2):
+def drusen(rpe_height: NDArrayFloat,
+           bm_height: NDArrayFloat,
+           volume_shape: tuple[int, int, int],
+           minimum_height: int = 2) -> NDArrayBool:
     """Compute drusen from the RPE and BM layer segmentation.
 
     First estimate the ideal RPE based on a histogram of the RPE heights relativ
     to the BM. Then compute drusen as the area between the RPE and the normal RPE
 
     Args:
-        rpe_height:
-        bm_height:
-        volume_shape:
-        minimum_height:
+        rpe_height: The RPE height as offset from the lower border of the B-Scan
+        bm_height: The BM height as offset from the lower border of the B-Scan
+        volume_shape: Shape of the OCT volume (number of B-Scans, height, width)
+        minimum_height: Minimum height of a drusen in pixels
 
     Returns:
-
+        A boolean array with the same shape as the OCT volume. True indicates a
+        voxel beeing part of a drusen.
     """
     # Estimate ideal RPE
     if isinstance(rpe_height, EyeVolumeLayerAnnotation):

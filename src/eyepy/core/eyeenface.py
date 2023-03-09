@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from numpy import typing as npt
 import numpy as np
 
-from eyepy.core.annotations import EyeEnfaceAreaAnnotation
+from eyepy.core.annotations import EyeEnfacePixelAnnotation
 
 
 class EyeEnface:
@@ -45,7 +45,7 @@ class EyeEnface:
         if meta is None:
             meta = {}
         meta.update(**kwargs)
-        area_annotation = EyeEnfaceAreaAnnotation(self, area_map, meta)
+        area_annotation = EyeEnfacePixelAnnotation(self, area_map, meta)
         self._area_maps.append(area_annotation)
         return area_annotation
 

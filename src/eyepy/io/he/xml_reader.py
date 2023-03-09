@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import functools
 import logging
 from pathlib import Path

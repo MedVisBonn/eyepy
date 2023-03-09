@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import logging
 from pathlib import Path
 import urllib.request
@@ -21,13 +20,13 @@ if not EYEPY_DATA_DIR.is_dir():
 
 
 def load(name: str) -> ep.EyeVolume:
-    """
+    """ Load sample data.
 
     Args:
-        name:
+        name: Name of the sample data to load. Currently only "drusen_patient" is supported.
 
     Returns:
-
+        Sample data with many drusen as EyeVolume object.
     """
     data_dir = EYEPY_DATA_DIR / name
     if not data_dir.is_dir():

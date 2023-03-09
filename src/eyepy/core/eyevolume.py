@@ -19,7 +19,7 @@ from skimage.transform._geometric import GeometricTransform
 
 from eyepy import config
 from eyepy.core.annotations import EyeVolumeLayerAnnotation
-from eyepy.core.annotations import EyeVolumeVoxelAnnotation
+from eyepy.core.annotations import EyeVolumePixelAnnotation
 from eyepy.core.eyebscan import EyeBscan
 from eyepy.core.eyeenface import EyeEnface
 from eyepy.core.eyemeta import EyeBscanMeta
@@ -43,8 +43,8 @@ class EyeVolume:
         """
 
         Args:
-            data:
-            meta:
+            data: A 3D numpy array containing the OCT data in shape (n_bscans, bscan_height, bscan_width)
+            meta: Optional [EyeVolumeMeta][eyepy.core.eyemeta.EyeVolumeMeta] object.
             localizer:
             transformation:
         """
@@ -224,7 +224,7 @@ class EyeVolume:
                 ev.add_layer_annotation(annotation, meta)
 
             for meta, annotation in zip(voxels_meta, voxel_annotations):
-                ev.add_voxel_annotation(annotation, meta)
+                ev.add_pixel_annotation(annotation, meta)
 
         return ev
 
@@ -529,7 +529,7 @@ class EyeVolume:
         # Create a dict to access volume_maps by their name
         return {vm.name: vm for vm in self._volume_maps}
 
-    def add_voxel_annotation(self, voxel_map=None, meta=None, **kwargs):
+    def add_pixel_annotation(self, voxel_map=None, meta=None, **kwargs):
         """
 
         Args:
@@ -543,11 +543,11 @@ class EyeVolume:
         if meta is None:
             meta = {}
         meta.update(**kwargs)
-        voxel_annotation = EyeVolumeVoxelAnnotation(self, voxel_map, **meta)
+        voxel_annotation = EyeVolumePixelAnnotation(self, voxel_map, **meta)
         self._volume_maps.append(voxel_annotation)
         return voxel_annotation
 
-    def remove_voxel_annotations(self, name):
+    def remove_pixel_annotations(self, name):
         """
 
         Args:
@@ -612,7 +612,7 @@ class EyeVolume:
         annotations_only: bool = False,
         projection_kwargs: Optional[dict] = None,
         line_kwargs: Optional[dict] = None,
-    ):
+    ) -> None:
         """ Plot an annotated OCT localizer image. If the volume does not provide a localizer image an enface projection of the OCT volume is used instead.
 
         Args:
@@ -626,7 +626,8 @@ class EyeVolume:
             projection_kwargs: Optional keyword arguments for the projection plots. If `None` default values are used (default: `None`). If a dictionary is given, the keys are the projection names and the values are dictionaries of keyword arguments.
             line_kwargs: Optional keyword arguments for customizing the lines to show B-scan region and positions plots. If `None` default values are used which are {"linewidth": 0.2, "linestyle": "-", "color": "green"}
 
-        Returns: None
+        Returns:
+            None
 
         """
 

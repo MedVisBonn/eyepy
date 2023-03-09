@@ -17,21 +17,29 @@ from .he import HeXmlReader
 logger = logging.getLogger("eyepy.io")
 
 
-def import_heyex_e2e(path: Union[str, Path],
-                     single=True) -> Union[EyeVolume, List[EyeVolume]]:
+def import_heyex_e2e(path: Union[str, Path]) -> EyeVolume:
     """ Read a Heyex E2E file
 
     This function is a thin wrapper around the HeE2eReader class and
-    returns the first of potentially multiple volumes. If you want to
-    read all volumes, set the parameter `single` to `False`.
+    returns the first of potentially multiple OCT volumes. If you want to
+    read all volumes, or need more control, you can use the
+    [HeE2eReader][eyepy.io.he.e2e_reader.HeE2eReader] class directly.
 
     Args:
         path: Path to the E2E file
 
-    Returns: EyeVolume or List[EyeVolume]
+    Returns:
+        Parsed data as EyeVolume object
 
     """
-    return HeE2eReader(path, single=single).volume
+    reader = HeE2eReader(path)
+    if len(reader.series) < 1:
+        logger.info(
+            f"There are {len(reader.series)} Series stored in the E2E file. If you want to read all of them, use the HeE2eReader class directly."
+        )
+    with reader as open_reader:
+        ev = open_reader.volume
+    return ev
 
 
 def import_heyex_xml(path: Union[str, Path]) -> EyeVolume:
@@ -43,7 +51,8 @@ def import_heyex_xml(path: Union[str, Path]) -> EyeVolume:
     Args:
         path: Path to the XML file or the folder containing the XML file
 
-    Returns: EyeVolume
+    Returns:
+        Parsed data as EyeVolume object
 
     """
     return HeXmlReader(path).volume
@@ -58,7 +67,8 @@ def import_heyex_vol(path: Union[str, Path]) -> EyeVolume:
     Args:
         path: Path to the VOL file
 
-    Returns: EyeVolume
+    Returns:
+        Parsed data as EyeVolume object
 
     """
     return HeVolReader(path).volume
@@ -73,7 +83,8 @@ def import_bscan_folder(path: Union[str, Path]) -> EyeVolume:
     Args:
         path: Path to the folder containing the B-Scans
 
-    Returns: EyeVolume
+    Returns:
+        Parsed data as EyeVolume object
 
     """
     path = Path(path)
@@ -116,7 +127,8 @@ def import_duke_mat(path: Union[str, Path]) -> EyeVolume:
     Args:
         path: Path to the .mat file
 
-    Returns: EyeVolume
+    Returns:
+        Parsed data as EyeVolume object
 
     """
     import scipy.io as sio
@@ -163,7 +175,8 @@ def import_retouch(path: Union[str, Path]) -> EyeVolume:
     Args:
         path: Path to the folder containing the OCT volume
 
-    Returns: EyeVolume
+    Returns:
+        Parsed data as EyeVolume object
 
     """
     import itk
@@ -194,13 +207,13 @@ def import_retouch(path: Union[str, Path]) -> EyeVolume:
 
     if (path / "reference.mhd").is_file():
         annotation = itk.imread(str(path / "reference.mhd"))
-        eye_volume.add_voxel_annotation(np.equal(annotation, 1),
+        eye_volume.add_pixel_annotation(np.equal(annotation, 1),
                                         name="IRF",
                                         current_color="FF0000")
-        eye_volume.add_voxel_annotation(np.equal(annotation, 2),
+        eye_volume.add_pixel_annotation(np.equal(annotation, 2),
                                         name="SRF",
                                         current_color="0000FF")
-        eye_volume.add_voxel_annotation(np.equal(annotation, 3),
+        eye_volume.add_pixel_annotation(np.equal(annotation, 3),
                                         name="PED",
                                         current_color="FFFF00")
 

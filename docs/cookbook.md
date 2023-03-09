@@ -102,16 +102,16 @@ ev.remove_layer_annotation("new_layer")
 ```
 
 ### Add / Remove Voxel Annotaitons
-If you want to add voxel annotations to the EyeVolume object you can use the `add_voxel_annotation` method. The following code adds the drusen map we computed above to the EyeVolume object. The `name` parameter is used to identify the annotation.
+If you want to add voxel annotations to the EyeVolume object you can use the `add_pixel_annotation` method. The following code adds the drusen map we computed above to the EyeVolume object. The `name` parameter is used to identify the annotation.
 
 ```python
-ev.add_voxel_annotation(drusen_map, name="drusen")
+ev.add_pixel_annotation(drusen_map, name="drusen")
 ```
 
-To remove an annotation use the `remove_voxel_annotation` method. The following code removes the drusen annotation we added above.
+To remove an annotation use the `remove_pixel_annotation` method. The following code removes the drusen annotation we added above.
 
 ```python
-ev.remove_voxel_annotation("drusen")
+ev.remove_pixel_annotation("drusen")
 ```
 
 ### ETDRS and Custom Quantification Grids

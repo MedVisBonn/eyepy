@@ -1,9 +1,10 @@
+from collections import defaultdict
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 import logging
 import sys
-from typing import List, MutableMapping, Optional, Tuple, Union
+from typing import Dict, List, MutableMapping, Optional, Tuple, Union
 
 import construct as cs
 import numpy as np
@@ -207,8 +208,8 @@ def find_int(bytestring: bytes,
              signed: Optional[Union[bool, str, List[str]]] = None,
              endian: Optional[str] = None,
              bits: Optional[Union[int, List[int], str, List[str]]] = None,
-             rtol=1e-05,
-             atol=1e-08) -> List[Tuple[str, int]]:
+             rtol: float = 1e-05,
+             atol: float = 1e-08) -> Dict[str, List[int]]:
     """Find all occurrences of an integer in a byte string.
 
     Args:
@@ -223,8 +224,8 @@ def find_int(bytestring: bytes,
         rtol: The relative tolerance parameter for matching a value (see numpy.isclose).
         atol: The absolute tolerance parameter for matching a value (see numpy.isclose).
 
-    Returns: A list containing a tuple for every find.
-        Every tuple has the following format: (type, position)
+    Returns:
+        A dictionary where the key is the type and the value, a list of offsets for which the searched value was found
     """
 
     # construct format strings
@@ -249,7 +250,7 @@ def find_int(bytestring: bytes,
     formats = [(int(b), f"Int{b}{s}{endian}") for b in bits for s in signed]
 
     # find all occurrences
-    results = []
+    results = defaultdict(list)
     for bts, fmt_string in formats:
         format = getattr(cs, fmt_string)
 
@@ -264,11 +265,11 @@ def find_int(bytestring: bytes,
 
             # Find all occurrences
             hits = np.nonzero(np.isclose(data, value, rtol=rtol, atol=atol))
-            res = [(fmt_string, (pos * (bts // 8)) + offset + 1)
-                   for pos in hits[0]]
+            res = [(pos * (bts // 8)) + offset + 1 for pos in hits[0]]
             if res:
-                results.append(res)
+                results[fmt_string] += res
 
+    results = {**results}
     return results
 
 
@@ -276,15 +277,13 @@ def find_float(bytestring: bytes,
                value: float,
                endian: Optional[str] = None,
                bits: Optional[Union[int, List[int], str, List[str]]] = None,
-               rtol=1e-05,
-               atol=1e-08) -> List[Tuple[str, int]]:
+               rtol: float = 1e-05,
+               atol: float = 1e-08) -> Dict[str, List[int]]:
     """Find all occurrences of a float in a byte string.
 
     Args:
         bytestring: The byte string to search.
         value: The float to search for.
-        signed: Whether the float is signed or not. If not specified, the
-            float is assumed to be signed if it is negative, otherwise signed and unsigned are searched for.
         endian: "l" for little and "b" for big, the endianness of the float.
             If not specified, the endianness is assumed to be the same as the endianness of the system.
         bits: The number of bits in the float. If not specified, 16, 32 and 64
@@ -292,8 +291,8 @@ def find_float(bytestring: bytes,
         rtol: The relative tolerance parameter for matching a value (see numpy.isclose).
         atol: The absolute tolerance parameter for matching a value (see numpy.isclose).
 
-    Returns: A list containing a tuple for every find.
-        Every tuple has the following format: (type, position)
+    Returns:
+        A dictionary where the key is the type and the value, a list of offsets for which the searched value was found
     """
 
     # construct format strings
@@ -312,7 +311,7 @@ def find_float(bytestring: bytes,
     formats = [(int(b), f"Float{b}{endian}") for b in bits]
 
     # find all occurrences
-    results = []
+    results = defaultdict(list)
     for bts, fmt_string in formats:
         format = getattr(cs, fmt_string)
 
@@ -324,11 +323,11 @@ def find_float(bytestring: bytes,
                 continue
             data = np.array(cs.Array(count, format).parse(bytestring[offset:]))
 
-            # Find all occurrences
+            # Find all occurrences for this format
             hits = np.nonzero(np.isclose(data, value, rtol, atol))
-            res = [(fmt_string, (pos * (bts // 8)) + offset + 1)
-                   for pos in hits[0]]
+            res = [(pos * (bts // 8)) + offset + 1 for pos in hits[0]]
             if res:
-                results.append(res)
+                results[fmt_string] += res
 
+    results = {**results}
     return results

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import cmath
 import functools
 import logging

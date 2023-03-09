@@ -29,6 +29,7 @@ class EyeBscan:
         self.index = index
         self.volume = volume
 
+        # Create a dict to access layers by their name for this B-scan.
         self.layers = DynamicDefaultDict(lambda x: EyeBscanLayerAnnotation(
             self.volume.layers[x], self.index))
         self.area_maps = DynamicDefaultDict(
@@ -38,7 +39,8 @@ class EyeBscan:
     def meta(self) -> EyeBscanMeta:
         """ Return the metadata for this B-scan
 
-        Returns: EyeBscanMeta
+        Returns:
+            Meta information about the B-scan
 
         """
         return self.volume.meta["bscan_meta"][self.index]
@@ -47,7 +49,8 @@ class EyeBscan:
     def data(self) -> np.ndarray:
         """ Returns the B-scan data as a numpy array
 
-        Returns: np.ndarray
+        Returns:
+            B-scan data as numpy array
 
         """
         return self.volume.data[self.index]
@@ -66,7 +69,8 @@ class EyeBscan:
     def shape(self) -> Tuple[int, int]:
         """ Shape of the B-scan data
 
-        Returns: Shape tuple (height, width)
+        Returns:
+            Shape tuple (B-scan height, B-scan width)
 
         """
         return self.data.shape
@@ -82,7 +86,7 @@ class EyeBscan:
         #ascan_kwargs=None,
         annotations_only=False,
         region: Union[slice, Tuple[slice, slice]] = np.s_[:, :],
-    ):
+    ) -> None:
         """ Plot B-scan.
 
         Annotations such as layers and areas can be overlaid on the image. With plt.legend() you can add a legend for the shown annotations
@@ -96,7 +100,8 @@ class EyeBscan:
             layer_kwargs: Optional keyword arguments for customizing the OCT layers. If `None` default values are used which are {"linewidth": 1, "linestyle": "-"}
             area_kwargs: Optional keyword arguments for customizing area annotions on the B-scan If `None` default values are used which are {"alpha": 0.5}
 
-        Returns: None
+        Returns:
+            None
 
         """
         if ax is None:

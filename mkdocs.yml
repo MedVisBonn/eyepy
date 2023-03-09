@@ -4,52 +4,39 @@ copyright: Copyright &copy; 2019 - 2023 Olivier Morelle
 nav:
     - Home: index.md
     - Cookbook: cookbook.md
-    - File formats:
-        #- formats.md
-        - Heidelberg E2E: formats/he_e2e.md
-        #- Heidelberg VOL: formats/he_vol.md
-        #- Heidelberg XML: formats/he_xml.md
-        - E2E Structures:
-            - Version: formats/he_e2e_structures/version.md
-            - Header: formats/he_e2e_structures/header.md
-            - Folder Header: formats/he_e2e_structures/folder_header.md
-            - Container Header: formats/he_e2e_structures/container_header.md
-            - Bscan Meta: formats/he_e2e_structures/bscanmeta.md
-            - Layer Annotation: formats/he_e2e_structures/layer_annotation.md
-            - Image Data: formats/he_e2e_structures/image.md
-            - Laterality: formats/he_e2e_structures/laterality.md
-            - Text Data: formats/he_e2e_structures/textdata.md
-            - Measurement Data: formats/he_e2e_structures/measurements.md
-            - Patient data: formats/he_e2e_structures/patient.md
-    #- Reference: reference/
+    - File formats: formats/
+    - Reference: reference/
     - Changelog: changelog.md
 
+# Plugins
 plugins:
     - search
+    - macros:
+        module_name: docs/main
     - autorefs
     - gen-files:
         scripts:
             - docs/gen_ref_pages.py
+            - docs/gen_e2e_doc.py
     - literate-nav:
           nav_file: SUMMARY.md
     - section-index
     - mkdocstrings:
         handlers:
           python:
-            paths: [.]
+            paths: [src]
+            options:
+              docstring_style: google
+              merge_init_into_class: True
+              docstring_section_style: table # 'table'/'list'/'spacy'
+              #show_signature_annotations: True
+              #separate_signature: True
+              show_root_toc_entry: True
+              show_root_heading: True
+              #show_category_heading: True
+              heading_level: 1
+              #show_submodules: True
 
-
-markdown_extensions:
-    - admonition
-    - pymdownx.details
-    - pymdownx.magiclink
-    - pymdownx.snippets:
-        check_paths: true
-    - pymdownx.superfences:
-        #custom_fences:
-        #  - name: mermaid
-        #    class: mermaid
-        #    format: !!python/name:pymdownx.superfences.fence_code_format
 
 repo_url: https://github.com/MedVisBonn/eyepy
 
@@ -61,13 +48,14 @@ theme:
         - navigation.tabs
         - navigation.tabs.sticky
         - navigation.sections
-        - navigation.expand
+        #- navigation.expand
         - navigation.footer
         #- navigation.indexes # not compatible with toc.integrate
         - toc.follow
-        - toc.integrate
+        #- toc.integrate
         - navigation.top
         - content.code.copy
+        - content.code.annotate
         - header.autohide
     icon:
         repo: fontawesome/brands/git-alt
@@ -85,3 +73,26 @@ theme:
           toggle:
             icon: material/brightness-4
             name: Switch to light mode
+
+markdown_extensions:
+    - admonition
+    - pymdownx.details
+    - pymdownx.magiclink
+    - pymdownx.superfences:
+        custom_fences:
+          - name: mermaid
+            class: mermaid
+            format: !!python/name:pymdownx.superfences.fence_code_format
+    - attr_list
+    - pymdownx.emoji:
+        emoji_index: !!python/name:materialx.emoji.twemoji
+        emoji_generator: !!python/name:materialx.emoji.to_svg
+    - pymdownx.snippets:
+        check_paths: true
+        base_path: ['.', 'docs/']
+
+    - pymdownx.highlight:
+        anchor_linenums: true
+        line_spans: __span
+        pygments_lang_class: true
+    - pymdownx.inlinehilite
