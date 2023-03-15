@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.9.1 (2023-03-15)
+### Fix
+* **e2e_reader.py:** Extract number of Bscans more reliably by using the number of slice substructures; Skip localizer affine transformation for now, because slodata is not always available; support reading single B-scan data ([`1287a24`](https://github.com/MedVisBonn/eyepy/commit/1287a24d40907085d33e867b35f458078faa6b75))
+* **e2e_format.py:** Change the name of E2EFile to E2EFormat to avoid confustion with E2EFileStructure in e2e_reader.py ([`01be6a0`](https://github.com/MedVisBonn/eyepy/commit/01be6a0a6ce4e80491871800a970b7f75eb8c86d))
+
+### Documentation
+* **README.md:** Clarify that the localizer is a fundus image ([`4e41acd`](https://github.com/MedVisBonn/eyepy/commit/4e41acd3660f3a07abed11464bdcacba81bda984))
+
 ## v0.9.0 (2023-03-09)
 ### Feature
 * **HeE2EReader:** Switch to construct_typed for describing structures; create file hierarchy when parsing the E2E file; add search functions to the HeE2eReader ([`45578a5`](https://github.com/MedVisBonn/eyepy/commit/45578a5a9949a2722a03c1fe4bdef228c3a980c0))
