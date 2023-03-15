@@ -740,7 +740,7 @@ version_format = DataclassStruct(Version)
 
 
 @dataclasses.dataclass
-class E2EFile(DataclassMixin):
+class E2EFormat(DataclassMixin):
     """E2E file format
 
     Size: variable
@@ -759,10 +759,10 @@ class E2EFile(DataclassMixin):
         doc="The number and size of the chunks depends on the data")
 
 
-e2e_format = DataclassStruct(E2EFile)
+e2e_format = DataclassStruct(E2EFormat)
 
 __e2efile_structures__ = [
-    E2EFile,
+    E2EFormat,
     Version,
     Chunk,
     Header,

@@ -5,6 +5,7 @@ from io import BufferedReader
 import logging
 from pathlib import Path
 from textwrap import indent
+import traceback
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import construct as cs
@@ -419,12 +420,7 @@ class E2ESeriesStructure(E2EStructureMixin):
         ## Check if scan is a volume scan
         volume_meta = self.get_meta()
 
-        size_x = volume_meta["bscan_meta"][0]["size_x"]
-        size_y = volume_meta["bscan_meta"][0]["size_y"]
         scan_pattern = volume_meta["bscan_meta"][0]["scan_pattern"]
-        n_bscans = volume_meta["bscan_meta"][0]["n_bscans"] if len(
-            self.get_bscan_meta()
-        ) != 1 else 1  # n_bscans is 0 instead of 1 for single B-scan Volumes in the e2e file.
 
         ## Check if scan pattern is supported by EyeVolume
         if scan_pattern == 2:
@@ -434,13 +430,7 @@ class E2ESeriesStructure(E2EStructureMixin):
             msg = f"The EyeVolume object does not support scan pattern 5 (Radial scan - star pattern)."
             raise ValueError(msg)
 
-        data = np.zeros((n_bscans, size_y, size_x))
-        for ind, sl in self.slices.items():
-            bscan = sl.get_image()
-            i = ind // 2 if len(
-                self.get_bscan_meta()
-            ) != 1 else 0  # Slice id for single B-scan Volumes is 2 and not 0 in the e2e file.
-            data[i] = bscan
+        data = self.get_bscans()
 
         volume_meta = self.get_meta()
         localizer = self.get_localizer()
@@ -458,6 +448,23 @@ class E2ESeriesStructure(E2EStructureMixin):
                 volume.add_layer_annotation(layer_height_maps[i], name=name)
 
         return volume
+
+    def get_bscans(self) -> np.ndarray:
+        volume_meta = self.get_meta()
+        size_x = volume_meta["bscan_meta"][0]["size_x"]
+        size_y = volume_meta["bscan_meta"][0]["size_y"]
+        n_bscans = volume_meta["bscan_meta"][0]["n_bscans"] if len(
+            self.get_bscan_meta()
+        ) != 1 else 1  # n_bscans is 0 instead of 1 for single B-scan Volumes in the e2e file.
+
+        data = np.zeros((n_bscans, size_y, size_x))
+        for ind, sl in self.slices.items():
+            bscan = sl.get_image()
+            i = ind // 2 if len(
+                self.get_bscan_meta()
+            ) != 1 else 0  # Slice id for single B-scan Volumes is 2 and not 0 in the e2e file.
+            data[i] = bscan
+        return data
 
     def get_layers(self) -> Dict[int, np.ndarray]:
         """Return layer height maps for the series as dict of numpy arrays where the key is the layer id."""
@@ -883,7 +890,14 @@ class HeE2eReader(AbstractContextManager):
         Returns:
             EyeVolume object for the first Series in the e2e file.
         """
-        return self.series[0].get_volume()
+        for s in self.series:
+            try:
+                return s.get_volume()
+            except Exception as e:
+                logger.debug("".join(traceback.format_exception(e)))
+        raise ValueError(
+            "No Series in the E2E file can be parsed to a an EyeVolume object. You might be able to extract information manually from the E2ESeries objects (e2ereader.series)"
+        )
 
     @property
     def volumes(self) -> List[EyeVolume]:
@@ -892,4 +906,10 @@ class HeE2eReader(AbstractContextManager):
         Returns:
             List with EyeVolume objects for every Series in the e2e file.
         """
-        return [s.get_volume() for s in self.series]
+        volumes = []
+        for s in self.series:
+            try:
+                volumes.append(s.get_volume())
+            except Exception as e:
+                logger.debug("".join(traceback.format_exception(e)))
+        return volumes

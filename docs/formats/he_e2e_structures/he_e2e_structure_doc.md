@@ -3,7 +3,7 @@ In contrast to the VOL and XML exports the E2E data may contain several OCT volu
 # File Structure
 The first bytes in an E2E file contain a version structure followed by a header structure. The header gives you access to the rest of the file by identifying the position of the last chunk of data. Each chunk has exactly 512 elements which we call folders.
 
-{{ get_structure_doc("E2EFile") }}
+{{ get_structure_doc("E2EFormat") }}
 
 ### Chunk
 Every chunk has a header similar to the file header. A chunk then holds the headers of all contained folders sequentially, followed by data containers, that are referenced by the folder headers. A chunk can contain folders with data of different patients, studies, series, slices and types. Each folder contains data for a single (patient, study, series, slice, type) combination which is given in the folder header as well as the data container header. For the last chunk to have 512 folders, empty folders of `type=0` are appended.
@@ -30,23 +30,23 @@ In the following sections we describe the data items we found in each level of t
 
 ### Slice Data
 
-{{ get_hierarchy_doc("E2ESlice") }}
+{{ get_hierarchy_doc("E2ESliceStructure") }}
 
 ### Series Data
 
-{{ get_hierarchy_doc("E2ESeries") }}
+{{ get_hierarchy_doc("E2ESeriesStructure") }}
 
 ### Study Data
 
-{{ get_hierarchy_doc("E2EStudy") }}
+{{ get_hierarchy_doc("E2EStudyStructure") }}
 
 ### Patient Data
 
-{{ get_hierarchy_doc("E2EPatient") }}
+{{ get_hierarchy_doc("E2EPatientStructure") }}
 
 ### General Data
 
-{{ get_hierarchy_doc("E2EFile") }}
+{{ get_hierarchy_doc("E2EFileStructure") }}
 
 
 ## Further observations
