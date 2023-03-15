@@ -321,12 +321,29 @@ class E2ESliceStructure(E2EStructureMixin):
             pos_unit="mm",
             **dataclasses.asdict(meta))
 
-    def get_image(self) -> np.ndarray:
+    def get_bscan(self) -> np.ndarray:
         """Return the slice image (B-scan)"""
-        if len(self.folders[TypesEnum.image]) > 1:
+        bscan_folders = [
+            f for f in self.folders[TypesEnum.image] if f.data.type == 35652097
+        ]
+        if len(bscan_folders) > 1:
             logger.warning(
-                "There is more than one image object. This is not expected.")
-        return self.folders[TypesEnum.image][0].data.data
+                "There is more than one B-scan per slice. This is not expected."
+            )
+        return bscan_folders[0].data.data
+
+    def get_localizer(self) -> np.ndarray:
+        """Return the slice image (Localizer/Fundus)
+        For the scanpattern "OCT Bscan" a localizer might be stored in the E2ESliceStructure and not the E2ESeriesStructure.
+        """
+        localizer_folders = [
+            f for f in self.folders[TypesEnum.image] if f.data.type == 33620481
+        ]
+        if len(localizer_folders) > 1:
+            logger.warning(
+                "There is more than one localizer per slice. This is not expected."
+            )
+        return localizer_folders[0].data.data
 
 
 class E2ESeriesStructure(E2EStructureMixin):
@@ -389,9 +406,8 @@ class E2ESeriesStructure(E2EStructureMixin):
         """
         laterality = self.folders[TypesEnum.laterality][
             0].data.laterality.name if TypesEnum.laterality in self.folders else "Unknown"
-        n_bscans = len(self.substructure.keys())
         text = self._get_section_title(
-        ) + f" - Laterality: {laterality} - B-scans: {n_bscans}\n"
+        ) + f" - Laterality: {laterality} - B-scans: {self.n_bscans}\n"
         text += self._get_section_description() + "\n"
         if tables:
             text += self._get_folder_summary() + "\n"
@@ -449,17 +465,19 @@ class E2ESeriesStructure(E2EStructureMixin):
 
         return volume
 
+    @property
+    def n_bscans(self) -> int:
+        """Return the number of B-scans in the series."""
+        return len(self.substructure)
+
     def get_bscans(self) -> np.ndarray:
         volume_meta = self.get_meta()
         size_x = volume_meta["bscan_meta"][0]["size_x"]
         size_y = volume_meta["bscan_meta"][0]["size_y"]
-        n_bscans = volume_meta["bscan_meta"][0]["n_bscans"] if len(
-            self.get_bscan_meta()
-        ) != 1 else 1  # n_bscans is 0 instead of 1 for single B-scan Volumes in the e2e file.
 
-        data = np.zeros((n_bscans, size_y, size_x))
+        data = np.zeros((self.n_bscans, size_y, size_x))
         for ind, sl in self.slices.items():
-            bscan = sl.get_image()
+            bscan = sl.get_bscan()
             i = ind // 2 if len(
                 self.get_bscan_meta()
             ) != 1 else 0  # Slice id for single B-scan Volumes is 2 and not 0 in the e2e file.
@@ -474,15 +492,19 @@ class E2ESeriesStructure(E2EStructureMixin):
         for ind, sl in self.slices.items():
             layers = sl.get_layers()
             [layer_ids.add(k) for k in layers.keys()]
-            slice_layers[ind // 2] = sl.get_layers()
+            slice_layers[ind // 2] = layers
 
         layers = {}
-        n_bscans = self.get_bscan_meta()[0]["n_bscans"]
         size_x = self.get_bscan_meta()[0]["size_x"]
         for i in layer_ids:
-            layer = np.full((n_bscans, size_x), np.nan)
-            for sl in range(n_bscans):
-                layer[sl, :] = slice_layers[sl][i]
+            layer = np.full((self.n_bscans, size_x), np.nan)
+            if self.n_bscans == 1:
+                layer[0, :] = slice_layers[1][i]
+                layers[i] = layer
+
+            else:
+                for sl in range(self.n_bscans):
+                    layer[sl, :] = slice_layers[sl][i]
 
             layer[layer >= 3.0e+38] = np.nan
             layers[i] = layer
@@ -528,23 +550,35 @@ class E2ESeriesStructure(E2EStructureMixin):
                 visit_date=None,
                 exam_time=None,
             )
+        logger.info(
+            "The localizer scale is currently hardcoded and not read from the E2E file. If you know how or where to find the scale information let us know by opening an issue."
+        )
         return self._localizer_meta
 
     def get_localizer(self) -> EyeEnface:
         """Return EyeEnface object for the localizer image."""
-        folders = self.folders[TypesEnum.image]
-        if len(folders) > 1:
-            logger.warning(
-                "There is more than one enface localizer image stored. This is not expected."
-            )
-        transform = np.array(list(self.slo_data().transform) +
-                             [0, 0, 1]).reshape((3, 3))
-        # transfrom localizer with transform from E2E file
-        transformed_localizer = warp(folders[0].data.data,
-                                     AffineTransform(transform),
-                                     order=1,
-                                     preserve_range=True)
-        return EyeEnface(transformed_localizer, self.localizer_meta())
+        try:
+            folders = self.folders[TypesEnum.image]
+            if len(folders) > 1:
+                logger.warning(
+                    "There is more than one enface localizer image stored. This is not expected."
+                )
+
+            # Slodata is not always present in E2E files.
+            # Todo: Give transform to EyeEnface object where it is applied to the image. EyeEnface then by default has an identity transform.
+            #transform = np.array(list(self.slo_data().transform) +
+            #                     [0, 0, 1]).reshape((3, 3))
+            # transfrom localizer with transform from E2E file
+            #transformed_localizer = warp(folders[0].data.data,
+            #                             AffineTransform(transform),
+            #                             order=1,
+            #                             preserve_range=True)
+            return EyeEnface(folders[0].data.data, self.localizer_meta())
+        except KeyError:
+            if self.n_bscans == 1:
+                slice_struct = self.slices[2]
+                return EyeEnface(slice_struct.get_localizer(),
+                                 self.localizer_meta())
 
     def get_bscan_meta(self) -> List[EyeBscanMeta]:
         """Return EyeBscanMeta objects for all B-scans in the series."""
@@ -671,7 +705,7 @@ class E2EFileStructure(E2EStructureMixin):
         """
         try:
             self.all_folders.append(folder)
-        except:
+        except AttributeError:
             self.all_folders = [folder]
 
         if folder.patient_id == -1:

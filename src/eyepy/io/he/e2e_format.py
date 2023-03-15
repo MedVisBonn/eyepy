@@ -125,7 +125,6 @@ class TypesEnum(EnumBase):
     image = EnumValue(1073741824)
     measurements = EnumValue(7)
     studyname = EnumValue(9000)
-    n_bscans = EnumValue(10013)
     device = EnumValue(9001, doc="eg. Heidelberg Retina Angiograph HRA")
     examined_structure = EnumValue(9005, doc="eg. Retina")
     scanpattern = EnumValue(9006, doc="eg. OCT ART Volume")
@@ -569,7 +568,6 @@ item_switch = cs.Switch(cs.this.header.type, {
     TypesEnum.oct_modality: type9008_format,
     TypesEnum.diagnose: type17_format,
     TypesEnum.slodata: type10025_format,
-    TypesEnum.n_bscans: type10013_format
 },
                         default=cs.Bytes(cs.this.header.size))
 
