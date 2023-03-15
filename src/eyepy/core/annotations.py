@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 import logging
-from typing import List, Optional, Tuple, TYPE_CHECKING
+from typing import Dict, Iterable, List, Optional, Tuple, TYPE_CHECKING, Union
 
 from matplotlib import cm
 from matplotlib import colors
@@ -15,6 +15,8 @@ from skimage import transform
 from eyepy import config
 
 if TYPE_CHECKING:
+    import matplotlib as mpl
+
     from eyepy import EyeEnface
     from eyepy import EyeVolume
 
@@ -30,7 +32,7 @@ class EyeVolumeLayerAnnotation:
         data: Optional[npt.NDArray[np.float32]] = None,
         meta: Optional[dict] = None,
         **kwargs,
-    ):
+    ) -> None:
         """
 
         Args:
@@ -63,7 +65,7 @@ class EyeVolumeLayerAnnotation:
         self.meta["current_color"] = config.layer_colors[self.name]
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
 
         Returns:
@@ -72,11 +74,11 @@ class EyeVolumeLayerAnnotation:
         return self.meta["name"]
 
     @name.setter
-    def name(self, value):
+    def name(self, value: str) -> None:
         self.meta["name"] = value
 
     @property
-    def knots(self):
+    def knots(self) -> Dict:
         """
 
         Returns:
@@ -123,16 +125,16 @@ class EyeVolumePixelAnnotation:
     """ """
 
     def __init__(
-            self,
-            volume: EyeVolume,
-            # Type hint for an optional boolean numpy array
-            data: Optional[npt.NDArray[np.bool_]] = None,
-            meta: Optional[dict] = None,
-            radii=(1.5, 2.5),
-            n_sectors=(1, 4),
-            offsets=(0, 45),
-            center=None,
-            **kwargs,
+        self,
+        volume: EyeVolume,
+        # Type hint for an optional boolean numpy array
+        data: Optional[npt.NDArray[np.bool_]] = None,
+        meta: Optional[dict] = None,
+        radii: Iterable[float] = (1.5, 2.5),
+        n_sectors: Iterable[int] = (1, 4),
+        offsets: Iterable[int] = (0, 45),
+        center: Optional[Tuple[float, float]] = None,
+        **kwargs,
     ):
         """
 
@@ -176,7 +178,7 @@ class EyeVolumePixelAnnotation:
             self.meta["name"] = "Voxel Annotation"
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
 
         Returns:
@@ -185,15 +187,15 @@ class EyeVolumePixelAnnotation:
         return self.meta["name"]
 
     @name.setter
-    def name(self, value):
+    def name(self, value) -> None:
         self.meta["name"] = value
 
-    def _reset(self):
+    def _reset(self) -> None:
         self._masks = None
         self._quantification = None
 
     @property
-    def radii(self):
+    def radii(self) -> Iterable[float]:
         """
 
         Returns:
@@ -202,12 +204,12 @@ class EyeVolumePixelAnnotation:
         return self.meta["radii"]
 
     @radii.setter
-    def radii(self, value):
+    def radii(self, value: Iterable[float]) -> None:
         self._reset()
         self.meta["radii"] = value
 
     @property
-    def n_sectors(self):
+    def n_sectors(self) -> Iterable[int]:
         """
 
         Returns:
@@ -216,12 +218,12 @@ class EyeVolumePixelAnnotation:
         return self.meta["n_sectors"]
 
     @n_sectors.setter
-    def n_sectors(self, value):
+    def n_sectors(self, value: Iterable[int]) -> None:
         self._reset()
         self.meta["n_sectors"] = value
 
     @property
-    def offsets(self):
+    def offsets(self) -> Iterable[int]:
         """
 
         Returns:
@@ -230,12 +232,12 @@ class EyeVolumePixelAnnotation:
         return self.meta["offsets"]
 
     @offsets.setter
-    def offsets(self, value):
+    def offsets(self, value: Iterable[int]) -> None:
         self._reset()
         self.meta["offsets"] = value
 
     @property
-    def center(self):
+    def center(self) -> Tuple[float, float]:
         """
 
         Returns:
@@ -244,12 +246,12 @@ class EyeVolumePixelAnnotation:
         return self.meta["center"]
 
     @center.setter
-    def center(self, value):
+    def center(self, value: Tuple[float, float]) -> None:
         self._reset()
         self.meta["center"] = value
 
     @property
-    def projection(self):
+    def projection(self) -> np.ndarray:
         """
 
         Returns:
@@ -261,7 +263,7 @@ class EyeVolumePixelAnnotation:
         return np.flip(np.nansum(self.data, axis=1), axis=0)
 
     @property
-    def enface(self):
+    def enface(self) -> np.ndarray:
         """
 
         Returns:
@@ -279,13 +281,13 @@ class EyeVolumePixelAnnotation:
 
     def plot(
         self,
-        ax=None,
-        region=np.s_[...],
-        cmap="Reds",
-        vmin=None,
-        vmax=None,
-        cbar=True,
-        alpha=1,
+        ax: Optional[plt.Axes] = None,
+        region: Union[slice, Tuple[slice, slice]] = np.s_[:, :],
+        cmap: Union[str, mpl.colors.Colormap] = "Reds",
+        vmin: Optional[float] = None,
+        vmax: Optional[float] = None,
+        cbar: bool = True,
+        alpha: float = 1,
     ):
         """
 
@@ -303,8 +305,7 @@ class EyeVolumePixelAnnotation:
         """
         enface_projection = self.enface
 
-        if ax is None:
-            ax = plt.gca()
+        ax = plt.gca() if ax is None else ax
 
         if vmin is None:
             vmin = 1
@@ -333,10 +334,11 @@ class EyeVolumePixelAnnotation:
         )
 
     @property
-    def masks(self):
+    def masks(self) -> Dict[str, np.ndarray]:
         """
 
         Returns:
+            A dictionary of masks with the keys being the names of the masks.
 
         """
         from eyepy.core.grids import grid
@@ -355,7 +357,7 @@ class EyeVolumePixelAnnotation:
         return self._masks
 
     @property
-    def quantification(self):
+    def quantification(self) -> Dict[str, Union[float, str]]:
         """
 
         Returns:
@@ -366,7 +368,7 @@ class EyeVolumePixelAnnotation:
 
         return self._quantification
 
-    def _quantify(self):
+    def _quantify(self) -> Dict[str, Union[float, str]]:
         enface_voxel_size_ym3 = (self.volume.localizer.scale_x * 1e3 *
                                  self.volume.localizer.scale_y * 1e3 *
                                  self.volume.scale_y * 1e3)
@@ -435,13 +437,13 @@ class EyeVolumePixelAnnotation:
 
     def plot_quantification(
         self,
-        ax=None,
-        region=np.s_[...],
-        alpha=0.5,
-        vmin=None,
-        vmax=None,
-        cbar=True,
-        cmap="YlOrRd",
+        ax: Optional[plt.Axes] = None,
+        region: Union[slice, Tuple[slice, slice]] = np.s_[:, :],
+        alpha: float = 0.5,
+        vmin: Optional[float] = None,
+        vmax: Optional[float] = None,
+        cbar: bool = True,
+        cmap: Union[str, mpl.colors.Colormap] = "YlOrRd",
     ):
         """
 
@@ -458,8 +460,7 @@ class EyeVolumePixelAnnotation:
 
         """
 
-        if ax is None:
-            ax = plt.gca()
+        ax = plt.gca() if ax is None else ax
 
         mask_img = np.zeros(self.volume.localizer.shape, dtype=float)[region]
         visible = np.zeros_like(mask_img)
@@ -468,10 +469,8 @@ class EyeVolumePixelAnnotation:
                          self.quantification[mask_name + " [mm³]"])
             visible += self.masks[mask_name][region]
 
-        if vmin is None:
-            vmin = mask_img[visible.astype(int)].min()
-        if vmax is None:
-            vmax = max([mask_img.max(), vmin])
+        vmin = mask_img[visible.astype(int)].min() if vmin is None else vmin
+        vmax = max([mask_img.max(), vmin]) if vmax is None else vmax
 
         if cbar:
             divider = make_axes_locatable(ax)
@@ -507,7 +506,7 @@ class EyeBscanLayerAnnotation:
         self.index = index
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
 
         Returns:
@@ -516,11 +515,11 @@ class EyeBscanLayerAnnotation:
         return self.eyevolumelayerannotation.meta["name"]
 
     @name.setter
-    def name(self, value: str):
+    def name(self, value: str) -> None:
         self.eyevolumelayerannotation.meta["name"] = value
 
     @property
-    def data(self):
+    def data(self) -> npt.NDArray[np.float_]:
         """
 
         Returns:
@@ -529,11 +528,11 @@ class EyeBscanLayerAnnotation:
         return self.eyevolumelayerannotation.data[self.index, :]
 
     @data.setter
-    def data(self, value):
+    def data(self, value: npt.NDArray[np.float_]) -> None:
         self.eyevolumelayerannotation.data[self.index, :] = value
 
     @property
-    def knots(self):
+    def knots(self) -> List:
         """
 
         Returns:
@@ -542,7 +541,7 @@ class EyeBscanLayerAnnotation:
         return self.eyevolumelayerannotation.knots[self.index]
 
     @knots.setter
-    def knots(self, value: List):
+    def knots(self, value: List) -> None:
         self.eyevolumelayerannotation.knots[self.index] = value
 
 
@@ -583,7 +582,7 @@ class EyeEnfacePixelAnnotation:
             self.meta["name"] = "Pixel Annotation"
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
 
         Returns:
@@ -592,5 +591,5 @@ class EyeEnfacePixelAnnotation:
         return self.meta["name"]
 
     @name.setter
-    def name(self, value):
+    def name(self, value: str) -> None:
         self.meta["name"] = value

@@ -41,5 +41,6 @@ jobs:
               mkdocs-literate-nav \
               mkdocs-section-index \
               pymdown-extensions \
+              mkdocs-macros-plugin \
               eyepie
       - run: mkdocs gh-deploy --force
