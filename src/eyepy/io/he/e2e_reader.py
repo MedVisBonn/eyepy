@@ -4,6 +4,7 @@ import dataclasses
 from io import BufferedReader
 import logging
 from pathlib import Path
+import sys
 from textwrap import indent
 import traceback
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -928,7 +929,10 @@ class HeE2eReader(AbstractContextManager):
             try:
                 return s.get_volume()
             except Exception as e:
-                logger.debug("".join(traceback.format_exception(e)))
+                # for compatibility with python <= 3.9, later work with only the exception as argument for format_exception
+                exc_type, exc_value, exc_tb = sys.exc_info()
+                logger.debug("".join(
+                    traceback.format_exception(exc_type, exc_value, exc_tb)))
         raise ValueError(
             "No Series in the E2E file can be parsed to a an EyeVolume object. You might be able to extract information manually from the E2ESeries objects (e2ereader.series)"
         )

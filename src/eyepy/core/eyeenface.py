@@ -14,7 +14,7 @@ class EyeEnface:
     """ """
 
     def __init__(self, data: npt.NDArray[np.int_],
-                 meta: EyeEnfaceMeta) -> None:
+                 meta: "EyeEnfaceMeta") -> None:
         """
 
         Args:
