@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.9.2 (2023-03-17)
+### Fix
+* **e2e_reader.py:** Makes exception formatting compatible with python < 3.10 ([`2c4cbb0`](https://github.com/MedVisBonn/eyepy/commit/2c4cbb0c2a91c47d951945aa75145dd1e34e5c4e))
+
+### Documentation
+* **eyepy.core:** Adds type annotations to all objects in the core subpackage ([`ea1cb4c`](https://github.com/MedVisBonn/eyepy/commit/ea1cb4c415604a97d1e7ef64998b1743e7c5fe75))
+* **annotations.py:** Adds type annotations to all objects in this module ([`986f9bc`](https://github.com/MedVisBonn/eyepy/commit/986f9bc6347227311725d31726ea38741e582d75))
+
 ## v0.9.1 (2023-03-15)
 ### Fix
 * **e2e_reader.py:** Extract number of Bscans more reliably by using the number of slice substructures; Skip localizer affine transformation for now, because slodata is not always available; support reading single B-scan data ([`1287a24`](https://github.com/MedVisBonn/eyepy/commit/1287a24d40907085d33e867b35f458078faa6b75))
