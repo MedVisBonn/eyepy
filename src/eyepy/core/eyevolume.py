@@ -4,14 +4,13 @@ import logging
 from pathlib import Path
 import shutil
 import tempfile
-from typing import (Callable, List, Optional, overload, SupportsIndex, Tuple,
-                    TypedDict, Union)
+from typing import (Callable, Dict, List, Optional, overload, SupportsIndex,
+                    Tuple, Union)
 import warnings
 import zipfile
 
 from matplotlib import patches
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from numpy import typing as npt
 import numpy as np
 from skimage import transform
@@ -39,7 +38,7 @@ class EyeVolume:
         meta: Optional[EyeVolumeMeta] = None,
         localizer: Optional[EyeEnface] = None,
         transformation: Optional[GeometricTransform] = None,
-    ):
+    ) -> None:
         """
 
         Args:
@@ -76,7 +75,7 @@ class EyeVolume:
         else:
             self.localizer = localizer
 
-    def save(self, path):
+    def save(self, path: Union[str, Path]) -> None:
         """
 
         Args:
@@ -145,7 +144,7 @@ class EyeVolume:
             shutil.move(name, path)
 
     @classmethod
-    def load(cls, path):
+    def load(cls, path: Union[str, Path]) -> "EyeVolume":
         """
 
         Args:
@@ -228,7 +227,7 @@ class EyeVolume:
 
         return ev
 
-    def _default_meta(self, volume):
+    def _default_meta(self, volume: npt.NDArray[np.float_]) -> EyeVolumeMeta:
         bscan_meta = [
             EyeBscanMeta(start_pos=(0, i),
                          end_pos=((volume.shape[2] - 1), i),
@@ -245,7 +244,7 @@ class EyeVolume:
         )
         return meta
 
-    def _default_localizer(self, data):
+    def _default_localizer(self, data: npt.NDArray[np.float_]) -> EyeEnface:
         projection = np.flip(np.nanmean(data, axis=1), axis=0)
         image = transform.warp(
             projection,
@@ -266,7 +265,7 @@ class EyeVolume:
         )
         return localizer
 
-    def _estimate_transform(self):
+    def _estimate_transform(self) -> transform.AffineTransform:
         # Compute a transform to map a 2D projection of the volume to a square
         # Points in oct space
         src = np.array([
@@ -330,11 +329,11 @@ class EyeVolume:
         else:
             raise TypeError()
 
-    def __len__(self):
+    def __len__(self) -> int:
         """The number of B-Scans."""
         return self.shape[0]
 
-    def set_intensity_transform(self, func: Union[str, Callable]):
+    def set_intensity_transform(self, func: Union[str, Callable]) -> None:
         """
 
         Args:
@@ -361,7 +360,7 @@ class EyeVolume:
             self._data = None
 
     @property
-    def data(self):
+    def data(self) -> np.ndarray:
         """
 
         Returns:
@@ -372,7 +371,7 @@ class EyeVolume:
         return self._data
 
     @property
-    def shape(self):
+    def shape(self) -> Tuple[int, int, int]:
         """
 
         Returns:
@@ -381,12 +380,12 @@ class EyeVolume:
         return self._raw_data.shape
 
     @shape.setter
-    def shape(self, value):
+    def shape(self, value: Tuple[int, int, int]) -> None:
         raise AttributeError(
             "Shape can not be set since it is derived from the data")
 
     @property
-    def scale(self):
+    def scale(self) -> Tuple[float, float, float]:
         """
 
         Returns:
@@ -395,11 +394,11 @@ class EyeVolume:
         return self.scale_z, self.scale_y, self.scale_x
 
     @scale.setter
-    def scale(self, value):
+    def scale(self, value: Tuple[float, float, float]) -> None:
         self.scale_z, self.scale_y, self.scale_x = value
 
     @property
-    def size_z(self):
+    def size_z(self) -> int:
         """
 
         Returns:
@@ -408,13 +407,13 @@ class EyeVolume:
         return self.shape[0]
 
     @size_z.setter
-    def size_z(self, value):
+    def size_z(self, value: int) -> None:
         raise AttributeError(
             "Size of z axis can not be changed since it is derived from the data"
         )
 
     @property
-    def size_y(self):
+    def size_y(self) -> int:
         """
 
         Returns:
@@ -423,13 +422,13 @@ class EyeVolume:
         return self.shape[1]
 
     @size_y.setter
-    def size_y(self, value):
+    def size_y(self, value: int) -> None:
         raise AttributeError(
             "Size of y axis can not be changed since it is derived from the data"
         )
 
     @property
-    def size_x(self):
+    def size_x(self) -> int:
         """
 
         Returns:
@@ -438,13 +437,13 @@ class EyeVolume:
         return self.shape[2]
 
     @size_x.setter
-    def size_x(self, value):
+    def size_x(self, value: int) -> None:
         raise AttributeError(
             "Size of x axis can not be changed since it is derived from the data"
         )
 
     @property
-    def scale_z(self):
+    def scale_z(self) -> float:
         """
 
         Returns:
@@ -453,11 +452,11 @@ class EyeVolume:
         return self.meta["scale_z"]
 
     @scale_z.setter
-    def scale_z(self, value):
+    def scale_z(self, value: float) -> None:
         self.meta["scale_z"] = value
 
     @property
-    def scale_y(self):
+    def scale_y(self) -> float:
         """
 
         Returns:
@@ -466,11 +465,11 @@ class EyeVolume:
         return self.meta["scale_y"]
 
     @scale_y.setter
-    def scale_y(self, value):
+    def scale_y(self, value: float) -> None:
         self.meta["scale_y"] = value
 
     @property
-    def scale_x(self):
+    def scale_x(self) -> float:
         """
 
         Returns:
@@ -479,11 +478,11 @@ class EyeVolume:
         return self.meta["scale_x"]
 
     @scale_x.setter
-    def scale_x(self, value):
+    def scale_x(self, value: float) -> None:
         self.meta["scale_x"] = value
 
     @property
-    def scale_unit(self):
+    def scale_unit(self) -> str:
         """
 
         Returns:
@@ -492,11 +491,11 @@ class EyeVolume:
         return self.meta["scale_unit"]
 
     @scale_unit.setter
-    def scale_unit(self, value):
+    def scale_unit(self, value: str) -> None:
         self.meta["scale_unit"] = value
 
     @property
-    def laterality(self):
+    def laterality(self) -> str:
         """
 
         Returns:
@@ -505,11 +504,11 @@ class EyeVolume:
         return self.meta["laterality"]
 
     @laterality.setter
-    def laterality(self, value):
+    def laterality(self, value: str) -> None:
         self.meta["laterality"] = value
 
     @property
-    def layers(self):
+    def layers(self) -> Dict[str, EyeVolumeLayerAnnotation]:
         """
 
         Returns:
@@ -520,7 +519,7 @@ class EyeVolume:
         return {layer.name: layer for layer in self._layers}
 
     @property
-    def volume_maps(self):
+    def volume_maps(self) -> Dict[str, EyeVolumePixelAnnotation]:
         """
 
         Returns:
@@ -529,7 +528,10 @@ class EyeVolume:
         # Create a dict to access volume_maps by their name
         return {vm.name: vm for vm in self._volume_maps}
 
-    def add_pixel_annotation(self, voxel_map=None, meta=None, **kwargs):
+    def add_pixel_annotation(self,
+                             voxel_map: Optional[npt.NDArray[np.bool_]] = None,
+                             meta: Optional[Dict] = None,
+                             **kwargs) -> EyeVolumePixelAnnotation:
         """
 
         Args:
@@ -547,7 +549,7 @@ class EyeVolume:
         self._volume_maps.append(voxel_annotation)
         return voxel_annotation
 
-    def remove_pixel_annotations(self, name):
+    def remove_pixel_annotations(self, name: str) -> None:
         """
 
         Args:
@@ -565,7 +567,11 @@ class EyeVolume:
             if name in bscan.area_maps:
                 bscan.area_maps.pop(name)
 
-    def add_layer_annotation(self, height_map=None, meta=None, **kwargs):
+    def add_layer_annotation(self,
+                             height_map: Optional[npt.NDArray[
+                                 np.float_]] = None,
+                             meta: Optional[Dict] = None,
+                             **kwargs) -> EyeVolumeLayerAnnotation:
         """
 
         Args:
@@ -583,7 +589,7 @@ class EyeVolume:
         self._layers.append(layer_annotation)
         return layer_annotation
 
-    def remove_layer_annotation(self, name):
+    def remove_layer_annotation(self, name: str) -> None:
         """
 
         Args:
@@ -685,17 +691,16 @@ class EyeVolume:
     def _plot_bscan_positions(
         self,
         bscan_positions: Union[bool, List[int]] = True,
-        ax=None,
+        ax: Optional[plt.Axes] = None,
         region: Union[slice, Tuple[slice, slice]] = np.s_[:, :],
-        line_kwargs=None,
+        line_kwargs: Optional[Dict] = None,
     ):
         if not bscan_positions:
             bscan_positions = []
         elif bscan_positions is True:
             bscan_positions = list(range(0, len(self)))
 
-        if ax is None:
-            ax = plt.gca()
+        ax = plt.gca() if ax is None else ax
         if line_kwargs is None:
             line_kwargs = {}
 
@@ -729,13 +734,11 @@ class EyeVolume:
     def _plot_bscan_region(self,
                            region: Union[slice, Tuple[slice,
                                                       slice]] = np.s_[:, :],
-                           ax=None,
-                           line_kwargs=None):
-        if ax is None:
-            ax = plt.gca()
+                           ax: Optional[plt.Axes] = None,
+                           line_kwargs: Optional[Dict] = None):
 
-        if line_kwargs is None:
-            line_kwargs = {}
+        ax = plt.gca() if ax is None else ax
+        line_kwargs = {} if line_kwargs is None else line_kwargs
 
         scale = np.array([self.localizer.scale_x, self.localizer.scale_y])
 

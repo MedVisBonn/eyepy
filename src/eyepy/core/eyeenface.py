@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Union
+from typing import Dict, Optional, Tuple, TYPE_CHECKING, Union
 
 import matplotlib.pyplot as plt
 from numpy import typing as npt
@@ -6,11 +6,15 @@ import numpy as np
 
 from eyepy.core.annotations import EyeEnfacePixelAnnotation
 
+if TYPE_CHECKING:
+    from eyepy import EyeEnfaceMeta
+
 
 class EyeEnface:
     """ """
 
-    def __init__(self, data, meta):
+    def __init__(self, data: npt.NDArray[np.int_],
+                 meta: EyeEnfaceMeta) -> None:
         """
 
         Args:
@@ -22,7 +26,7 @@ class EyeEnface:
         self.meta = meta
 
     @property
-    def area_maps(self):
+    def area_maps(self) -> Dict[str, EyeEnfacePixelAnnotation]:
         """
 
         Returns:
@@ -31,7 +35,10 @@ class EyeEnface:
         # Create a dict to access area_maps by their name
         return {am.name: am for am in self._area_maps}
 
-    def add_area_annotation(self, area_map=None, meta=None, **kwargs):
+    def add_area_annotation(self,
+                            area_map: Optional[npt.NDArray[np.bool_]] = None,
+                            meta: Optional[Dict] = None,
+                            **kwargs) -> EyeEnfacePixelAnnotation:
         """
 
         Args:
@@ -50,7 +57,7 @@ class EyeEnface:
         return area_annotation
 
     @property
-    def scale_x(self):
+    def scale_x(self) -> float:
         """
 
         Returns:
@@ -59,7 +66,7 @@ class EyeEnface:
         return self.meta["scale_x"]
 
     @property
-    def scale_y(self):
+    def scale_y(self) -> float:
         """
 
         Returns:
@@ -68,7 +75,7 @@ class EyeEnface:
         return self.meta["scale_y"]
 
     @property
-    def size_x(self):
+    def size_x(self) -> int:
         """
 
         Returns:
@@ -77,7 +84,7 @@ class EyeEnface:
         return self.shape[1]
 
     @property
-    def size_y(self):
+    def size_y(self) -> int:
         """
 
         Returns:
@@ -86,7 +93,7 @@ class EyeEnface:
         return self.shape[0]
 
     @property
-    def laterality(self):
+    def laterality(self) -> str:
         """
 
         Returns:
@@ -95,7 +102,7 @@ class EyeEnface:
         return self.meta["laterality"]
 
     @property
-    def shape(self):
+    def shape(self) -> Tuple[int, int]:
         """
 
         Returns:
@@ -115,8 +122,7 @@ class EyeEnface:
         Returns:
 
         """
-        if ax is None:
-            ax = plt.gca()
+        ax = plt.gca() if ax is None else ax
         ax.imshow(self.data[region], cmap="gray")
 
         # Make sure tick labels match the image region

@@ -11,6 +11,7 @@ from .annotations import EyeVolumeLayerAnnotation
 
 NDArrayFloat = npt.NDArray[np.float_]
 NDArrayBool = npt.NDArray[np.bool_]
+NDArrayInt = npt.NDArray[np.int_]
 
 
 class DynamicDefaultDict(dict):
@@ -24,7 +25,7 @@ class DynamicDefaultDict(dict):
         return self[key]
 
 
-def vol_intensity_transform(data: np.ndarray) -> np.ndarray:
+def vol_intensity_transform(data: NDArrayFloat) -> NDArrayInt:
     """ Wrapper around from_vol_intensity
 
     Transform intensities from Heyex VOL exports to achieve a constrast similar to the one used in Heyex.
@@ -38,7 +39,7 @@ def vol_intensity_transform(data: np.ndarray) -> np.ndarray:
     return from_vol_intensity(data)
 
 
-def from_vol_intensity(data):
+def from_vol_intensity(data: NDArrayFloat) -> NDArrayInt:
     selection_0 = data == np.finfo(np.float32).max
     selection_data = data <= 1
 
@@ -52,7 +53,7 @@ def from_vol_intensity(data):
 
 
 # Function expects numpy array of uint8 type hint
-def to_vol_intensity(data):
+def to_vol_intensity(data: np.ndarray) -> NDArrayFloat:
     data = img_as_float32(data)
     data = data * 8.285 - 8.3
     data = np.exp(data) - 2.44e-04

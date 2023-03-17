@@ -29,7 +29,7 @@ class EyeVolumeLayerAnnotation:
     def __init__(
         self,
         volume: EyeVolume,
-        data: Optional[npt.NDArray[np.float32]] = None,
+        data: Optional[npt.NDArray[np.float_]] = None,
         meta: Optional[dict] = None,
         **kwargs,
     ) -> None:

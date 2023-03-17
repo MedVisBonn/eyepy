@@ -1,13 +1,13 @@
 import datetime
 import json
 import os
-from typing import List, MutableMapping, Tuple
+from typing import Any, Dict, Iterable, List, MutableMapping, Tuple, Union
 
 
 class EyeMeta(MutableMapping):
     """ """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         """
 
         Args:
@@ -17,7 +17,7 @@ class EyeMeta(MutableMapping):
         self._store = dict()
         self.update(dict(*args, **kwargs))  # use the free update to set keys
 
-    def as_dict(self):
+    def as_dict(self) -> Dict:
         """
 
         Returns:
@@ -29,32 +29,32 @@ class EyeMeta(MutableMapping):
                 data[key] = data[key].isoformat()
         return data
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         return self._store[key]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value) -> None:
         self._store[key] = value
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> None:
         del self._store[key]
 
     def __iter__(self):
         return iter(self._store)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._store)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{os.linesep}".join([f"{f}: {self[f]}" for f in self if f != "__empty"])
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
 
 class EyeEnfaceMeta(EyeMeta):
     """ """
 
-    def __init__(self, scale_x: float, scale_y: float, scale_unit: str, **kwargs):
+    def __init__(self, scale_x: float, scale_y: float, scale_unit: str, **kwargs) -> None:
         """A dict with required keys to hold meta data for enface images of the eye
 
         Args:
@@ -68,7 +68,7 @@ class EyeEnfaceMeta(EyeMeta):
         )
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: dict) -> "EyeEnfaceMeta":
         """
 
         Args:
@@ -92,7 +92,7 @@ class EyeBscanMeta(EyeMeta):
         end_pos: Tuple[float, float],
         pos_unit: str,
         **kwargs,
-    ):
+    ) -> None:
         """A dict with required keys to hold meta data for OCT B-scans
 
         Args:
@@ -137,7 +137,7 @@ class EyeVolumeMeta(EyeMeta):
             **kwargs,
         )
 
-    def as_dict(self):
+    def as_dict(self) -> Dict:
         """
 
         Returns:
@@ -148,7 +148,7 @@ class EyeVolumeMeta(EyeMeta):
         return data
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: dict) -> "EyeVolumeMeta":
         """
 
         Args:

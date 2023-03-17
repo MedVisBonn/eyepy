@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class EyeBscan:
     """ """
 
-    def __init__(self, volume: EyeVolume, index: int):
+    def __init__(self, volume: EyeVolume, index: int) -> None:
         """
 
         Args:
@@ -84,7 +84,7 @@ class EyeBscan:
         layer_kwargs: Optional[dict] = None,
         area_kwargs: Optional[dict] = None,
         #ascan_kwargs=None,
-        annotations_only=False,
+        annotations_only: bool=False,
         region: Union[slice, Tuple[slice, slice]] = np.s_[:, :],
     ) -> None:
         """ Plot B-scan.

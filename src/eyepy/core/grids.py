@@ -1,9 +1,10 @@
 import cmath
 import functools
 import logging
-from typing import Iterable, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
+import numpy.typing as npt
 from skimage import transform
 
 logger = logging.getLogger(__name__)
@@ -11,7 +12,9 @@ logger = logging.getLogger(__name__)
 Shape = Union[int, Tuple[int, int]]
 
 
-def circle_mask(radius, mask_shape=None, smooth_edges=False):
+def circle_mask(radius: int,
+                mask_shape: Optional[Tuple[int, int]] = None,
+                smooth_edges: bool = False) -> npt.NDArray[Any]:
     """Create a centered circular mask with given radius.
 
     Args:
@@ -32,16 +35,17 @@ def circle_mask(radius, mask_shape=None, smooth_edges=False):
         work_shape = mask_shape
 
     circle_mask = np.zeros(work_shape)
-    circle_mask[
-        radius_filtergrid(work_shape, quadrant_shift=False, normalize=False) < radius
-    ] = 1
+    circle_mask[radius_filtergrid(
+        work_shape, quadrant_shift=False, normalize=False) < radius] = 1
 
     return transform.resize(circle_mask, mask_shape)
 
 
-def create_sectors(
-    mask_shape, n_sectors=4, start_angle=0, clockwise=False, smooth_edges=False
-):
+def create_sectors(mask_shape: Tuple[int, int],
+                   n_sectors: int = 4,
+                   start_angle: int = 0,
+                   clockwise: bool = False,
+                   smooth_edges: bool = False) -> List[npt.NDArray[Any]]:
     """Create masks for n radial sectors.
 
     By default the first sector is the first quadrant, and the remaining 3
@@ -95,24 +99,20 @@ def create_sectors(
             if sector_start > sector_end:
                 # If rotating clockwise the start angle is bigger than the end angle
                 selection = np.where(
-                    np.logical_and(theta <= sector_start, theta > sector_end)
-                )
+                    np.logical_and(theta <= sector_start, theta > sector_end))
             else:
                 # If this is not the case, only the end angle has crossed the 0°
                 selection = np.where(
-                    np.logical_or(theta <= sector_start, theta > sector_end)
-                )
+                    np.logical_or(theta <= sector_start, theta > sector_end))
         else:
             if sector_start < sector_end:
                 # If rotating counter-clockwise the start angle is smaller than the end
                 selection = np.where(
-                    np.logical_and(theta >= sector_start, theta < sector_end)
-                )
+                    np.logical_and(theta >= sector_start, theta < sector_end))
             else:
                 # If this is not the case only the end angle has crossed the 360°
                 selection = np.where(
-                    np.logical_or(theta >= sector_start, theta < sector_end)
-                )
+                    np.logical_or(theta >= sector_start, theta < sector_end))
 
         mask[selection] = 1
 
@@ -127,13 +127,13 @@ def create_sectors(
 # Cache created grids. When quantifying many volumes you need the grid for both laterality and possibly different localizer sizes.
 @functools.lru_cache(8, typed=False)
 def create_grid_regions(
-    mask_shape: tuple,
-    radii: tuple,
-    n_sectors: tuple,
-    offsets: tuple,
+    mask_shape: Tuple[int, int],
+    radii: Sequence[int],
+    n_sectors: Sequence[int],
+    offsets: Sequence[int],
     clockwise: bool,
     smooth_edges: bool = False,
-) -> list:
+) -> List[npt.NDArray[Any]]:
     """Create sectorized circular region masks.
 
     First circular masks with the provided radii are generated. Then ring masks
@@ -170,8 +170,7 @@ def create_grid_regions(
                     start_angle=start_angle,
                     clockwise=clockwise,
                     smooth_edges=smooth_edges,
-                )
-            )
+                ))
 
     rings = [circles[0]]
     for i, _ in enumerate(circles):
@@ -193,15 +192,15 @@ def create_grid_regions(
 
 
 def grid(
-    mask_shape: tuple,
-    radii: Union[Iterable, int, float],
+    mask_shape: Tuple[int, int],
+    radii: Union[Sequence[Union[int, float]], int, float],
     laterality: str,
-    n_sectors: Optional[Union[Iterable, int, float]] = 1,
-    offsets: Optional[Union[Iterable, int, float]] = 0,
+    n_sectors: Union[Sequence[Union[int, float]], int, float] = 1,
+    offsets: Union[Sequence[Union[int, float]], int, float] = 0,
     center: Optional[tuple] = None,
     smooth_edges: bool = False,
     radii_scale: Union[int, float] = 1,
-):
+) -> Dict[str, npt.NDArray[Any]]:
     """Create a quantification grid
 
     Args:
@@ -218,23 +217,18 @@ def grid(
 
     """
     # Make sure radii, n_sectors and offsets are lists even if you get numbers or tuples
-    if type(radii) in [int, float]:
-        radii = [radii]
-    radii = list(radii)
+    radii = [radii] if isinstance(radii, (int, float)) else list(radii)
     if not sorted(radii) == radii:
         raise ValueError("radii have to be given in ascending order")
     input_radii = radii
     radii = [r / radii_scale for r in radii]
 
-    if type(n_sectors) in [int, float]:
-        n_sectors = [n_sectors]
-    n_sectors = list(n_sectors)
+    n_sectors = [n_sectors] if isinstance(n_sectors,
+                                          (int, float)) else list(n_sectors)
     if len(n_sectors) == 1:
         n_sectors = n_sectors * len(radii)
 
-    if type(offsets) in [int, float]:
-        offsets = [offsets]
-    offsets = list(offsets)
+    offsets = [offsets] if isinstance(offsets, (int, float)) else list(offsets)
     if len(offsets) == 1:
         offsets = offsets * len(radii)
 
@@ -255,7 +249,8 @@ def grid(
         if i + 1 >= len(radii):
             break
         for s in range(n_sectors[i]):
-            names.append(f"Radius: {input_radii[i]}-{input_radii[i+1]} Sector: {s}")
+            names.append(
+                f"Radius: {input_radii[i]}-{input_radii[i+1]} Sector: {s}")
 
     masks = {name: mask for name, mask in zip(names, masks)}
     if laterality == "OS":
@@ -266,9 +261,8 @@ def grid(
         raise ValueError("laterality has to be one of OD/OS")
 
     if center is not None:
-        translation = transform.AffineTransform(
-            translation=np.array(center) - np.array(mask_shape) / 2
-        )
+        translation = transform.AffineTransform(translation=np.array(center) -
+                                                np.array(mask_shape) / 2)
         masks = {
             name: transform.warp(masks[name], translation.inverse)
             for name in masks.keys()
@@ -278,9 +272,9 @@ def grid(
 
 
 @functools.lru_cache(maxsize=8)
-def filtergrid(
-    size: Shape, quadrant_shift: bool = True, normalize: bool = True
-) -> Tuple[np.ndarray, np.ndarray]:
+def filtergrid(size: Shape,
+               quadrant_shift: bool = True,
+               normalize: bool = True) -> Tuple[np.ndarray, np.ndarray]:
     """Generates grid for constructing frequency domain filters.
 
     Coordinate matrices for x and y value for a 2D array. The out can be quadrant shifted
@@ -320,9 +314,9 @@ def filtergrid(
 
 
 @functools.lru_cache(maxsize=8)
-def radius_filtergrid(
-    size: Shape, quadrant_shift: bool = True, normalize: bool = True
-) -> np.ndarray:
+def radius_filtergrid(size: Shape,
+                      quadrant_shift: bool = True,
+                      normalize: bool = True) -> np.ndarray:
     """Radius Filtergrid
 
     A matrix containing the radius from the center. This radius is in range [0, 0.5] if normalized.
