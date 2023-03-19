@@ -1,3 +1,4 @@
+from oct_converter.readers import FDA
 import logging
 from pathlib import Path
 from typing import List, Union
@@ -15,6 +16,33 @@ from .he import HeVolWriter
 from .he import HeXmlReader
 
 logger = logging.getLogger("eyepy.io")
+
+
+def import_fda(path: Union[str, Path]) -> EyeVolume:
+    """ Read a Topcon fda file
+
+    This function is a wrapper around the FDA reader in OCT-Converter.
+
+    Args:
+        path: Path to the fda file
+
+    Returns:
+        Parsed data as EyeVolume object
+
+    """
+    reader = FDA(path)
+    oct_volume = reader.read_oct_volume()
+
+    bscan = oct_volume.volume
+    segmentation = oct_volume.contours
+
+    ev = EyeVolume(data=np.stack(bscan))
+
+    if segmentation:
+        for name, i in segmentation.items():
+            ev.add_layer_annotation(segmentation[name], name=name)
+
+    return ev
 
 
 def import_heyex_e2e(path: Union[str, Path]) -> EyeVolume:
