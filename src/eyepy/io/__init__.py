@@ -1,10 +1,10 @@
-from oct_converter.readers import FDA
 import logging
 from pathlib import Path
 from typing import List, Union
 
 import imageio.v2 as imageio
 import numpy as np
+from oct_converter.readers import FDA
 
 from eyepy import EyeBscanMeta
 from eyepy import EyeVolume
@@ -18,7 +18,7 @@ from .he import HeXmlReader
 logger = logging.getLogger("eyepy.io")
 
 
-def import_fda(path: Union[str, Path]) -> EyeVolume:
+def import_topcon_fda(path: Union[str, Path]) -> EyeVolume:
     """ Read a Topcon fda file
 
     This function is a wrapper around the FDA reader in OCT-Converter.
