@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, Tuple, TYPE_CHECKING, Union
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING, Union
 
 import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
@@ -10,6 +10,8 @@ import numpy as np
 from eyepy import config
 from eyepy.core.annotations import EyeBscanLayerAnnotation
 from eyepy.core.eyemeta import EyeBscanMeta
+from eyepy.core.plotting import plot_scalebar
+from eyepy.core.plotting import plot_watermark
 from eyepy.core.utils import DynamicDefaultDict
 
 if TYPE_CHECKING:
@@ -84,8 +86,11 @@ class EyeBscan:
         layer_kwargs: Optional[dict] = None,
         area_kwargs: Optional[dict] = None,
         #ascan_kwargs=None,
-        annotations_only: bool=False,
-        region: Union[slice, Tuple[slice, slice]] = np.s_[:, :],
+        annotations_only: bool = False,
+        region: Tuple[slice, slice] = np.s_[:, :],
+        scalebar: Union[bool, str] = "botleft",
+        scalebar_kwargs: Optional[Dict[str, Any]] = None,
+        watermark: bool = True,
     ) -> None:
         """ Plot B-scan.
 
@@ -96,16 +101,17 @@ class EyeBscan:
             layers: If `True` plot all layers (default: `False`). If a list of strings is given, plot the layers with the given names.
             areas: If `True` plot all areas (default: `False`). If a list of strings is given, plot the areas with the given names.
             annotations_only: If `True` do not plot the B-scan image
-            region: Region of the localizer to plot (default: `np.s_[...]`)
+            region: Region of the localizer to plot (default: `np.s_[:, :]`)
             layer_kwargs: Optional keyword arguments for customizing the OCT layers. If `None` default values are used which are {"linewidth": 1, "linestyle": "-"}
             area_kwargs: Optional keyword arguments for customizing area annotions on the B-scan If `None` default values are used which are {"alpha": 0.5}
-
+            scalebar: Position of the scalebar, one of "topright", "topleft", "botright", "botleft" or `False` (default: "botleft"). If `True` the scalebar is placed in the bottom left corner. You can custumize the scalebar using the `scalebar_kwargs` argument.
+            scalebar_kwargs: Optional keyword arguments for customizing the scalebar. Check the documentation of [plot_scalebar][eyepy.core.plotting.plot_scalebar] for more information.
+            watermark: If `True` plot a watermark on the image (default: `True`). When removing the watermark, please consider to cite eyepy in your publication.
         Returns:
             None
 
         """
-        if ax is None:
-            ax = plt.gca()
+        ax = plt.gca() if ax is None else ax
 
         # Complete region index expression
         y_start = region[0].start if region[0].start is not None else 0
@@ -118,12 +124,12 @@ class EyeBscan:
         if not layers:
             layers = []
         elif layers is True:
-            layers = self.volume.layers.keys()
+            layers = list(self.volume.layers.keys())
 
         if not areas:
             areas = []
         elif areas is True:
-            areas = self.volume.volume_maps.keys()
+            areas = list(self.volume.volume_maps.keys())
 
         #if ascans is None:
         #    ascans = []
@@ -218,3 +224,61 @@ class EyeBscan:
         # Set labels to ticks + start of the region as an offset
         ax.set_yticklabels([str(int(t + y_start)) for t in yticks])
         ax.set_xticklabels([str(int(t + x_start)) for t in xticks])
+
+        if scalebar:
+            if scalebar_kwargs is None:
+                scalebar_kwargs = {}
+
+            scale_unit = self.volume.meta["scale_unit"]
+            scalebar_kwargs = {
+                **{
+                    "scale": (self.scale_x, self.scale_y),
+                    "scale_unit": scale_unit
+                },
+                **scalebar_kwargs
+            }
+
+            if not "pos" in scalebar_kwargs:
+                sx = x_end - x_start
+                sy = y_end - y_start
+
+                if scalebar is True:
+                    scalebar = "botleft"
+
+                if scalebar == "botleft":
+                    scalebar_kwargs["pos"] = (sx - 0.95 * sx, 0.95 * sy)
+                elif scalebar == "botright":
+                    scalebar_kwargs["pos"] = (0.95 * sx, 0.95 * sy)
+                    scalebar_kwargs["flip_x"] = True
+                elif scalebar == "topleft":
+                    scalebar_kwargs["pos"] = (sx - 0.95 * sx, 0.05 * sy)
+                    scalebar_kwargs["flip_y"] = True
+                elif scalebar == "topright":
+                    scalebar_kwargs["pos"] = (0.95 * sx, 0.05 * sy)
+                    scalebar_kwargs["flip_x"] = True
+                    scalebar_kwargs["flip_y"] = True
+
+            plot_scalebar(ax=ax, **scalebar_kwargs)
+
+        if watermark:
+            plot_watermark(ax)
+
+    @property
+    def size_x(self):
+        """Size of the B-scan in x direction"""
+        return self.shape[1]
+
+    @property
+    def size_y(self):
+        """Size of the B-scan in y direction"""
+        return self.shape[0]
+
+    @property
+    def scale_x(self):
+        """Scale of the B-scan in x direction"""
+        return self.volume.scale_x
+
+    @property
+    def scale_y(self):
+        """Scale of the B-scan in y direction"""
+        return self.volume.scale_y

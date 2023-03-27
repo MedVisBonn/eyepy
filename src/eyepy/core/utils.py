@@ -2,8 +2,8 @@ from typing import Tuple
 
 import numpy as np
 import numpy.typing as npt
-from skimage import img_as_float32
-from skimage import img_as_ubyte
+from skimage.util import img_as_float32
+from skimage.util import img_as_ubyte
 
 from eyepy.core.filter import filter_by_height_enface
 

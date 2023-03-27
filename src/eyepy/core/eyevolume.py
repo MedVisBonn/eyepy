@@ -24,6 +24,8 @@ from eyepy.core.eyeenface import EyeEnface
 from eyepy.core.eyemeta import EyeBscanMeta
 from eyepy.core.eyemeta import EyeEnfaceMeta
 from eyepy.core.eyemeta import EyeVolumeMeta
+from eyepy.core.plotting import plot_scalebar
+from eyepy.core.plotting import plot_watermark
 from eyepy.core.utils import intensity_transforms
 
 logger = logging.getLogger("eyepy.core.eyevolume")
@@ -614,10 +616,13 @@ class EyeVolume:
         bscan_region: bool = False,
         bscan_positions: Union[bool, List[int]] = False,
         quantification: Optional[str] = None,
-        region: Union[slice, Tuple[slice, slice]] = np.s_[:, :],
+        region: Tuple[slice, slice] = np.s_[:, :],
         annotations_only: bool = False,
         projection_kwargs: Optional[dict] = None,
         line_kwargs: Optional[dict] = None,
+        scalebar: Union[bool, str] = "botleft",
+        scalebar_kwargs: Optional[dict] = None,
+        watermark: bool = True,
     ) -> None:
         """ Plot an annotated OCT localizer image. If the volume does not provide a localizer image an enface projection of the OCT volume is used instead.
 
@@ -631,7 +636,9 @@ class EyeVolume:
             annotations_only: If `True` localizer image is not plotted (defaualt: `False`)
             projection_kwargs: Optional keyword arguments for the projection plots. If `None` default values are used (default: `None`). If a dictionary is given, the keys are the projection names and the values are dictionaries of keyword arguments.
             line_kwargs: Optional keyword arguments for customizing the lines to show B-scan region and positions plots. If `None` default values are used which are {"linewidth": 0.2, "linestyle": "-", "color": "green"}
-
+            scalebar: Position of the scalebar, one of "topright", "topleft", "botright", "botleft" or `False` (default: "botleft"). If `True` the scalebar is placed in the bottom left corner. You can custumize the scalebar using the `scalebar_kwargs` argument.
+            scalebar_kwargs: Optional keyword arguments for customizing the scalebar. Check the documentation of [plot_scalebar][eyepy.core.plotting.plot_scalebar] for more information.
+            watermark: If `True` plot a watermark on the image (default: `True`). When removing the watermark, please consider to cite eyepy in your publication.
         Returns:
             None
 
@@ -651,7 +658,11 @@ class EyeVolume:
             ax = plt.gca()
 
         if not annotations_only:
-            self.localizer.plot(ax=ax, region=region)
+            self.localizer.plot(ax=ax,
+                                region=region,
+                                scalebar=scalebar,
+                                scalebar_kwargs=scalebar_kwargs,
+                                watermark=watermark)
 
         if projections is True:
             projections = list(self.volume_maps.keys())

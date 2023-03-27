@@ -541,9 +541,9 @@ class E2ESeriesStructure(E2EStructureMixin):
         """Return EyeEnfaceMeta object for the localizer image."""
         if self._localizer_meta is None:
             self._localizer_meta = EyeEnfaceMeta(
-                scale_x=0.0114,  # Todo: Where is this in E2E?
-                scale_y=0.0114,  # Todo: Where is this in E2E?
-                scale_unit="mm",
+                scale_x=1,  #0.0114,  # Todo: Where is this in E2E?
+                scale_y=1,  #0.0114,  # Todo: Where is this in E2E?
+                scale_unit="px",
                 modality=self.enface_modality(),
                 laterality=self.laterality(),
                 field_size=None,
@@ -594,11 +594,11 @@ class E2ESeriesStructure(E2EStructureMixin):
         if self._meta is None:
             bscan_meta = self.get_bscan_meta()
             self._meta = EyeVolumeMeta(
-                scale_x=0.0114,  # Todo: Where is this in E2E?
-                scale_y=bscan_meta[0]["scale_y"],
-                scale_z=get_bscan_spacing(bscan_meta) if
-                (bscan_meta[0]["scan_pattern"] not in [1, 2]) else 0.03,
-                scale_unit="mm",
+                scale_x=1,  #0.0114,  # Todo: Where is this in E2E?
+                scale_y=1,  #bscan_meta[0]["scale_y"],
+                scale_z=1,  #get_bscan_spacing(bscan_meta) if
+                #(bscan_meta[0]["scan_pattern"] not in [1, 2]) else 0.03,
+                scale_unit="px",
                 laterality=self.laterality,
                 visit_date=None,
                 exam_time=None,
