@@ -29,14 +29,53 @@ def import_topcon_fda(path: Union[str, Path]) -> EyeVolume:
     Returns:
         Parsed data as EyeVolume object
 
+    Notes
+    -----
+    B-scan position and scaling data is computed assuming that B-scans
+    were acquired in a horizontal raster pattern.
     """
-    reader = FDA(path)
-    oct_volume = reader.read_oct_volume()
+    reader = FDA(path, printing=False)
+
+    try:
+        oct_volume = reader.read_oct_volume()
+        segmentation = oct_volume.contours
+        metadata = oct_volume.metadata
+    except:
+        logger.warn("Regular B-scan read failed. Using alternative.")
+        oct_volume = reader.read_oct_volume_2()
+        segmentation = reader.read_segmentation()
+        metadata = reader.read_all_metadata()
 
     bscan = oct_volume.volume
-    segmentation = oct_volume.contours
 
-    ev = EyeVolume(data=np.stack(bscan))
+    size_x = metadata['param_scan_04']['x_dimension_mm']
+    size_z = metadata['param_scan_04']['y_dimension_mm']
+
+    scale_x = size_x / (bscan[0].shape[1] - 1)
+    scale_y = metadata['param_scan_04']['z_resolution_um'] / 1000
+    scale_z = size_z / (len(bscan) - 1)
+
+    # B-scan mm coordinates from fundus top-left corner
+    box = metadata['regist_info']['bounding_box_in_fundus_pixels']
+
+    scale_x_fun = size_x / (box[2] - box[0] - 1)
+    scale_z_fun = size_z / (box[3] - box[1] - 1)
+
+    x_0 = box[0] * scale_x_fun  # top-left x
+    z_0 = box[1] * scale_z_fun  # top-left y
+    x_1 = box[2] * scale_x_fun  # top-right x
+
+    bscan_meta = []
+    for i in range(len(bscan)):
+        z = z_0 + i * scale_z
+        bscan_meta.append(EyeBscanMeta(start_pos=(x_0, z),
+                                       end_pos=(x_1, z),
+                                       pos_unit="mm"))
+
+    meta = EyeVolumeMeta(scale_x=scale_x, scale_y=scale_y,
+        scale_z=scale_z, scale_unit='mm', bscan_meta=bscan_meta)
+
+    ev = EyeVolume(data=np.stack(bscan), meta=meta)
 
     if segmentation:
         for name, i in segmentation.items():
