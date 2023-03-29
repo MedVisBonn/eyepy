@@ -9,6 +9,9 @@ from oct_converter.readers import FDA
 from eyepy import EyeBscanMeta
 from eyepy import EyeVolume
 from eyepy import EyeVolumeMeta
+from eyepy.core.eyeenface import EyeEnface
+from eyepy.core.eyemeta import EyeEnfaceMeta
+from eyepy.io.utils import _compute_localizer_oct_transform
 
 from .he import HeE2eReader
 from .he import HeVolReader
@@ -46,16 +49,22 @@ def import_topcon_fda(path: Union[str, Path]) -> EyeVolume:
         segmentation = reader.read_segmentation()
         metadata = reader.read_all_metadata()
 
+    localizer_image = reader.read_fundus_image().image
     bscan = oct_volume.volume
+
+    # retrieve image dimensions and scaling
+    n_bscan = len(bscan)
+    n_axial = bscan[0].shape[0]
+    n_ascan = bscan[0].shape[1]
 
     size_x = metadata['param_scan_04']['x_dimension_mm']
     size_z = metadata['param_scan_04']['y_dimension_mm']
 
-    scale_x = size_x / (bscan[0].shape[1] - 1)
+    scale_x = size_x / (n_ascan - 1)
     scale_y = metadata['param_scan_04']['z_resolution_um'] / 1000
-    scale_z = size_z / (len(bscan) - 1)
+    scale_z = size_z / (n_bscan - 1)
 
-    # B-scan mm coordinates from fundus top-left corner
+    # compute B-scan mm coordinates from fundus top-left corner
     box = metadata['regist_info']['bounding_box_in_fundus_pixels']
 
     scale_x_fun = size_x / (box[2] - box[0] - 1)
@@ -65,17 +74,31 @@ def import_topcon_fda(path: Union[str, Path]) -> EyeVolume:
     z_0 = box[1] * scale_z_fun  # top-left y
     x_1 = box[2] * scale_x_fun  # top-right x
 
+    # build metadata objects
     bscan_meta = []
-    for i in range(len(bscan)):
+    for i in range(n_bscan):
         z = z_0 + i * scale_z
         bscan_meta.append(EyeBscanMeta(start_pos=(x_0, z),
                                        end_pos=(x_1, z),
                                        pos_unit="mm"))
 
-    meta = EyeVolumeMeta(scale_x=scale_x, scale_y=scale_y,
+    volume_meta = EyeVolumeMeta(scale_x=scale_x, scale_y=scale_y,
         scale_z=scale_z, scale_unit='mm', bscan_meta=bscan_meta)
 
-    ev = EyeVolume(data=np.stack(bscan), meta=meta)
+    localizer_meta = EyeEnfaceMeta(scale_x=scale_x_fun,
+                                   scale_y=scale_z_fun,
+                                   scale_unit="mm",
+                                   modality="CFP",
+                                   laterality="unknown")
+
+    # build image ojects
+    localizer = EyeEnface(localizer_image, localizer_meta)
+    dims = (n_bscan, n_axial, n_ascan)
+    transformation = _compute_localizer_oct_transform(
+                volume_meta, localizer.meta, dims)
+
+    ev = EyeVolume(data=np.stack(bscan), meta=volume_meta,
+        localizer=localizer, transformation=transformation)
 
     if segmentation:
         for name, i in segmentation.items():
