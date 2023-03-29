@@ -73,7 +73,7 @@ upload_to_release = true
 build_command = "pip install poetry && poetry build"
 
 [tool.docformatter]
-check = true
+check = false
 recursive = true
 in-place = true
 syntax = "google"
