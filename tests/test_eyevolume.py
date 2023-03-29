@@ -31,18 +31,18 @@ def test_eyevolume_attributes_scale(eyevolume):
     assert eyevolume.scale_z == 1.0
     assert eyevolume.scale_x == 1.0
     assert eyevolume.scale_y == 1.0
-    assert eyevolume.scale_unit == "pixel"
+    assert eyevolume.scale_unit == 'pixel'
 
     # Test setting scaling information
     eyevolume.scale_z = 0.5
     eyevolume.scale_x = 0.5
     eyevolume.scale_y = 0.5
-    eyevolume.scale_unit = "mm"
+    eyevolume.scale_unit = 'mm'
 
     assert eyevolume.scale_z == 0.5
     assert eyevolume.scale_x == 0.5
     assert eyevolume.scale_y == 0.5
-    assert eyevolume.scale_unit == "mm"
+    assert eyevolume.scale_unit == 'mm'
     assert eyevolume.scale == (eyevolume.scale_z, eyevolume.scale_y,
                                eyevolume.scale_x)
 
@@ -80,29 +80,29 @@ def test_eyevolume_meta_exists(eyevolume):
 def test_set_layers_on_eyevolume(eyevolume):
     eyevolume.add_layer_annotation(np.full(
         (eyevolume.size_z, eyevolume.size_x), 25),
-                                   name="test_layer")
-    assert type(eyevolume.layers["test_layer"]) == ep.EyeVolumeLayerAnnotation
-    assert np.all(eyevolume[5].layers["test_layer"].data == 25)
-    assert eyevolume.layers["test_layer"].data[5, 10] == 25
+                                   name='test_layer')
+    assert type(eyevolume.layers['test_layer']) == ep.EyeVolumeLayerAnnotation
+    assert np.all(eyevolume[5].layers['test_layer'].data == 25)
+    assert eyevolume.layers['test_layer'].data[5, 10] == 25
 
 
 # Set layers on eyebscan
 def test_set_layers_on_eyebscan(eyevolume):
-    eyevolume.add_layer_annotation(name="test_layer_2")
-    assert "test_layer_2" in eyevolume.layers.keys()
+    eyevolume.add_layer_annotation(name='test_layer_2')
+    assert 'test_layer_2' in eyevolume.layers.keys()
 
     bscan = eyevolume[5]
-    assert (type(bscan.layers["test_layer_2"].eyevolumelayerannotation) ==
+    assert (type(bscan.layers['test_layer_2'].eyevolumelayerannotation) ==
             ep.EyeVolumeLayerAnnotation)
     # Check that all heights are initially nan
-    assert np.sum(~np.isnan(bscan.layers["test_layer_2"].data)) == 0
+    assert np.sum(~np.isnan(bscan.layers['test_layer_2'].data)) == 0
 
     # Check that correct values are set
-    bscan.layers["test_layer_2"].data = np.full((eyevolume.size_x, ), 240)
-    assert np.all(bscan.layers["test_layer_2"].data == 240)
+    bscan.layers['test_layer_2'].data = np.full((eyevolume.size_x, ), 240)
+    assert np.all(bscan.layers['test_layer_2'].data == 240)
     assert np.nansum(
-        eyevolume.layers["test_layer_2"].data) == eyevolume.size_x * 240
-    assert np.all(eyevolume.layers["test_layer_2"].data[5] == 240)
+        eyevolume.layers['test_layer_2'].data) == eyevolume.size_x * 240
+    assert np.all(eyevolume.layers['test_layer_2'].data[5] == 240)
 
 
 # Test Bscan iteration
@@ -114,31 +114,31 @@ def test_bscan_iteration(eyevolume):
 
 # Delete layers
 def test_delete_layers(eyevolume):
-    eyevolume.add_layer_annotation(name="delete_layer")
-    assert "delete_layer" in eyevolume.layers
+    eyevolume.add_layer_annotation(name='delete_layer')
+    assert 'delete_layer' in eyevolume.layers
 
-    eyevolume[2].layers["delete_layer"].data = 20
-    assert "delete_layer" in eyevolume[2].layers
+    eyevolume[2].layers['delete_layer'].data = 20
+    assert 'delete_layer' in eyevolume[2].layers
 
-    eyevolume.remove_layer_annotation("delete_layer")
+    eyevolume.remove_layer_annotation('delete_layer')
 
-    assert "delete_layer" not in eyevolume.layers
+    assert 'delete_layer' not in eyevolume.layers
     # Test for references in the B-scans
-    assert "delete_layer" not in eyevolume[2].layers
+    assert 'delete_layer' not in eyevolume[2].layers
 
 
 def test_delete_voxel_annotation(eyevolume):
-    eyevolume.add_pixel_annotation(name="delete_volume")
-    assert "delete_volume" in eyevolume.volume_maps
+    eyevolume.add_pixel_annotation(name='delete_volume')
+    assert 'delete_volume' in eyevolume.volume_maps
 
-    eyevolume[2].area_maps["delete_volume"][:5, :5] = 20
-    assert "delete_volume" in eyevolume[2].area_maps
+    eyevolume[2].area_maps['delete_volume'][:5, :5] = 20
+    assert 'delete_volume' in eyevolume[2].area_maps
 
-    eyevolume.remove_pixel_annotations("delete_volume")
+    eyevolume.remove_pixel_annotations('delete_volume')
 
-    assert "delete_volume" not in eyevolume.volume_maps
+    assert 'delete_volume' not in eyevolume.volume_maps
     # Test for references in the B-scans
-    assert "delete_volume" not in eyevolume[2].area_maps
+    assert 'delete_volume' not in eyevolume[2].area_maps
 
 
 #def test_save_load(eyevolume, tmp_path):

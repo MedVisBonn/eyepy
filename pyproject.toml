@@ -72,6 +72,14 @@ upload_to_pypi = true
 upload_to_release = true
 build_command = "pip install poetry && poetry build"
 
+[tool.docformatter]
+check = true
+recursive = true
+in-place = true
+syntax = "google"
+wrap-summaries = 82
+blank = false
+
 [tool.pytest.ini_options]
 addopts = [
     "--import-mode=importlib",

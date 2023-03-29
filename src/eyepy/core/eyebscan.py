@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING, Union
+from typing import Any, Optional, TYPE_CHECKING, Union
 
 import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 class EyeBscan:
-    """ """
+    """"""
 
     def __init__(self, volume: EyeVolume, index: int) -> None:
         """
@@ -39,21 +39,19 @@ class EyeBscan:
 
     @property
     def meta(self) -> EyeBscanMeta:
-        """ Return the metadata for this B-scan
+        """Return the metadata for this B-scan.
 
         Returns:
             Meta information about the B-scan
-
         """
-        return self.volume.meta["bscan_meta"][self.index]
+        return self.volume.meta['bscan_meta'][self.index]
 
     @property
     def data(self) -> np.ndarray:
-        """ Returns the B-scan data as a numpy array
+        """Returns the B-scan data as a numpy array.
 
         Returns:
             B-scan data as numpy array
-
         """
         return self.volume.data[self.index]
 
@@ -68,31 +66,30 @@ class EyeBscan:
     # return self.volume.ascan_maps[self.index]
 
     @property
-    def shape(self) -> Tuple[int, int]:
-        """ Shape of the B-scan data
+    def shape(self) -> tuple[int, int]:
+        """Shape of the B-scan data.
 
         Returns:
             Shape tuple (B-scan height, B-scan width)
-
         """
         return self.data.shape
 
     def plot(
         self,
         ax: Optional[plt.Axes] = None,
-        layers: Union[bool, List[str]] = False,
-        areas: Union[bool, List[str]] = False,
+        layers: Union[bool, list[str]] = False,
+        areas: Union[bool, list[str]] = False,
         #ascans=None,
         layer_kwargs: Optional[dict] = None,
         area_kwargs: Optional[dict] = None,
         #ascan_kwargs=None,
         annotations_only: bool = False,
-        region: Tuple[slice, slice] = np.s_[:, :],
-        scalebar: Union[bool, str] = "botleft",
-        scalebar_kwargs: Optional[Dict[str, Any]] = None,
+        region: tuple[slice, slice] = np.s_[:, :],
+        scalebar: Union[bool, str] = 'botleft',
+        scalebar_kwargs: Optional[dict[str, Any]] = None,
         watermark: bool = True,
     ) -> None:
-        """ Plot B-scan.
+        """Plot B-scan.
 
         Annotations such as layers and areas can be overlaid on the image. With plt.legend() you can add a legend for the shown annotations
 
@@ -109,7 +106,6 @@ class EyeBscan:
             watermark: If `True` plot a watermark on the image (default: `True`). When removing the watermark, please consider to cite eyepy in your publication.
         Returns:
             None
-
         """
         ax = plt.gca() if ax is None else ax
 
@@ -152,7 +148,7 @@ class EyeBscan:
         #    ascan_kwargs = {**config.ascan_kwargs, **ascan_kwargs}
 
         if not annotations_only:
-            ax.imshow(self.data[region], cmap="gray")
+            ax.imshow(self.data[region], cmap='gray')
 
         #for ascan_annotation in ascans:
         #    data = self.ascan_maps[ascan_annotation]
@@ -169,7 +165,7 @@ class EyeBscan:
             visible[data != 0] = 1.0
 
             meta = self.volume.volume_maps[area].meta
-            color = meta["color"] if "color" in meta else "red"
+            color = meta['color'] if 'color' in meta else 'red'
             color = mcolors.to_rgba(color)
             # create a 0 radius circle patch as dummy for the area label
             patch = mpatches.Circle((0, 0), radius=0, color=color, label=area)
@@ -178,11 +174,11 @@ class EyeBscan:
             # Create plot_data by tiling the color vector over the plotting shape
             plot_data = np.tile(np.array(color), data.shape + (1, ))
             # Now turn the alpha channel 0 where the mask is 0 and adjust the remaining alpha
-            plot_data[..., 3] *= visible * area_kwargs["alpha"]
+            plot_data[..., 3] *= visible * area_kwargs['alpha']
 
             ax.imshow(
                 plot_data,
-                interpolation="none",
+                interpolation='none',
             )
         for layer in layers:
             color = config.layer_colors[layer]
@@ -198,7 +194,7 @@ class EyeBscan:
 
             ax.plot(
                 layer_data,
-                color="#" + color,
+                color='#' + color,
                 label=layer,
                 **layer_kwargs,
             )
@@ -229,34 +225,34 @@ class EyeBscan:
             if scalebar_kwargs is None:
                 scalebar_kwargs = {}
 
-            scale_unit = self.volume.meta["scale_unit"]
+            scale_unit = self.volume.meta['scale_unit']
             scalebar_kwargs = {
                 **{
-                    "scale": (self.scale_x, self.scale_y),
-                    "scale_unit": scale_unit
+                    'scale': (self.scale_x, self.scale_y),
+                    'scale_unit': scale_unit
                 },
                 **scalebar_kwargs
             }
 
-            if not "pos" in scalebar_kwargs:
+            if not 'pos' in scalebar_kwargs:
                 sx = x_end - x_start
                 sy = y_end - y_start
 
                 if scalebar is True:
-                    scalebar = "botleft"
+                    scalebar = 'botleft'
 
-                if scalebar == "botleft":
-                    scalebar_kwargs["pos"] = (sx - 0.95 * sx, 0.95 * sy)
-                elif scalebar == "botright":
-                    scalebar_kwargs["pos"] = (0.95 * sx, 0.95 * sy)
-                    scalebar_kwargs["flip_x"] = True
-                elif scalebar == "topleft":
-                    scalebar_kwargs["pos"] = (sx - 0.95 * sx, 0.05 * sy)
-                    scalebar_kwargs["flip_y"] = True
-                elif scalebar == "topright":
-                    scalebar_kwargs["pos"] = (0.95 * sx, 0.05 * sy)
-                    scalebar_kwargs["flip_x"] = True
-                    scalebar_kwargs["flip_y"] = True
+                if scalebar == 'botleft':
+                    scalebar_kwargs['pos'] = (sx - 0.95 * sx, 0.95 * sy)
+                elif scalebar == 'botright':
+                    scalebar_kwargs['pos'] = (0.95 * sx, 0.95 * sy)
+                    scalebar_kwargs['flip_x'] = True
+                elif scalebar == 'topleft':
+                    scalebar_kwargs['pos'] = (sx - 0.95 * sx, 0.05 * sy)
+                    scalebar_kwargs['flip_y'] = True
+                elif scalebar == 'topright':
+                    scalebar_kwargs['pos'] = (0.95 * sx, 0.05 * sy)
+                    scalebar_kwargs['flip_x'] = True
+                    scalebar_kwargs['flip_y'] = True
 
             plot_scalebar(ax=ax, **scalebar_kwargs)
 
@@ -265,20 +261,20 @@ class EyeBscan:
 
     @property
     def size_x(self):
-        """Size of the B-scan in x direction"""
+        """Size of the B-scan in x direction."""
         return self.shape[1]
 
     @property
     def size_y(self):
-        """Size of the B-scan in y direction"""
+        """Size of the B-scan in y direction."""
         return self.shape[0]
 
     @property
     def scale_x(self):
-        """Scale of the B-scan in x direction"""
+        """Scale of the B-scan in x direction."""
         return self.volume.scale_x
 
     @property
     def scale_y(self):
-        """Scale of the B-scan in y direction"""
+        """Scale of the B-scan in y direction."""
         return self.volume.scale_y

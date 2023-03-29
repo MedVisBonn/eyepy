@@ -22,7 +22,7 @@ def filter_by_depth(drusen_map: npt.NDArray[np.bool_],
     if minimum_depth == 0:
         return drusen_map
     # get array where connected components get same label
-    connected_component_array = ndimage.label(drusen_map, output=None)[0]
+    connected_component_array, _ = ndimage.label(drusen_map, output=None)
     # Go through each component, sum it along axis 0 and check max depth against threshold
     max_depths = np.zeros_like(connected_component_array)
     for label, drusen_pos in enumerate(

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections import defaultdict
 from contextlib import AbstractContextManager
 import dataclasses
@@ -7,7 +9,7 @@ from pathlib import Path
 import sys
 from textwrap import indent
 import traceback
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
 import construct as cs
 import numpy as np
@@ -39,15 +41,15 @@ logger = logging.getLogger(__name__)
 
 # Occurence of type ids. This is used by the inspect function.
 type_occurence = {
-    "E2EFileStructure": [0, 9011],
-    "E2EPatientStructure": [9, 17, 29, 31, 52, 9010],
-    "E2EStudyStructure": [7, 10, 13, 30, 53, 58, 1000, 9000, 9001],
-    "E2ESeriesStructure": [
+    'E2EFileStructure': [0, 9011],
+    'E2EPatientStructure': [9, 17, 29, 31, 52, 9010],
+    'E2EStudyStructure': [7, 10, 13, 30, 53, 58, 1000, 9000, 9001],
+    'E2ESeriesStructure': [
         2, 3, 11, 54, 59, 61, 62, 1000, 1001, 1003, 1008, 9005, 9006, 9007,
         9008, 10005, 10009, 10010, 10011, 10013, 10025, 1073741824, 1073751824,
         1073751825, 1073751826
     ],
-    "E2ESliceStructure": [
+    'E2ESliceStructure': [
         2, 3, 5, 39, 40, 10004, 10012, 10013, 10019, 10020, 10032, 1073741824,
         1073751824, 1073751825, 1073751826
     ]
@@ -55,11 +57,12 @@ type_occurence = {
 
 
 class E2EStructureMixin:
-    """A Mixin for shared functionality between structures in the E2E hierarchy."""
+    """A Mixin for shared functionality between structures in the E2E
+    hierarchy."""
 
     def inspect(self,
                 recursive: bool = False,
-                ind_prefix: str = "",
+                ind_prefix: str = '',
                 tables: bool = False) -> str:
         """Inspect the E2E structure.
 
@@ -69,17 +72,18 @@ class E2EStructureMixin:
             tables: If True add markdown table overview of the contained folder types.
 
         Returns:
-            Information about the E2E structure."""
-        text = self._get_section_title() + "\n"
-        text += self._get_section_description() + "\n"
+            Information about the E2E structure.
+        """
+        text = self._get_section_title() + '\n'
+        text += self._get_section_description() + '\n'
         if tables:
-            text += self._get_folder_summary() + "\n"
+            text += self._get_folder_summary() + '\n'
 
         if not recursive:
             return text
 
         for s in self.substructure.values():
-            text += "\n"
+            text += '\n'
             text += indent(s.inspect(recursive, ind_prefix, tables),
                            ind_prefix)
         return text
@@ -101,7 +105,7 @@ class E2EStructureMixin:
             Parsed data or None if no folder of the given type was found.
         """
 
-        folders: List[E2EFolder] = self.folders[folder_type]
+        folders: list[E2EFolder] = self.folders[folder_type]
 
         if len(folders) == 0:
             return None
@@ -123,14 +127,14 @@ class E2EStructureMixin:
         """
         if not self._section_title:
             try:
-                self._section_title = f"{self.__class__.__name__}({self.id})"
+                self._section_title = f'{self.__class__.__name__}({self.id})'
             except:
-                self._section_title = f"{self.__class__.__name__}"
+                self._section_title = f'{self.__class__.__name__}'
 
         return self._section_title
 
     def _get_table(self, data, structure=None) -> str:
-        """Make a markdown table
+        """Make a markdown table.
 
         Used by the inspect function.
         """
@@ -145,9 +149,9 @@ class E2EStructureMixin:
         ] for k, v in data.items()]
         text = pd.DataFrame.from_records(data,
                                          columns=[
-                                             "Type", "Count", "Mean Size",
-                                             "Min Size", "Max Size",
-                                             "described"
+                                             'Type', 'Count', 'Mean Size',
+                                             'Min Size', 'Max Size',
+                                             'described'
                                          ]).to_markdown(index=False)
         return text
 
@@ -167,17 +171,19 @@ class E2EStructureMixin:
     def _get_section_description(self) -> str:
         """Make a description for describing the structure.
 
-        This uses the _section_description_parts attribute that can be defined in a structure to make a description.
+        This uses the _section_description_parts attribute that can be
+        defined in a structure to make a description.
 
-        Used by the inspect function."""
+        Used by the inspect function.
+        """
         if not self._section_description:
-            self._section_description = ""
+            self._section_description = ''
             for part in self._section_description_parts:
                 try:
-                    self._section_description += f"{part[0]} {self.folders[part[1]][0].data.text[part[2]]} - "
+                    self._section_description += f'{part[0]} {self.folders[part[1]][0].data.text[part[2]]} - '
                 except:
                     pass
-            self._section_description = self._section_description.rstrip(" - ")
+            self._section_description = self._section_description.rstrip(' - ')
         return self._section_description
 
 
@@ -208,14 +214,14 @@ class E2EFolder():
     type: int
     size: int
     ind: int
-    reader: "HeE2eReader"
+    reader: 'HeE2eReader'
 
     _data = None
     _header = None
 
     @property
     def file_object(self) -> BufferedReader:
-        """Return the file object
+        """Return the file object.
 
         This refers to the the HeE2eReader file object.
         """
@@ -223,7 +229,7 @@ class E2EFolder():
 
     @property
     def data(self) -> Any:
-        """Return the data"""
+        """Return the data."""
         if not self._data:
             parsed = self._parse_data()
             self._data = parsed.item
@@ -232,7 +238,7 @@ class E2EFolder():
 
     @property
     def header(self) -> ContainerHeader:
-        """Return the data header"""
+        """Return the data header."""
         if not self._header:
             parsed = self._parse_data()
             self._data = parsed.item
@@ -240,10 +246,11 @@ class E2EFolder():
         return self._header
 
     def _parse_data(self) -> DataContainer:
-        """Parse the data
+        """Parse the data.
 
-        This only works if the HeE2eReader is used as a Context Manager or during initialization of the HeE2eReader.
-        Otherwise the E2E file is not open.
+        This only works if the HeE2eReader is used as a Context Manager
+        or during initialization of the HeE2eReader. Otherwise the E2E
+        file is not open.
         """
         self.file_object.seek(self.start)
         return datacontainer_format.parse_stream(self.file_object)
@@ -264,33 +271,32 @@ class E2EFolder():
         return data_construct.parse(b[offset:])
 
     def get_bytes(self) -> bytes:
-        """Return the bytes of the data
+        """Return the bytes of the data.
 
-        This only works if the HeE2eReader is used as a Context Manager or during initialization of the HeE2eReader.
-        Otherwise the E2E file is not open.
-
+        This only works if the HeE2eReader is used as a Context Manager
+        or during initialization of the HeE2eReader. Otherwise the E2E
+        file is not open.
         """
-
         self.file_object.seek(self.start + containerheader_format.sizeof())
         return self.file_object.read(self.size)
 
 
 class E2ESliceStructure(E2EStructureMixin):
-    """E2E Slice Structure
+    """E2E Slice Structure.
 
-    This structure contains folders with data for a single Slice/B-csan and provide
-    convenience functions for accessing the data.
+    This structure contains folders with data for a single Slice/B-csan
+    and provide convenience functions for accessing the data.
     """
 
     def __init__(self, id: int) -> None:
         self.id = id
-        self.folders: Dict[Union[int, str], List[E2EFolder]] = {}
+        self.folders: dict[Union[int, str], list[E2EFolder]] = {}
 
         # Empty so inspect() does not fail
         self.substructure = {}
 
     def add_folder(self, folder: E2EFolder) -> None:
-        """ Add a folder to the slice.
+        """Add a folder to the slice.
 
         Args:
             folder: The folder to add.
@@ -300,26 +306,26 @@ class E2ESliceStructure(E2EStructureMixin):
         except KeyError:
             self.folders[folder.type] = [folder]
 
-    def get_layers(self) -> Dict[int, np.ndarray]:
-        """Return the layers as a dictionary of layer id and layer data"""
+    def get_layers(self) -> dict[int, np.ndarray]:
+        """Return the layers as a dictionary of layer id and layer data."""
         layers = {}
         for layer_folder in self.folders[TypesEnum.layer_annotation]:
             layers[layer_folder.data.id] = layer_folder.data.data
         return layers
 
     def get_meta(self) -> EyeBscanMeta:
-        """Return the slice meta data"""
+        """Return the slice meta data."""
         if len(self.folders[TypesEnum.bscanmeta]) > 1:
             logger.warning(
-                "There is more than one bscanmeta object. This is not expected."
+                'There is more than one bscanmeta object. This is not expected.'
             )
         meta = self.folders[TypesEnum.bscanmeta][0].data
         return EyeBscanMeta(  #quality=meta.quality,
-            start_pos=((meta["start_x"] + 14.86 * 0.29),
-                       (meta["start_y"] + 15.02) * 0.29),
-            end_pos=((meta["end_x"] + 14.86 * 0.29),
-                     (meta["end_y"] + 15.02) * 0.29),
-            pos_unit="mm",
+            start_pos=((meta['start_x'] + 14.86 * 0.29),
+                       (meta['start_y'] + 15.02) * 0.29),
+            end_pos=((meta['end_x'] + 14.86 * 0.29),
+                     (meta['end_y'] + 15.02) * 0.29),
+            pos_unit='mm',
             **dataclasses.asdict(meta))
 
     def get_bscan(self) -> np.ndarray:
@@ -329,20 +335,20 @@ class E2ESliceStructure(E2EStructureMixin):
         ]
         if len(bscan_folders) > 1:
             logger.warning(
-                "There is more than one B-scan per slice. This is not expected."
+                'There is more than one B-scan per slice. This is not expected.'
             )
         return bscan_folders[0].data.data
 
     def get_localizer(self) -> np.ndarray:
-        """Return the slice image (Localizer/Fundus)
-        For the scanpattern "OCT Bscan" a localizer might be stored in the E2ESliceStructure and not the E2ESeriesStructure.
-        """
+        """Return the slice image (Localizer/Fundus) For the scanpattern "OCT
+        Bscan" a localizer might be stored in the E2ESliceStructure and not the
+        E2ESeriesStructure."""
         localizer_folders = [
             f for f in self.folders[TypesEnum.image] if f.data.type == 33620481
         ]
         if len(localizer_folders) > 1:
             logger.warning(
-                "There is more than one localizer per slice. This is not expected."
+                'There is more than one localizer per slice. This is not expected.'
             )
         return localizer_folders[0].data.data
 
@@ -350,28 +356,28 @@ class E2ESliceStructure(E2EStructureMixin):
 class E2ESeriesStructure(E2EStructureMixin):
     """E2E Series Structure.
 
-    This structure contains folders with data for a single Series/OCT-Volume and provides
-    convenience functions for accessing the data.
+    This structure contains folders with data for a single Series/OCT-
+    Volume and provides convenience functions for accessing the data.
     """
 
     def __init__(self, id: int) -> None:
         self.id = id
-        self.substructure: Dict[int, E2ESliceStructure] = {}
-        self.folders: Dict[Union[int, str], List[E2EFolder]] = {}
+        self.substructure: dict[int, E2ESliceStructure] = {}
+        self.folders: dict[Union[int, str], list[E2EFolder]] = {}
 
         self._meta = None
         self._bscan_meta = None
         self._localizer_meta = None
-        self._section_title = ""
-        self._section_description = ""
+        self._section_title = ''
+        self._section_description = ''
 
         # Description used in inspect()
         # Parts are (name, folder_id, index in list of strings)
         self._section_description_parts = [
-            ("Structure:", 9005, 0),
-            ("Scanpattern:", 9006, 0),
-            ("Oct Modality:", 9008, 1),
-            ("Enface Modality:", 9007, 1),
+            ('Structure:', 9005, 0),
+            ('Scanpattern:', 9006, 0),
+            ('Oct Modality:', 9008, 1),
+            ('Enface Modality:', 9007, 1),
         ]
 
     def add_folder(self, folder: E2EFolder) -> None:
@@ -393,7 +399,7 @@ class E2ESeriesStructure(E2EStructureMixin):
 
     def inspect(self,
                 recursive: bool = False,
-                ind_prefix: str = "",
+                ind_prefix: str = '',
                 tables: bool = False) -> str:
         """Inspect the series.
 
@@ -403,15 +409,14 @@ class E2ESeriesStructure(E2EStructureMixin):
             recursive: If True inspect lower level structures recursively.
             ind_prefix: Indentation for showing information from lower level structures.
             tables: If True add markdown table overview of the contained folder types.
-
         """
         laterality = self.folders[TypesEnum.laterality][
-            0].data.laterality.name if TypesEnum.laterality in self.folders else "Unknown"
+            0].data.laterality.name if TypesEnum.laterality in self.folders else 'Unknown'
         text = self._get_section_title(
-        ) + f" - Laterality: {laterality} - B-scans: {self.n_bscans}\n"
-        text += self._get_section_description() + "\n"
+        ) + f' - Laterality: {laterality} - B-scans: {self.n_bscans}\n'
+        text += self._get_section_description() + '\n'
         if tables:
-            text += self._get_folder_summary() + "\n"
+            text += self._get_folder_summary() + '\n'
 
         if not recursive:
             return text
@@ -424,12 +429,12 @@ class E2ESeriesStructure(E2EStructureMixin):
                     s_data[f.type].append(f.size)
 
         if len(s_data) == 0 or tables == False:
-            text += ""
+            text += ''
         else:
-            text += "\nE2ESlice Summary:\n"
-            text += indent(self._get_table(s_data, "E2ESliceStructure"),
+            text += '\nE2ESlice Summary:\n'
+            text += indent(self._get_table(s_data, 'E2ESliceStructure'),
                            ind_prefix)
-            text += "\n"
+            text += '\n'
         return text
 
     def get_volume(self) -> EyeVolume:
@@ -437,14 +442,14 @@ class E2ESeriesStructure(E2EStructureMixin):
         ## Check if scan is a volume scan
         volume_meta = self.get_meta()
 
-        scan_pattern = volume_meta["bscan_meta"][0]["scan_pattern"]
+        scan_pattern = volume_meta['bscan_meta'][0]['scan_pattern']
 
         ## Check if scan pattern is supported by EyeVolume
         if scan_pattern == 2:
-            msg = f"The EyeVolume object does not support scan pattern 2 (one Circular B-scan)."
+            msg = f'The EyeVolume object does not support scan pattern 2 (one Circular B-scan).'
             raise ValueError(msg)
         elif scan_pattern == 5:
-            msg = f"The EyeVolume object does not support scan pattern 5 (Radial scan - star pattern)."
+            msg = f'The EyeVolume object does not support scan pattern 5 (Radial scan - star pattern).'
             raise ValueError(msg)
 
         data = self.get_bscans()
@@ -473,8 +478,8 @@ class E2ESeriesStructure(E2EStructureMixin):
 
     def get_bscans(self) -> np.ndarray:
         volume_meta = self.get_meta()
-        size_x = volume_meta["bscan_meta"][0]["size_x"]
-        size_y = volume_meta["bscan_meta"][0]["size_y"]
+        size_x = volume_meta['bscan_meta'][0]['size_x']
+        size_y = volume_meta['bscan_meta'][0]['size_y']
 
         data = np.zeros((self.n_bscans, size_y, size_x))
         for ind, sl in self.slices.items():
@@ -485,8 +490,9 @@ class E2ESeriesStructure(E2EStructureMixin):
             data[i] = bscan
         return data
 
-    def get_layers(self) -> Dict[int, np.ndarray]:
-        """Return layer height maps for the series as dict of numpy arrays where the key is the layer id."""
+    def get_layers(self) -> dict[int, np.ndarray]:
+        """Return layer height maps for the series as dict of numpy arrays where
+        the key is the layer id."""
         slice_layers = {}
         layer_ids = set()
 
@@ -496,7 +502,7 @@ class E2ESeriesStructure(E2EStructureMixin):
             slice_layers[ind // 2] = layers
 
         layers = {}
-        size_x = self.get_bscan_meta()[0]["size_x"]
+        size_x = self.get_bscan_meta()[0]['size_x']
         for i in layer_ids:
             layer = np.full((self.n_bscans, size_x), np.nan)
             if self.n_bscans == 1:
@@ -516,16 +522,16 @@ class E2ESeriesStructure(E2EStructureMixin):
         folders = self.folders[TypesEnum.enface_modality]
         if len(folders) > 1:
             logger.debug(
-                "There is more than one enface modality stored. This is not expected."
+                'There is more than one enface modality stored. This is not expected.'
             )
         text = folders[0].data.text[1]
-        return "NIR" if text == "IR" else text
+        return 'NIR' if text == 'IR' else text
 
     def laterality(self) -> str:
         folders = self.folders[TypesEnum.laterality]
         if len(folders) > 1:
             logger.debug(
-                "There is more than one laterality stored. This is not expected."
+                'There is more than one laterality stored. This is not expected.'
             )
         return str(folders[0].data.laterality)
 
@@ -533,7 +539,7 @@ class E2ESeriesStructure(E2EStructureMixin):
         folders = self.folders[TypesEnum.slodata]
         if len(folders) > 1:
             logger.debug(
-                "There is more than one SLO data folder. This is not expected."
+                'There is more than one SLO data folder. This is not expected.'
             )
         return folders[0].data
 
@@ -543,7 +549,7 @@ class E2ESeriesStructure(E2EStructureMixin):
             self._localizer_meta = EyeEnfaceMeta(
                 scale_x=1,  #0.0114,  # Todo: Where is this in E2E?
                 scale_y=1,  #0.0114,  # Todo: Where is this in E2E?
-                scale_unit="px",
+                scale_unit='px',
                 modality=self.enface_modality(),
                 laterality=self.laterality(),
                 field_size=None,
@@ -552,7 +558,7 @@ class E2ESeriesStructure(E2EStructureMixin):
                 exam_time=None,
             )
         logger.info(
-            "The localizer scale is currently hardcoded and not read from the E2E file. If you know how or where to find the scale information let us know by opening an issue."
+            'The localizer scale is currently hardcoded and not read from the E2E file. If you know how or where to find the scale information let us know by opening an issue.'
         )
         return self._localizer_meta
 
@@ -562,7 +568,7 @@ class E2ESeriesStructure(E2EStructureMixin):
             folders = self.folders[TypesEnum.image]
             if len(folders) > 1:
                 logger.warning(
-                    "There is more than one enface localizer image stored. This is not expected."
+                    'There is more than one enface localizer image stored. This is not expected.'
                 )
 
             # Slodata is not always present in E2E files.
@@ -580,13 +586,16 @@ class E2ESeriesStructure(E2EStructureMixin):
                 slice_struct = self.slices[2]
                 return EyeEnface(slice_struct.get_localizer(),
                                  self.localizer_meta())
+            else:
+                raise ValueError(
+                    'There is no localizer/fundus image in the E2E file.')
 
-    def get_bscan_meta(self) -> List[EyeBscanMeta]:
+    def get_bscan_meta(self) -> list[EyeBscanMeta]:
         """Return EyeBscanMeta objects for all B-scans in the series."""
         if self._bscan_meta is None:
             self._bscan_meta = sorted(
                 [sl.get_meta() for sl in self.slices.values()],
-                key=lambda x: x["aktImage"])
+                key=lambda x: x['aktImage'])
         return self._bscan_meta
 
     def get_meta(self) -> EyeVolumeMeta:
@@ -598,36 +607,36 @@ class E2ESeriesStructure(E2EStructureMixin):
                 scale_y=1,  #bscan_meta[0]["scale_y"],
                 scale_z=1,  #get_bscan_spacing(bscan_meta) if
                 #(bscan_meta[0]["scan_pattern"] not in [1, 2]) else 0.03,
-                scale_unit="px",
+                scale_unit='px',
                 laterality=self.laterality,
                 visit_date=None,
                 exam_time=None,
                 bscan_meta=bscan_meta,
-                intensity_transform="vol",
+                intensity_transform='vol',
             )
         return self._meta
 
     @property
-    def slices(self) -> Dict[int, E2ESliceStructure]:
-        """Alias for substructure"""
+    def slices(self) -> dict[int, E2ESliceStructure]:
+        """Alias for substructure."""
         return self.substructure
 
 
 class E2EStudyStructure(E2EStructureMixin):
-    """E2E Study Structure"""
+    """E2E Study Structure."""
 
     def __init__(self, id) -> None:
         self.id = id
-        self.substructure: Dict[int, E2ESeriesStructure] = {}
-        self.folders: Dict[Union[int, str], List[E2EFolder]] = {}
+        self.substructure: dict[int, E2ESeriesStructure] = {}
+        self.folders: dict[Union[int, str], list[E2EFolder]] = {}
 
-        self._section_description_parts = [("Device:", 9001, 0),
-                                           ("Studyname:", 9000, 0)]
-        self._section_title = ""
-        self._section_description = ""
+        self._section_description_parts = [('Device:', 9001, 0),
+                                           ('Studyname:', 9000, 0)]
+        self._section_title = ''
+        self._section_description = ''
 
     @property
-    def series(self) -> Dict[int, E2ESeriesStructure]:
+    def series(self) -> dict[int, E2ESeriesStructure]:
         return self.substructure
 
     def add_folder(self, folder: E2EFolder) -> None:
@@ -649,20 +658,19 @@ class E2EStudyStructure(E2EStructureMixin):
 
 
 class E2EPatientStructure(E2EStructureMixin):
-    """E2E Patient Structure"""
+    """E2E Patient Structure."""
 
     def __init__(self, id) -> None:
-
         self.id = id
-        self.substructure: Dict[int, E2EStudyStructure] = {}
-        self.folders: Dict[Union[int, str], List[E2EFolder]] = {}
+        self.substructure: dict[int, E2EStudyStructure] = {}
+        self.folders: dict[Union[int, str], list[E2EFolder]] = {}
 
         self._section_description_parts = []
-        self._section_title = ""
-        self._section_description = ""
+        self._section_title = ''
+        self._section_description = ''
 
     @property
-    def studies(self) -> Dict[int, E2EStudyStructure]:
+    def studies(self) -> dict[int, E2EStudyStructure]:
         return self.substructure
 
     def add_folder(self, folder: E2EFolder) -> None:
@@ -684,18 +692,18 @@ class E2EPatientStructure(E2EStructureMixin):
 
 
 class E2EFileStructure(E2EStructureMixin):
-    """E2E File Structure"""
+    """E2E File Structure."""
 
     def __init__(self):
-        self.substructure: Dict[int, E2EPatientStructure] = {}
-        self.folders: Dict[Union[int, str], List[E2EFolder]] = {}
+        self.substructure: dict[int, E2EPatientStructure] = {}
+        self.folders: dict[Union[int, str], list[E2EFolder]] = {}
 
         self._section_description_parts = []
-        self._section_title = ""
-        self._section_description = ""
+        self._section_title = ''
+        self._section_description = ''
 
     @property
-    def patients(self) -> Dict[int, E2EPatientStructure]:
+    def patients(self) -> dict[int, E2EPatientStructure]:
         return self.substructure
 
     def add_folder(self, folder: E2EFolder):
@@ -745,7 +753,7 @@ class HeE2eReader(AbstractContextManager):
         self._index_file()
 
     def _index_file(self) -> None:
-        with open(self.path, "rb") as f:
+        with open(self.path, 'rb') as f:
             parsed = e2e_format.parse_stream(f)
 
             # Get the position, IDs and types of all folders
@@ -753,26 +761,26 @@ class HeE2eReader(AbstractContextManager):
                 for fh in chunk.folders:
                     folder = E2EFolder(
                         **{
-                            "patient_id": fh.patient_id,
-                            "study_id": fh.study_id,
-                            "series_id": fh.series_id,
-                            "slice_id": fh.slice_id,
-                            "pos": fh.pos,
-                            "start": fh.start,
-                            "type": fh.type,
-                            "size": fh.size,
-                            "ind": fh.ind,
-                            "reader": self,
+                            'patient_id': fh.patient_id,
+                            'study_id': fh.study_id,
+                            'series_id': fh.series_id,
+                            'slice_id': fh.slice_id,
+                            'pos': fh.pos,
+                            'start': fh.start,
+                            'type': fh.type,
+                            'size': fh.size,
+                            'ind': fh.ind,
+                            'reader': self,
                         })
                     self.file_hierarchy.add_folder(folder)
 
             # Read and cache information required for __str__
             self.file_object = f
-            self.inspect(recursive=True, ind_prefix="  ", tables=False)
+            self.inspect(recursive=True, ind_prefix='  ', tables=False)
 
     def inspect(self,
                 recursive: bool = False,
-                ind_prefix: str = "",
+                ind_prefix: str = '',
                 tables: bool = True) -> str:
         """Inspect the file hierarchy (contents) of the file.
 
@@ -780,23 +788,22 @@ class HeE2eReader(AbstractContextManager):
             recursive: If True inspect lower level structures recursively.
             ind_prefix: Indentation for showing information from lower level structures.
             tables: If True add markdown table overview of the contained folder types.
-
         """
         return self.file_hierarchy.inspect(recursive, ind_prefix, tables)
 
     def __str__(self) -> str:
-        return self.inspect(recursive=True, ind_prefix="  ", tables=False)
+        return self.inspect(recursive=True, ind_prefix='  ', tables=False)
 
     def __repr__(self) -> str:
         return f'HeE2eReader(path="{self.path}")'
 
     @property
-    def patients(self) -> List[E2EPatientStructure]:
+    def patients(self) -> list[E2EPatientStructure]:
         """List of all patients in the file as E2EPatient objects."""
         return [p for p in self.file_hierarchy.patients.values()]
 
     @property
-    def studies(self) -> List[E2EStudyStructure]:
+    def studies(self) -> list[E2EStudyStructure]:
         """List of all studies in the file as E2EStudy objects."""
         studies = []
         for p in self.patients:
@@ -804,15 +811,15 @@ class HeE2eReader(AbstractContextManager):
         return studies
 
     @property
-    def series(self) -> List[E2ESeriesStructure]:
+    def series(self) -> list[E2ESeriesStructure]:
         """List of all series in the file as E2ESeries objects."""
         series = []
         for s in self.studies:
             series += s.series.values()
         return sorted(series, key=lambda s: s.id)
 
-    def __enter__(self) -> "HeE2eReader":
-        self.file_object = open(self.path, "rb")
+    def __enter__(self) -> 'HeE2eReader':
+        self.file_object = open(self.path, 'rb')
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -820,10 +827,10 @@ class HeE2eReader(AbstractContextManager):
 
     def find_int(self,
                  value: int,
-                 excluded_folders: List[Union[int,
-                                              str]] = ["images", "layers"],
+                 excluded_folders: list[Union[int,
+                                              str]] = ['images', 'layers'],
                  slice_id: Optional[int] = None,
-                 **kwargs) -> Dict[int, Dict[int, Dict[str, List[int]]]]:
+                 **kwargs) -> dict[int, dict[int, dict[str, list[int]]]]:
         """Find an integer value in the e2e file.
 
         Args:
@@ -838,10 +845,10 @@ class HeE2eReader(AbstractContextManager):
         Returns:
             A dictionary of the form {series_id(int): {folder_type(int): {fmt_string(str): [positions(int)]}}}
         """
-        if "images" in excluded_folders:
-            excluded_folders[excluded_folders.index("images")] = 1073741824
-        if "layers" in excluded_folders:
-            excluded_folders[excluded_folders.index("layers")] = 10019
+        if 'images' in excluded_folders:
+            excluded_folders[excluded_folders.index('images')] = 1073741824
+        if 'layers' in excluded_folders:
+            excluded_folders[excluded_folders.index('layers')] = 10019
 
         results = defaultdict(dict)
         for folder in self.file_hierarchy.all_folders:
@@ -855,10 +862,10 @@ class HeE2eReader(AbstractContextManager):
 
     def find_float(self,
                    value: float,
-                   excluded_folders: List[Union[int,
-                                                str]] = ["images", "layers"],
+                   excluded_folders: list[Union[int,
+                                                str]] = ['images', 'layers'],
                    slice_id: Optional[int] = None,
-                   **kwargs) -> Dict[int, Dict[int, Dict[str, List[int]]]]:
+                   **kwargs) -> dict[int, dict[int, dict[str, list[int]]]]:
         """Find a float value in the e2e file.
 
         Args:
@@ -873,10 +880,10 @@ class HeE2eReader(AbstractContextManager):
         Returns:
             A dictionary of the form {series_id(int): {folder_type(int): {fmt_string(str): [positions(int)]}}}
         """
-        if "images" in excluded_folders:
-            excluded_folders[excluded_folders.index("images")] = 1073741824
-        if "layers" in excluded_folders:
-            excluded_folders[excluded_folders.index("layers")] = 10019
+        if 'images' in excluded_folders:
+            excluded_folders[excluded_folders.index('images')] = 1073741824
+        if 'layers' in excluded_folders:
+            excluded_folders[excluded_folders.index('layers')] = 10019
 
         results = defaultdict(dict)
         for folder in self.file_hierarchy.all_folders:
@@ -890,10 +897,10 @@ class HeE2eReader(AbstractContextManager):
 
     def find_number(self,
                     value: Union[int, float],
-                    excluded_folders: List[Union[int,
-                                                 str]] = ["images", "layers"],
+                    excluded_folders: list[Union[int,
+                                                 str]] = ['images', 'layers'],
                     slice_id: Optional[int] = None,
-                    **kwargs) -> Dict[int, Dict[int, Dict[str, List[int]]]]:
+                    **kwargs) -> dict[int, dict[int, dict[str, list[int]]]]:
         """Find a number value in the e2e file.
 
         Use this function if you don't know if the value is an integer or a float.
@@ -920,7 +927,7 @@ class HeE2eReader(AbstractContextManager):
 
     @property
     def volume(self) -> EyeVolume:
-        """ First EyeVolume object in the E2E file.
+        """First EyeVolume object in the E2E file.
 
         Returns:
             EyeVolume object for the first Series in the e2e file.
@@ -931,14 +938,14 @@ class HeE2eReader(AbstractContextManager):
             except Exception as e:
                 # for compatibility with python <= 3.9, later work with only the exception as argument for format_exception
                 exc_type, exc_value, exc_tb = sys.exc_info()
-                logger.debug("".join(
+                logger.debug(''.join(
                     traceback.format_exception(exc_type, exc_value, exc_tb)))
         raise ValueError(
-            "No Series in the E2E file can be parsed to a an EyeVolume object. You might be able to extract information manually from the E2ESeries objects (e2ereader.series)"
+            'No Series in the E2E file can be parsed to a an EyeVolume object. You might be able to extract information manually from the E2ESeries objects (e2ereader.series)'
         )
 
     @property
-    def volumes(self) -> List[EyeVolume]:
+    def volumes(self) -> list[EyeVolume]:
         """All EyeVolume objects in the E2E file.
 
         Returns:
@@ -949,5 +956,5 @@ class HeE2eReader(AbstractContextManager):
             try:
                 volumes.append(s.get_volume())
             except Exception as e:
-                logger.debug("".join(traceback.format_exception(e)))
+                logger.debug(''.join(traceback.format_exception(e)))
         return volumes

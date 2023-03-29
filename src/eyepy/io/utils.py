@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 from collections import defaultdict
+from collections.abc import MutableMapping
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 import logging
 import sys
-from typing import Dict, List, MutableMapping, Optional, Tuple, Union
+from typing import Optional, Union
 
 import construct as cs
 import numpy as np
@@ -17,7 +20,6 @@ logger = logging.getLogger(__name__)
 
 
 def _get_meta_attr(meta_attr):
-
     def prop_func(self):
         return getattr(self.meta, meta_attr)
 
@@ -25,7 +27,7 @@ def _get_meta_attr(meta_attr):
 
 
 def _clean_ascii(unpacked: tuple):
-    return unpacked[0].decode("ascii").rstrip("\x00")
+    return unpacked[0].decode('ascii').rstrip('\x00')
 
 
 def _get_first(unpacked: tuple):
@@ -39,7 +41,7 @@ def _date_in_seconds(
 ):
     seconds = (dt - epoche).total_seconds() / second_frac
     if not seconds.is_integer():
-        raise ValueError("The resulting number needs to be a whole number")
+        raise ValueError('The resulting number needs to be a whole number')
     return int(seconds)
 
 
@@ -73,18 +75,18 @@ def _get_first_as_str(elements):
 
 
 def _get_datetime_from_xml(elements):
-    date = elements[0].find("Series/ExamDate/Date")
-    time = elements[0].find("Image/AcquisitionTime/Time")
+    date = elements[0].find('Series/ExamDate/Date')
+    time = elements[0].find('Image/AcquisitionTime/Time')
     if date is None or time is None:
         return None
 
-    year = int(date.find("Year").text)
-    month = int(date.find("Month").text)
-    day = int(date.find("Day").text)
-    hour = int(time.find("Hour").text)
-    minute = int(time.find("Minute").text)
-    second = int(float(time.find("Second").text))
-    utc_bias = int(time.find("UTCBias").text)
+    year = int(date.find('Year').text)
+    month = int(date.find('Month').text)
+    day = int(date.find('Day').text)
+    hour = int(time.find('Hour').text)
+    minute = int(time.find('Minute').text)
+    second = int(float(time.find('Second').text))
+    utc_bias = int(time.find('UTCBias').text)
     tz = timezone(timedelta(minutes=utc_bias))
     return datetime(year, month, day, hour, minute, second, tzinfo=tz)
 
@@ -92,9 +94,9 @@ def _get_datetime_from_xml(elements):
 def _get_date_from_xml(elements):
     try:
         date = elements[0]
-        year = int(date.find("Year").text)
-        month = int(date.find("Month").text)
-        day = int(date.find("Day").text)
+        year = int(date.find('Year').text)
+        month = int(date.find('Month').text)
+        day = int(date.find('Day').text)
     except IndexError:
         year = month = day = 1
 
@@ -104,9 +106,9 @@ def _get_date_from_xml(elements):
 def _compute_localizer_oct_transform(
     volume_meta: MutableMapping,
     enface_meta: MutableMapping,
-    volume_shape: Tuple[int, int, int],
+    volume_shape: tuple[int, int, int],
 ) -> GeometricTransform:
-    bscan_meta = volume_meta["bscan_meta"]
+    bscan_meta = volume_meta['bscan_meta']
     size_z, size_y, size_x = volume_shape
     # Points in oct space as row/column indices
     src = np.array([
@@ -117,22 +119,21 @@ def _compute_localizer_oct_transform(
     ])
 
     # Respective points in enface space as x/y coordinates
-    scale = np.array([enface_meta["scale_x"], enface_meta["scale_y"]])
+    scale = np.array([enface_meta['scale_x'], enface_meta['scale_y']])
     dst = np.array([
-        bscan_meta[-1]["start_pos"] / scale,  # Top left
-        bscan_meta[-1]["end_pos"] / scale,  # Top right
-        bscan_meta[0]["start_pos"] / scale,  # Bottom left
-        bscan_meta[0]["end_pos"] / scale,  # Bottom right
+        bscan_meta[-1]['start_pos'] / scale,  # Top left
+        bscan_meta[-1]['end_pos'] / scale,  # Top right
+        bscan_meta[0]['start_pos'] / scale,  # Bottom left
+        bscan_meta[0]['end_pos'] / scale,  # Bottom right
     ])
 
     # Switch from row/column indices to x/y coordinates by flipping last axis of src
     src = np.flip(src, axis=1)
     # src = src[:, [1, 0]]
-    return transform.estimate_transform("affine", src, dst)
+    return transform.estimate_transform('affine', src, dst)
 
 
 def get_date_adapter(construct, epoch, second_frac):
-
     class DateAdapter(cs.Adapter):
 
         def _decode(self, obj, context, path):
@@ -148,7 +149,7 @@ class BscanAdapter(cs.Adapter):
 
     def _decode(self, obj, context, path):
         return np.ndarray(buffer=obj,
-                          dtype="float32",
+                          dtype='float32',
                           shape=(context._.size_y, context._.size_x))
 
     def _encode(self, obj, context, path):
@@ -159,7 +160,7 @@ class LocalizerAdapter(cs.Adapter):
 
     def _decode(self, obj, context, path):
         return np.ndarray(buffer=obj,
-                          dtype="uint8",
+                          dtype='uint8',
                           shape=(context.size_y_slo, context.size_x_slo))
 
     def _encode(self, obj, context, path):
@@ -170,7 +171,7 @@ class SegmentationsAdapter(cs.Adapter):
 
     def _decode(self, obj, context, path):
         return np.ndarray(buffer=obj,
-                          dtype="float32",
+                          dtype='float32',
                           shape=(17, context._.size_x))
 
     def _encode(self, obj, context, path):
@@ -184,32 +185,32 @@ Segmentations = SegmentationsAdapter(cs.Bytes(17 * cs.this._.size_x * 4))
 Bscan = BscanAdapter(cs.Bytes(cs.this._.size_y * cs.this._.size_x * 4))
 
 
-def get_bscan_spacing(bscan_meta: List[EyeBscanMeta]):
+def get_bscan_spacing(bscan_meta: list[EyeBscanMeta]):
     # Check if all B-scans are parallel and have the same distance. They might be rotated though
     dist_func = lambda a, b: np.sqrt((a[0] - b[0])**2 + (a[1] - b[1])**2)
     start_distances = [
-        dist_func(bscan_meta[i]["start_pos"], bscan_meta[i + 1]["start_pos"])
+        dist_func(bscan_meta[i]['start_pos'], bscan_meta[i + 1]['start_pos'])
         for i in range(len(bscan_meta) - 1)
     ]
     end_distances = [
-        dist_func(bscan_meta[i]["end_pos"], bscan_meta[i + 1]["end_pos"])
+        dist_func(bscan_meta[i]['end_pos'], bscan_meta[i + 1]['end_pos'])
         for i in range(len(bscan_meta) - 1)
     ]
     if not np.allclose(start_distances[0],
                        np.array(start_distances + end_distances),
                        rtol=4e-2):
-        msg = "B-scans are not equally spaced. Projections into the enface space are distorted."
+        msg = 'B-scans are not equally spaced. Projections into the enface space are distorted.'
         logger.warning(msg)
     return np.mean(start_distances + end_distances)
 
 
 def find_int(bytestring: bytes,
              value: int,
-             signed: Optional[Union[bool, str, List[str]]] = None,
+             signed: Optional[Union[bool, str, list[str]]] = None,
              endian: Optional[str] = None,
-             bits: Optional[Union[int, List[int], str, List[str]]] = None,
+             bits: Optional[Union[int, list[int], str, list[str]]] = None,
              rtol: float = 1e-05,
-             atol: float = 1e-08) -> Dict[str, List[int]]:
+             atol: float = 1e-08) -> dict[str, list[int]]:
     """Find all occurrences of an integer in a byte string.
 
     Args:
@@ -230,15 +231,15 @@ def find_int(bytestring: bytes,
 
     # construct format strings
     if signed is None:
-        signed = ["s"] if value < 0 else ["s", "u"]
+        signed = ['s'] if value < 0 else ['s', 'u']
     elif isinstance(signed, bool):
-        signed = ["s"] if signed else ["u"]
+        signed = ['s'] if signed else ['u']
     elif isinstance(signed, str):
         signed = [signed]
     if endian is None:
         endian = sys.byteorder[0]  # first letter of endianness
     if bits is None:
-        bits = ["8", "16", "24", "32", "64"]
+        bits = ['8', '16', '24', '32', '64']
     elif isinstance(bits, int):
         bits = [str(bits)]
     elif isinstance(bits, str):
@@ -247,7 +248,7 @@ def find_int(bytestring: bytes,
         bits = [str(b) for b in bits]
 
     # Build a list of all format strings
-    formats = [(int(b), f"Int{b}{s}{endian}") for b in bits for s in signed]
+    formats = [(int(b), f'Int{b}{s}{endian}') for b in bits for s in signed]
 
     # find all occurrences
     results = defaultdict(list)
@@ -276,9 +277,9 @@ def find_int(bytestring: bytes,
 def find_float(bytestring: bytes,
                value: float,
                endian: Optional[str] = None,
-               bits: Optional[Union[int, List[int], str, List[str]]] = None,
+               bits: Optional[Union[int, list[int], str, list[str]]] = None,
                rtol: float = 1e-05,
-               atol: float = 1e-08) -> Dict[str, List[int]]:
+               atol: float = 1e-08) -> dict[str, list[int]]:
     """Find all occurrences of a float in a byte string.
 
     Args:
@@ -299,7 +300,7 @@ def find_float(bytestring: bytes,
     if endian is None:
         endian = sys.byteorder[0]  # first letter of endianness
     if bits is None:
-        bits = ["16", "32", "64"]
+        bits = ['16', '32', '64']
     elif isinstance(bits, int):
         bits = [str(bits)]
     elif isinstance(bits, str):
@@ -308,7 +309,7 @@ def find_float(bytestring: bytes,
         bits = [str(b) for b in bits]
 
     # Build a list of all format strings
-    formats = [(int(b), f"Float{b}{endian}") for b in bits]
+    formats = [(int(b), f'Float{b}{endian}') for b in bits]
 
     # find all occurrences
     results = defaultdict(list)

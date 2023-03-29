@@ -7,12 +7,12 @@ def test_grid_1_circle():
     output_OD = grid(
         mask_shape=(5, 5),
         radii=2,
-        laterality="OD",
+        laterality='OD',
     )
     output_OS = grid(
         mask_shape=(5, 5),
         radii=2,
-        laterality="OS",
+        laterality='OS',
     )
 
     assert len(output_OS) == 1
@@ -23,10 +23,10 @@ def test_grid_1_circle():
 
 def test_grid_2_rings():
     output_OD = grid(
-        mask_shape=(7, 7), radii=(1, 3), laterality="OD", n_sectors=1, offsets=0
+        mask_shape=(7, 7), radii=(1, 3), laterality='OD', n_sectors=1, offsets=0
     )
     output_OS = grid(
-        mask_shape=(7, 7), radii=(1, 3), laterality="OS", n_sectors=1, offsets=0
+        mask_shape=(7, 7), radii=(1, 3), laterality='OS', n_sectors=1, offsets=0
     )
 
     assert len(output_OS) == 2
@@ -36,8 +36,8 @@ def test_grid_2_rings():
 
 
 def test_grid_1_circle_with_4_sectors():
-    output_OD = grid(mask_shape=(7, 7), radii=(3,), laterality="OD", n_sectors=(4,))
-    output_OS = grid(mask_shape=(7, 7), radii=(3,), laterality="OS", n_sectors=(4,))
+    output_OD = grid(mask_shape=(7, 7), radii=(3,), laterality='OD', n_sectors=(4,))
+    output_OS = grid(mask_shape=(7, 7), radii=(3,), laterality='OS', n_sectors=(4,))
 
     assert len(output_OS) == 4
     assert output_OS.keys() == output_OD.keys()
@@ -47,10 +47,10 @@ def test_grid_1_circle_with_4_sectors():
 
 def test_grid_1_circle_with_4_sectors_with_offset_45():
     output_OD = grid(
-        mask_shape=(8, 8), radii=(3,), laterality="OD", n_sectors=(4,), offsets=(45,)
+        mask_shape=(8, 8), radii=(3,), laterality='OD', n_sectors=(4,), offsets=(45,)
     )
     output_OS = grid(
-        mask_shape=(8, 8), radii=(3,), laterality="OS", n_sectors=(4,), offsets=(45,)
+        mask_shape=(8, 8), radii=(3,), laterality='OS', n_sectors=(4,), offsets=(45,)
     )
 
     assert len(output_OS) == 4
@@ -63,14 +63,14 @@ def test_grid():
     output_OD = grid(
         mask_shape=(15, 15),
         radii=(2, 5),
-        laterality="OD",
+        laterality='OD',
         n_sectors=(1, 4),
         offsets=(120,),
     )
     output_OS = grid(
         mask_shape=(15, 15),
         radii=(2, 5),
-        laterality="OS",
+        laterality='OS',
         n_sectors=(1, 4),
         offsets=(120,),
     )
