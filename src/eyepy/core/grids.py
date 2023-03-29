@@ -4,7 +4,7 @@ import cmath
 from collections.abc import Sequence
 import functools
 import logging
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Iterable, Optional, TYPE_CHECKING, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -12,7 +12,8 @@ from skimage import transform
 
 logger = logging.getLogger(__name__)
 
-Shape = Union[int, tuple[int, int]]
+if TYPE_CHECKING:
+    Shape = Union[int, tuple[int, int]]
 
 
 def circle_mask(radius: int,
