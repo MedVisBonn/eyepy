@@ -2,6 +2,17 @@
 
 <!--next-version-placeholder-->
 
+## v0.10.0 (2023-03-30)
+### Feature
+* **core.plotting:** Adds a scale bar and a watermark to Bscan and Fundus visualizations ([`0e3eaa0`](https://github.com/MedVisBonn/eyepy/commit/0e3eaa0be4420c0d8ba4cbc53381fc36da2cdc81))
+
+### Fix
+* **eyepy.core:** Fixes bscan_region and bscan_position plotting when plotting only a part of the fundus ([`2c88074`](https://github.com/MedVisBonn/eyepy/commit/2c880743b6329cf24e74f7019035ad455800e89a))
+* **core.grids.py:** Fixes error related to python 3.8 not supporting new type annotation Dict-dict List-list ([`3c6ba41`](https://github.com/MedVisBonn/eyepy/commit/3c6ba41133215bc64efb48f432cb0be78b627b2c))
+
+### Documentation
+* **core.annotations:** Adds docstrings ([`236c074`](https://github.com/MedVisBonn/eyepy/commit/236c074e8e28eb4ccb5a1e0538237fcec5dff415))
+
 ## v0.9.2 (2023-03-17)
 ### Fix
 * **e2e_reader.py:** Makes exception formatting compatible with python < 3.10 ([`2c4cbb0`](https://github.com/MedVisBonn/eyepy/commit/2c4cbb0c2a91c47d951945aa75145dd1e34e5c4e))
