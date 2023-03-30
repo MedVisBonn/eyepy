@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.11.0 (2023-03-30)
+### Feature
+* **io.__init__.py:** Adds support for topcon fda files ([#12](https://github.com/MedVisBonn/eyepy/issues/12)) ([`53f2908`](https://github.com/MedVisBonn/eyepy/commit/53f2908f95556c2be7a3259bfd5653208188ff71))
+
 ## v0.10.0 (2023-03-30)
 ### Feature
 * **core.plotting:** Adds a scale bar and a watermark to Bscan and Fundus visualizations ([`0e3eaa0`](https://github.com/MedVisBonn/eyepy/commit/0e3eaa0be4420c0d8ba4cbc53381fc36da2cdc81))
