@@ -3,7 +3,7 @@
 Use Python to import, analyse and visualize retinal imaging data.
 </p>
 
-![header_gif](https://user-images.githubusercontent.com/5720058/218448527-d0477fa3-0cb6-4a3e-88e8-e10a60cc7a91.gif)
+![header_gif](https://user-images.githubusercontent.com/5720058/228815448-4b561246-dac9-4f8f-abde-e0dd5457a72b.gif)
 
 [![Documentation](https://img.shields.io/badge/docs-eyepy-blue)](https://MedVisBonn.github.io/eyepy)
 [![PyPI version](https://badge.fury.io/py/eyepie.svg)](https://badge.fury.io/py/eyepie)

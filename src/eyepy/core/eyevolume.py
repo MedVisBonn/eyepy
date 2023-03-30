@@ -721,13 +721,15 @@ class EyeVolume:
         for i in bscan_positions:
             scale = np.array([self.localizer.scale_x, self.localizer.scale_y])
 
-            start = self[i].meta['start_pos'] / scale
-            end = self[i].meta['end_pos'] / scale
+            start = self[i].meta['start_pos'] / scale - np.array(
+                [region[1].start, region[0].start])
+            end = self[i].meta['end_pos'] / scale - np.array(
+                [region[1].start, region[0].start])
 
             for pos in [start, end]:
                 # Check for both axis if pos is in region
-                if not (region[0].start <= pos[0] <= region[0].stop
-                        and region[1].start <= pos[1] <= region[1].stop):
+                if not (0 <= pos[0] <= region[0].stop - region[0].start
+                        and 0 <= pos[1] <= region[1].stop - region[1].start):
                     logger.warning(
                         'B-scan position can not be plotted because the visualized region does not contain the complete B-scan.'
                     )
@@ -755,15 +757,19 @@ class EyeVolume:
 
         scale = np.array([self.localizer.scale_x, self.localizer.scale_y])
 
-        upper_left = self[-1].meta['start_pos'] / scale
-        lower_left = self[0].meta['start_pos'] / scale
-        lower_right = self[0].meta['end_pos'] / scale
-        upper_right = self[-1].meta['end_pos'] / scale
+        upper_left = np.array(self[-1].meta['start_pos']) / scale - np.array(
+            [region[1].start, region[0].start])
+        lower_left = np.array(self[0].meta['start_pos']) / scale - np.array(
+            [region[1].start, region[0].start])
+        lower_right = np.array(self[0].meta['end_pos']) / scale - np.array(
+            [region[1].start, region[0].start])
+        upper_right = np.array(self[-1].meta['end_pos']) / scale - np.array(
+            [region[1].start, region[0].start])
 
         for pos in [upper_left, lower_left, lower_right, upper_right]:
             # Check for both axis if pos is in region
-            if not (region[0].start <= pos[0] <= region[0].stop
-                    and region[1].start <= pos[1] <= region[1].stop):
+            if not (0 <= pos[0] < region[0].stop - region[0].start
+                    and 0 <= pos[1] < region[1].stop - region[1].start):
                 logger.warning(
                     'B-scan region can not be plotted because the visualized region does not contain the complete B-scan region.'
                 )

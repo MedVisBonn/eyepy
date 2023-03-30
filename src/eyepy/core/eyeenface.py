@@ -135,7 +135,10 @@ class EyeEnface:
 
         """
         ax = plt.gca() if ax is None else ax
-        ax.imshow(self.data[region], cmap='gray')
+        vmin = np.min(self.data)
+        vmax = np.max(self.data)
+
+        ax.imshow(self.data[region], cmap='gray', vmin=vmin, vmax=vmax)
 
         # Make sure tick labels match the image region
         y_start = region[0].start if region[0].start is not None else 0
