@@ -38,4 +38,5 @@ from eyepy.io import import_heyex_e2e
 from eyepy.io import import_heyex_vol
 from eyepy.io import import_heyex_xml
 from eyepy.io import import_retouch
+from eyepy.io import import_topcon_fda
 from eyepy import data
