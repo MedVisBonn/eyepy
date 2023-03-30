@@ -1,6 +1,4 @@
-"""
-
-The eyepy top
+"""The eyepy top.
 
 + [EyeVolume][eyepy.core.eyevolume.EyeVolume]
 + [EyeBscan][eyepy.core.eyebscan.EyeBscan]
@@ -16,13 +14,12 @@ The eyepy top
 + [EyeEnfacePixelAnnotation][eyepy.core.annotations.EyeEnfacePixelAnnotation]
 
 + [EyeVolumePixelAnnotation][eyepy.core.annotations.EyeVolumePixelAnnotation]
-
 """
 # isort: skip_file
 
 __author__ = """Olivier Morelle"""
-__email__ = "oli4morelle@gmail.com"
-__version__ = "0.9.2"
+__email__ = 'oli4morelle@gmail.com'
+__version__ = '0.9.2'
 
 from eyepy.core import drusen
 from eyepy.core import EyeBscan

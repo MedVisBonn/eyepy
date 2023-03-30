@@ -1,9 +1,9 @@
-from typing import Tuple
+from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
-from skimage import img_as_float32
-from skimage import img_as_ubyte
+from skimage.util import img_as_float32
+from skimage.util import img_as_ubyte
 
 from eyepy.core.filter import filter_by_height_enface
 
@@ -15,7 +15,8 @@ NDArrayInt = npt.NDArray[np.int_]
 
 
 class DynamicDefaultDict(dict):
-    """A defaultdict for which the factory function has access to the missing key"""
+    """A defaultdict for which the factory function has access to the missing
+    key."""
 
     def __init__(self, factory):
         self.factory = factory
@@ -26,7 +27,7 @@ class DynamicDefaultDict(dict):
 
 
 def vol_intensity_transform(data: NDArrayFloat) -> NDArrayInt:
-    """ Wrapper around from_vol_intensity
+    """Wrapper around from_vol_intensity.
 
     Transform intensities from Heyex VOL exports to achieve a constrast similar to the one used in Heyex.
 
@@ -61,7 +62,7 @@ def to_vol_intensity(data: np.ndarray) -> NDArrayFloat:
 
 
 def default_intensity_transform(data: np.ndarray) -> np.ndarray:
-    """ Default intensity transform
+    """Default intensity transform.
 
     By default intensities are not changed.
 
@@ -75,14 +76,14 @@ def default_intensity_transform(data: np.ndarray) -> np.ndarray:
 
 
 intensity_transforms = {
-    "default": default_intensity_transform,
-    "vol": vol_intensity_transform,
+    'default': default_intensity_transform,
+    'vol': vol_intensity_transform,
 }
 
 
 def ideal_rpe(rpe_height: NDArrayFloat, bm_height: NDArrayFloat,
-              volume_shape: Tuple[int, int, int]) -> NDArrayFloat:
-    """ Compute the ideal RPE from an RPE with Drusen.
+              volume_shape: tuple[int, int, int]) -> NDArrayFloat:
+    """Compute the ideal RPE from an RPE with Drusen.
 
     Args:
         rpe_height: The RPE height as offset from the lower border of the B-Scan
@@ -95,7 +96,7 @@ def ideal_rpe(rpe_height: NDArrayFloat, bm_height: NDArrayFloat,
     d, h, w = volume_shape
 
     # compute shift needed to align the BM to the horizontal center line
-    shift = np.empty((d, w), dtype="int")
+    shift = np.empty((d, w), dtype='int')
     shift.fill(h - (h / 2))
     shift = shift - bm_height
 
@@ -124,7 +125,7 @@ def ideal_rpe(rpe_height: NDArrayFloat, bm_height: NDArrayFloat,
 
 def drusen(rpe_height: NDArrayFloat,
            bm_height: NDArrayFloat,
-           volume_shape: Tuple[int, int, int],
+           volume_shape: tuple[int, int, int],
            minimum_height: int = 2) -> NDArrayBool:
     """Compute drusen from the RPE and BM layer segmentation.
 

@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 from collections import defaultdict
+from collections.abc import Callable
 import json
 import logging
 from pathlib import Path
 import shutil
 import tempfile
-from typing import (Callable, Dict, List, Optional, overload, SupportsIndex,
-                    Tuple, Union)
+from typing import Optional, overload, SupportsIndex, Union
 import warnings
 import zipfile
 
@@ -24,13 +26,15 @@ from eyepy.core.eyeenface import EyeEnface
 from eyepy.core.eyemeta import EyeBscanMeta
 from eyepy.core.eyemeta import EyeEnfaceMeta
 from eyepy.core.eyemeta import EyeVolumeMeta
+from eyepy.core.plotting import plot_scalebar
+from eyepy.core.plotting import plot_watermark
 from eyepy.core.utils import intensity_transforms
 
-logger = logging.getLogger("eyepy.core.eyevolume")
+logger = logging.getLogger('eyepy.core.eyevolume')
 
 
 class EyeVolume:
-    """ """
+    """"""
 
     def __init__(
         self,
@@ -56,10 +60,10 @@ class EyeVolume:
             self.meta = self._default_meta(self._raw_data)
         else:
             self.meta = meta
-        if not "intensity_transform" in self.meta:
-            self.meta["intensity_transform"] = "default"
+        if not 'intensity_transform' in self.meta:
+            self.meta['intensity_transform'] = 'default'
 
-        self.set_intensity_transform(self.meta["intensity_transform"])
+        self.set_intensity_transform(self.meta['intensity_transform'])
 
         self._layers = []
         self._volume_maps = []
@@ -89,62 +93,62 @@ class EyeVolume:
             tmpdirname = Path(tmpdirname)
 
             # Save OCT volume as npy and meta as json
-            np.save(tmpdirname / "raw_volume.npy", self._raw_data)
-            with open(tmpdirname / "meta.json", "w") as meta_file:
-                if self.meta["intensity_transform"] == "custom":
+            np.save(tmpdirname / 'raw_volume.npy', self._raw_data)
+            with open(tmpdirname / 'meta.json', 'w') as meta_file:
+                if self.meta['intensity_transform'] == 'custom':
                     warnings.warn(
-                        "Custom intensity transforms can not be saved.")
-                    self.meta["intensity_transform"] = "default"
+                        'Custom intensity transforms can not be saved.')
+                    self.meta['intensity_transform'] = 'default'
                 json.dump(self.meta.as_dict(), meta_file)
 
             if not len(self._volume_maps) == 0:
                 # Save Volume Annotations
-                voxels_path = tmpdirname / "annotations" / "voxels"
+                voxels_path = tmpdirname / 'annotations' / 'voxels'
                 voxels_path.mkdir(exist_ok=True, parents=True)
                 np.save(
-                    voxels_path / "voxel_maps.npy",
+                    voxels_path / 'voxel_maps.npy',
                     np.stack([v.data for v in self._volume_maps]),
                 )
-                with open(voxels_path / "meta.json", "w") as meta_file:
+                with open(voxels_path / 'meta.json', 'w') as meta_file:
                     json.dump([v.meta for v in self._volume_maps], meta_file)
 
             if not len(self._layers) == 0:
                 # Save layer annotations
-                layers_path = tmpdirname / "annotations" / "layers"
+                layers_path = tmpdirname / 'annotations' / 'layers'
                 layers_path.mkdir(exist_ok=True, parents=True)
                 np.save(
-                    layers_path / "layer_heights.npy",
+                    layers_path / 'layer_heights.npy',
                     np.stack([l.data for l in self._layers]),
                 )
-                with open(layers_path / "meta.json", "w") as meta_file:
+                with open(layers_path / 'meta.json', 'w') as meta_file:
                     json.dump([l.meta for l in self._layers], meta_file)
 
             # Save Localizer
-            localizer_path = tmpdirname / "localizer"
+            localizer_path = tmpdirname / 'localizer'
             localizer_path.mkdir(exist_ok=True, parents=True)
-            np.save(localizer_path / "localizer.npy", self.localizer.data)
-            with open(localizer_path / "meta.json", "w") as meta_file:
+            np.save(localizer_path / 'localizer.npy', self.localizer.data)
+            with open(localizer_path / 'meta.json', 'w') as meta_file:
                 json.dump(self.localizer.meta.as_dict(), meta_file)
 
             # Save Localizer Annotations
             if not len(self.localizer._area_maps) == 0:
-                pixels_path = localizer_path / "annotations" / "pixel"
+                pixels_path = localizer_path / 'annotations' / 'pixel'
                 pixels_path.mkdir(exist_ok=True, parents=True)
                 np.save(
-                    pixels_path / "pixel_maps.npy",
+                    pixels_path / 'pixel_maps.npy',
                     np.stack([p.data for p in self.localizer._area_maps]),
                 )
-                with open(pixels_path / "meta.json", "w") as meta_file:
+                with open(pixels_path / 'meta.json', 'w') as meta_file:
                     json.dump([p.meta for p in self.localizer._area_maps],
                               meta_file)
 
             # Zip and copy to location
             name = shutil.make_archive(str(tmpdirname / Path(path).stem),
-                                       "zip", tmpdirname)
+                                       'zip', tmpdirname)
             shutil.move(name, path)
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> "EyeVolume":
+    def load(cls, path: Union[str, Path]) -> 'EyeVolume':
         """
 
         Args:
@@ -155,53 +159,53 @@ class EyeVolume:
         """
         with tempfile.TemporaryDirectory() as tmpdirname:
             tmpdirname = Path(tmpdirname)
-            with zipfile.ZipFile(path, "r") as zip_ref:
+            with zipfile.ZipFile(path, 'r') as zip_ref:
                 zip_ref.extractall(tmpdirname)
 
             # Load raw volume and meta
-            data = np.load(tmpdirname / "raw_volume.npy")
-            with open(tmpdirname / "meta.json", "r") as meta_file:
+            data = np.load(tmpdirname / 'raw_volume.npy')
+            with open(tmpdirname / 'meta.json', 'r') as meta_file:
                 volume_meta = EyeVolumeMeta.from_dict(json.load(meta_file))
 
             # Load Volume Annotations
-            voxels_path = tmpdirname / "annotations" / "voxels"
+            voxels_path = tmpdirname / 'annotations' / 'voxels'
             if voxels_path.exists():
-                voxel_annotations = np.load(voxels_path / "voxel_maps.npy")
-                with open(voxels_path / "meta.json", "r") as meta_file:
+                voxel_annotations = np.load(voxels_path / 'voxel_maps.npy')
+                with open(voxels_path / 'meta.json', 'r') as meta_file:
                     voxels_meta = json.load(meta_file)
             else:
                 voxel_annotations = []
                 voxels_meta = []
 
             # Load layers
-            layers_path = tmpdirname / "annotations" / "layers"
+            layers_path = tmpdirname / 'annotations' / 'layers'
             if layers_path.exists():
-                layer_annotations = np.load(layers_path / "layer_heights.npy")
-                with open(layers_path / "meta.json", "r") as meta_file:
+                layer_annotations = np.load(layers_path / 'layer_heights.npy')
+                with open(layers_path / 'meta.json', 'r') as meta_file:
                     layers_meta = json.load(meta_file)
 
                 # Clean knots
                 for i, layer_meta in enumerate(layers_meta):
-                    if "knots" in layer_meta:
-                        knots = layer_meta["knots"]
+                    if 'knots' in layer_meta:
+                        knots = layer_meta['knots']
                         knots = {int(i): knots[i] for i in knots}
-                        layer_meta["knots"] = knots
+                        layer_meta['knots'] = knots
             else:
                 layer_annotations = []
                 layers_meta = []
 
             # Load Localizer and meta
-            localizer_path = tmpdirname / "localizer"
-            localizer_data = np.load(localizer_path / "localizer.npy")
-            with open(localizer_path / "meta.json", "r") as meta_file:
+            localizer_path = tmpdirname / 'localizer'
+            localizer_data = np.load(localizer_path / 'localizer.npy')
+            with open(localizer_path / 'meta.json', 'r') as meta_file:
                 localizer_meta = EyeEnfaceMeta.from_dict(json.load(meta_file))
             localizer = EyeEnface(data=localizer_data, meta=localizer_meta)
 
             # Load Localizer Annotations
-            pixels_path = localizer_path / "annotations" / "pixel"
+            pixels_path = localizer_path / 'annotations' / 'pixel'
             if pixels_path.exists():
-                pixel_annotations = np.load(pixels_path / "pixel_maps.npy")
-                with open(pixels_path / "meta.json", "r") as meta_file:
+                pixel_annotations = np.load(pixels_path / 'pixel_maps.npy')
+                with open(pixels_path / 'meta.json', 'r') as meta_file:
                     pixels_meta = json.load(meta_file)
 
                 for i, pixel_meta in enumerate(pixels_meta):
@@ -231,15 +235,15 @@ class EyeVolume:
         bscan_meta = [
             EyeBscanMeta(start_pos=(0, i),
                          end_pos=((volume.shape[2] - 1), i),
-                         pos_unit="pixel")
+                         pos_unit='pixel')
             for i in range(volume.shape[0] - 1, -1, -1)
         ]
         meta = EyeVolumeMeta(
             scale_x=1.0,
             scale_y=1.0,
             scale_z=1.0,
-            scale_unit="pixel",
-            intensity_transform="default",
+            scale_unit='pixel',
+            intensity_transform='default',
             bscan_meta=bscan_meta,
         )
         return meta
@@ -260,7 +264,7 @@ class EyeVolume:
                 scale_unit=self.scale_unit,
                 field_size=0,
                 scan_focus=0,
-                laterality="NA",
+                laterality='NA',
             ),
         )
         return localizer
@@ -289,19 +293,19 @@ class EyeVolume:
         # src = src[:, [1, 0]]
         # dst = dst[:, [1, 0]]
 
-        return transform.estimate_transform("affine", src, dst)
+        return transform.estimate_transform('affine', src, dst)
 
     @overload
     def __getitem__(self, index: SupportsIndex) -> EyeBscan:
         ...
 
     @overload
-    def __getitem__(self, index: slice) -> List[EyeBscan]:
+    def __getitem__(self, index: slice) -> list[EyeBscan]:
         ...
 
     def __getitem__(
             self, index: Union[SupportsIndex,
-                               slice]) -> Union[List[EyeBscan], EyeBscan]:
+                               slice]) -> Union[list[EyeBscan], EyeBscan]:
         """
 
         Args:
@@ -344,18 +348,18 @@ class EyeVolume:
         """
         if isinstance(func, str):
             if func in intensity_transforms:
-                self.meta["intensity_transform"] = func
+                self.meta['intensity_transform'] = func
                 self.intensity_transform = intensity_transforms[func]
                 self._data = None
-            elif func == "custom":
+            elif func == 'custom':
                 logger.warning(
-                    "Custom intensity transforms can not be loaded currently")
+                    'Custom intensity transforms can not be loaded currently')
             else:
                 logger.warning(
                     f"Provided intensity transform name {func} is not known. Valid names are 'vol' or 'default'. You can also pass your own function."
                 )
         elif isinstance(func, Callable):
-            self.meta["intensity_transform"] = "custom"
+            self.meta['intensity_transform'] = 'custom'
             self.intensity_transform = func
             self._data = None
 
@@ -371,7 +375,7 @@ class EyeVolume:
         return self._data
 
     @property
-    def shape(self) -> Tuple[int, int, int]:
+    def shape(self) -> tuple[int, int, int]:
         """
 
         Returns:
@@ -380,12 +384,12 @@ class EyeVolume:
         return self._raw_data.shape
 
     @shape.setter
-    def shape(self, value: Tuple[int, int, int]) -> None:
+    def shape(self, value: tuple[int, int, int]) -> None:
         raise AttributeError(
-            "Shape can not be set since it is derived from the data")
+            'Shape can not be set since it is derived from the data')
 
     @property
-    def scale(self) -> Tuple[float, float, float]:
+    def scale(self) -> tuple[float, float, float]:
         """
 
         Returns:
@@ -394,7 +398,7 @@ class EyeVolume:
         return self.scale_z, self.scale_y, self.scale_x
 
     @scale.setter
-    def scale(self, value: Tuple[float, float, float]) -> None:
+    def scale(self, value: tuple[float, float, float]) -> None:
         self.scale_z, self.scale_y, self.scale_x = value
 
     @property
@@ -409,7 +413,7 @@ class EyeVolume:
     @size_z.setter
     def size_z(self, value: int) -> None:
         raise AttributeError(
-            "Size of z axis can not be changed since it is derived from the data"
+            'Size of z axis can not be changed since it is derived from the data'
         )
 
     @property
@@ -424,7 +428,7 @@ class EyeVolume:
     @size_y.setter
     def size_y(self, value: int) -> None:
         raise AttributeError(
-            "Size of y axis can not be changed since it is derived from the data"
+            'Size of y axis can not be changed since it is derived from the data'
         )
 
     @property
@@ -439,7 +443,7 @@ class EyeVolume:
     @size_x.setter
     def size_x(self, value: int) -> None:
         raise AttributeError(
-            "Size of x axis can not be changed since it is derived from the data"
+            'Size of x axis can not be changed since it is derived from the data'
         )
 
     @property
@@ -449,11 +453,11 @@ class EyeVolume:
         Returns:
 
         """
-        return self.meta["scale_z"]
+        return self.meta['scale_z']
 
     @scale_z.setter
     def scale_z(self, value: float) -> None:
-        self.meta["scale_z"] = value
+        self.meta['scale_z'] = value
 
     @property
     def scale_y(self) -> float:
@@ -462,11 +466,11 @@ class EyeVolume:
         Returns:
 
         """
-        return self.meta["scale_y"]
+        return self.meta['scale_y']
 
     @scale_y.setter
     def scale_y(self, value: float) -> None:
-        self.meta["scale_y"] = value
+        self.meta['scale_y'] = value
 
     @property
     def scale_x(self) -> float:
@@ -475,11 +479,11 @@ class EyeVolume:
         Returns:
 
         """
-        return self.meta["scale_x"]
+        return self.meta['scale_x']
 
     @scale_x.setter
     def scale_x(self, value: float) -> None:
-        self.meta["scale_x"] = value
+        self.meta['scale_x'] = value
 
     @property
     def scale_unit(self) -> str:
@@ -488,11 +492,11 @@ class EyeVolume:
         Returns:
 
         """
-        return self.meta["scale_unit"]
+        return self.meta['scale_unit']
 
     @scale_unit.setter
     def scale_unit(self, value: str) -> None:
-        self.meta["scale_unit"] = value
+        self.meta['scale_unit'] = value
 
     @property
     def laterality(self) -> str:
@@ -501,14 +505,14 @@ class EyeVolume:
         Returns:
 
         """
-        return self.meta["laterality"]
+        return self.meta['laterality']
 
     @laterality.setter
     def laterality(self, value: str) -> None:
-        self.meta["laterality"] = value
+        self.meta['laterality'] = value
 
     @property
-    def layers(self) -> Dict[str, EyeVolumeLayerAnnotation]:
+    def layers(self) -> dict[str, EyeVolumeLayerAnnotation]:
         """
 
         Returns:
@@ -519,7 +523,7 @@ class EyeVolume:
         return {layer.name: layer for layer in self._layers}
 
     @property
-    def volume_maps(self) -> Dict[str, EyeVolumePixelAnnotation]:
+    def volume_maps(self) -> dict[str, EyeVolumePixelAnnotation]:
         """
 
         Returns:
@@ -530,7 +534,7 @@ class EyeVolume:
 
     def add_pixel_annotation(self,
                              voxel_map: Optional[npt.NDArray[np.bool_]] = None,
-                             meta: Optional[Dict] = None,
+                             meta: Optional[dict] = None,
                              **kwargs) -> EyeVolumePixelAnnotation:
         """
 
@@ -570,7 +574,7 @@ class EyeVolume:
     def add_layer_annotation(self,
                              height_map: Optional[npt.NDArray[
                                  np.float_]] = None,
-                             meta: Optional[Dict] = None,
+                             meta: Optional[dict] = None,
                              **kwargs) -> EyeVolumeLayerAnnotation:
         """
 
@@ -610,16 +614,21 @@ class EyeVolume:
     def plot(
         self,
         ax: Optional[plt.Axes] = None,
-        projections: Union[bool, List[str]] = False,
+        projections: Union[bool, list[str]] = False,
         bscan_region: bool = False,
-        bscan_positions: Union[bool, List[int]] = False,
+        bscan_positions: Union[bool, list[int]] = False,
         quantification: Optional[str] = None,
-        region: Union[slice, Tuple[slice, slice]] = np.s_[:, :],
+        region: tuple[slice, slice] = np.s_[:, :],
         annotations_only: bool = False,
         projection_kwargs: Optional[dict] = None,
         line_kwargs: Optional[dict] = None,
+        scalebar: Union[bool, str] = 'botleft',
+        scalebar_kwargs: Optional[dict] = None,
+        watermark: bool = True,
     ) -> None:
-        """ Plot an annotated OCT localizer image. If the volume does not provide a localizer image an enface projection of the OCT volume is used instead.
+        """Plot an annotated OCT localizer image.
+
+        If the volume does not provide a localizer image an enface projection of the OCT volume is used instead.
 
         Args:
             ax: Axes to plot on. If not provided plot on the current axes (plt.gca()).
@@ -631,10 +640,11 @@ class EyeVolume:
             annotations_only: If `True` localizer image is not plotted (defaualt: `False`)
             projection_kwargs: Optional keyword arguments for the projection plots. If `None` default values are used (default: `None`). If a dictionary is given, the keys are the projection names and the values are dictionaries of keyword arguments.
             line_kwargs: Optional keyword arguments for customizing the lines to show B-scan region and positions plots. If `None` default values are used which are {"linewidth": 0.2, "linestyle": "-", "color": "green"}
-
+            scalebar: Position of the scalebar, one of "topright", "topleft", "botright", "botleft" or `False` (default: "botleft"). If `True` the scalebar is placed in the bottom left corner. You can custumize the scalebar using the `scalebar_kwargs` argument.
+            scalebar_kwargs: Optional keyword arguments for customizing the scalebar. Check the documentation of [plot_scalebar][eyepy.core.plotting.plot_scalebar] for more information.
+            watermark: If `True` plot a watermark on the image (default: `True`). When removing the watermark, please consider to cite eyepy in your publication.
         Returns:
             None
-
         """
 
         # Complete region index expression
@@ -651,7 +661,11 @@ class EyeVolume:
             ax = plt.gca()
 
         if not annotations_only:
-            self.localizer.plot(ax=ax, region=region)
+            self.localizer.plot(ax=ax,
+                                region=region,
+                                scalebar=scalebar,
+                                scalebar_kwargs=scalebar_kwargs,
+                                watermark=watermark)
 
         if projections is True:
             projections = list(self.volume_maps.keys())
@@ -690,10 +704,10 @@ class EyeVolume:
 
     def _plot_bscan_positions(
         self,
-        bscan_positions: Union[bool, List[int]] = True,
+        bscan_positions: Union[bool, list[int]] = True,
         ax: Optional[plt.Axes] = None,
-        region: Union[slice, Tuple[slice, slice]] = np.s_[:, :],
-        line_kwargs: Optional[Dict] = None,
+        region: tuple[slice, slice] = np.s_[:, :],
+        line_kwargs: Optional[dict] = None,
     ):
         if not bscan_positions:
             bscan_positions = []
@@ -707,15 +721,15 @@ class EyeVolume:
         for i in bscan_positions:
             scale = np.array([self.localizer.scale_x, self.localizer.scale_y])
 
-            start = self[i].meta["start_pos"] / scale
-            end = self[i].meta["end_pos"] / scale
+            start = self[i].meta['start_pos'] / scale
+            end = self[i].meta['end_pos'] / scale
 
             for pos in [start, end]:
                 # Check for both axis if pos is in region
                 if not (region[0].start <= pos[0] <= region[0].stop
                         and region[1].start <= pos[1] <= region[1].stop):
                     logger.warning(
-                        "B-scan position can not be plotted because the visualized region does not contain the complete B-scan."
+                        'B-scan position can not be plotted because the visualized region does not contain the complete B-scan.'
                     )
                     return
 
@@ -732,27 +746,26 @@ class EyeVolume:
             ax.add_patch(polygon)
 
     def _plot_bscan_region(self,
-                           region: Union[slice, Tuple[slice,
-                                                      slice]] = np.s_[:, :],
+                           region: tuple[slice, slice] = np.s_[:, :],
                            ax: Optional[plt.Axes] = None,
-                           line_kwargs: Optional[Dict] = None):
+                           line_kwargs: Optional[dict] = None):
 
         ax = plt.gca() if ax is None else ax
         line_kwargs = {} if line_kwargs is None else line_kwargs
 
         scale = np.array([self.localizer.scale_x, self.localizer.scale_y])
 
-        upper_left = self[-1].meta["start_pos"] / scale
-        lower_left = self[0].meta["start_pos"] / scale
-        lower_right = self[0].meta["end_pos"] / scale
-        upper_right = self[-1].meta["end_pos"] / scale
+        upper_left = self[-1].meta['start_pos'] / scale
+        lower_left = self[0].meta['start_pos'] / scale
+        lower_right = self[0].meta['end_pos'] / scale
+        upper_right = self[-1].meta['end_pos'] / scale
 
         for pos in [upper_left, lower_left, lower_right, upper_right]:
             # Check for both axis if pos is in region
             if not (region[0].start <= pos[0] <= region[0].stop
                     and region[1].start <= pos[1] <= region[1].stop):
                 logger.warning(
-                    "B-scan region can not be plotted because the visualized region does not contain the complete B-scan region."
+                    'B-scan region can not be plotted because the visualized region does not contain the complete B-scan region.'
                 )
                 return
 

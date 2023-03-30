@@ -1,20 +1,24 @@
-from typing import Dict, Optional, Tuple, TYPE_CHECKING, Union
+from __future__ import annotations
+
+from typing import Any, Optional, TYPE_CHECKING, Union
 
 import matplotlib.pyplot as plt
 from numpy import typing as npt
 import numpy as np
 
 from eyepy.core.annotations import EyeEnfacePixelAnnotation
+from eyepy.core.plotting import plot_scalebar
+from eyepy.core.plotting import plot_watermark
 
 if TYPE_CHECKING:
     from eyepy import EyeEnfaceMeta
 
 
 class EyeEnface:
-    """ """
+    """"""
 
     def __init__(self, data: npt.NDArray[np.int_],
-                 meta: "EyeEnfaceMeta") -> None:
+                 meta: 'EyeEnfaceMeta') -> None:
         """
 
         Args:
@@ -26,7 +30,7 @@ class EyeEnface:
         self.meta = meta
 
     @property
-    def area_maps(self) -> Dict[str, EyeEnfacePixelAnnotation]:
+    def area_maps(self) -> dict[str, EyeEnfacePixelAnnotation]:
         """
 
         Returns:
@@ -37,7 +41,7 @@ class EyeEnface:
 
     def add_area_annotation(self,
                             area_map: Optional[npt.NDArray[np.bool_]] = None,
-                            meta: Optional[Dict] = None,
+                            meta: Optional[dict] = None,
                             **kwargs) -> EyeEnfacePixelAnnotation:
         """
 
@@ -63,7 +67,7 @@ class EyeEnface:
         Returns:
 
         """
-        return self.meta["scale_x"]
+        return self.meta['scale_x']
 
     @property
     def scale_y(self) -> float:
@@ -72,7 +76,7 @@ class EyeEnface:
         Returns:
 
         """
-        return self.meta["scale_y"]
+        return self.meta['scale_y']
 
     @property
     def size_x(self) -> int:
@@ -99,10 +103,10 @@ class EyeEnface:
         Returns:
 
         """
-        return self.meta["laterality"]
+        return self.meta['laterality']
 
     @property
-    def shape(self) -> Tuple[int, int]:
+    def shape(self) -> tuple[int, int]:
         """
 
         Returns:
@@ -110,20 +114,28 @@ class EyeEnface:
         """
         return self.data.shape
 
-    def plot(self,
-             ax: Optional[plt.Axes] = None,
-             region: Union[slice, Tuple[slice, slice]] = np.s_[:, :]):
+    def plot(
+        self,
+        ax: Optional[plt.Axes] = None,
+        region: tuple[slice, slice] = np.s_[:, :],
+        scalebar: Union[bool, str] = 'botleft',
+        scalebar_kwargs: Optional[dict[str, Any]] = None,
+        watermark: bool = True,
+    ) -> None:
         """
 
         Args:
-            ax:
-            region:
-
+            ax: Axes to plot on. If not provided plot on the current axes (plt.gca()).
+            region: Region of the localizer to plot (default: `np.s_[:, :]`)
+            scalebar: Position of the scalebar, one of "topright", "topleft", "botright", "botleft" or `False` (default: "botleft"). If `True` the scalebar is placed in the bottom left corner. You can custumize the scalebar using the `scalebar_kwargs` argument.
+            scalebar_kwargs: Optional keyword arguments for customizing the scalebar. Check the documentation of [plot_scalebar][eyepy.core.plotting.plot_scalebar] for more information.
+            watermark: If `True` plot a watermark on the image (default: `True`). When removing the watermark, please consider to cite eyepy in your publication.
         Returns:
+            None
 
         """
         ax = plt.gca() if ax is None else ax
-        ax.imshow(self.data[region], cmap="gray")
+        ax.imshow(self.data[region], cmap='gray')
 
         # Make sure tick labels match the image region
         y_start = region[0].start if region[0].start is not None else 0
@@ -146,3 +158,41 @@ class EyeEnface:
         # Set labels to ticks + start of the region as an offset
         ax.set_yticklabels([str(int(t + y_start)) for t in yticks])
         ax.set_xticklabels([str(int(t + x_start)) for t in xticks])
+
+        if scalebar:
+            if scalebar_kwargs is None:
+                scalebar_kwargs = {}
+
+            scale_unit = self.meta['scale_unit']
+            scalebar_kwargs = {
+                **{
+                    'scale': (self.scale_x, self.scale_y),
+                    'scale_unit': scale_unit
+                },
+                **scalebar_kwargs
+            }
+
+            if not 'pos' in scalebar_kwargs:
+                sx = x_end - x_start
+                sy = y_end - y_start
+
+                if scalebar is True:
+                    scalebar = 'botleft'
+
+                if scalebar == 'botleft':
+                    scalebar_kwargs['pos'] = (sx - 0.95 * sx, 0.95 * sy)
+                elif scalebar == 'botright':
+                    scalebar_kwargs['pos'] = (0.95 * sx, 0.95 * sy)
+                    scalebar_kwargs['flip_x'] = True
+                elif scalebar == 'topleft':
+                    scalebar_kwargs['pos'] = (sx - 0.95 * sx, 0.05 * sy)
+                    scalebar_kwargs['flip_y'] = True
+                elif scalebar == 'topright':
+                    scalebar_kwargs['pos'] = (0.95 * sx, 0.05 * sy)
+                    scalebar_kwargs['flip_x'] = True
+                    scalebar_kwargs['flip_y'] = True
+
+            plot_scalebar(ax=ax, **scalebar_kwargs)
+
+        if watermark:
+            plot_watermark(ax)

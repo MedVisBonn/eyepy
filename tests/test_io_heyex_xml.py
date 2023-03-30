@@ -6,13 +6,13 @@ from eyepy.io import HeXmlReader
 
 def test_hexmlreader():
     reader = HeXmlReader(
-        "tests/data/filetypes/heyex_xml/test_volume")
+        'tests/data/filetypes/heyex_xml/test_volume')
     assert len(reader.meta) > 0
 
 
 def test_heyex_xml_import():
-    data = ep.import_heyex_xml("tests/data/filetypes/heyex_xml/test_volume")
+    data = ep.import_heyex_xml('tests/data/filetypes/heyex_xml/test_volume')
     assert data.shape == (10, 40, 50)
     assert data.localizer.shape == (50, 50)
-    assert data.laterality == "OD"
+    assert data.laterality == 'OD'
     assert int(np.mean(data.data)) == 127

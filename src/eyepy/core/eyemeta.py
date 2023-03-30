@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 import datetime
 import json
 import os
-from typing import Any, Dict, Iterable, List, MutableMapping, Tuple, Union
+from typing import Any, Iterable, MutableMapping, Union
 
 
 class EyeMeta(MutableMapping):
-    """ """
+    """"""
 
     def __init__(self, *args, **kwargs) -> None:
         """
@@ -17,14 +19,14 @@ class EyeMeta(MutableMapping):
         self._store = dict()
         self.update(dict(*args, **kwargs))  # use the free update to set keys
 
-    def as_dict(self) -> Dict:
+    def as_dict(self) -> dict:
         """
 
         Returns:
 
         """
         data = self._store.copy()
-        for key in ["visit_date", "exam_time"]:
+        for key in ['visit_date', 'exam_time']:
             if key in data.keys() and data[key] is not None:
                 data[key] = data[key].isoformat()
         return data
@@ -45,17 +47,18 @@ class EyeMeta(MutableMapping):
         return len(self._store)
 
     def __str__(self) -> str:
-        return f"{os.linesep}".join([f"{f}: {self[f]}" for f in self if f != "__empty"])
+        return f'{os.linesep}'.join([f'{f}: {self[f]}' for f in self if f != '__empty'])
 
     def __repr__(self) -> str:
         return self.__str__()
 
 
 class EyeEnfaceMeta(EyeMeta):
-    """ """
+    """"""
 
     def __init__(self, scale_x: float, scale_y: float, scale_unit: str, **kwargs) -> None:
-        """A dict with required keys to hold meta data for enface images of the eye
+        """A dict with required keys to hold meta data for enface images of the
+        eye.
 
         Args:
             scale_x: Horizontal scale of the enface pixels
@@ -68,7 +71,7 @@ class EyeEnfaceMeta(EyeMeta):
         )
 
     @classmethod
-    def from_dict(cls, data: dict) -> "EyeEnfaceMeta":
+    def from_dict(cls, data: dict) -> 'EyeEnfaceMeta':
         """
 
         Args:
@@ -77,23 +80,23 @@ class EyeEnfaceMeta(EyeMeta):
         Returns:
 
         """
-        for key in ["visit_date", "exam_time"]:
+        for key in ['visit_date', 'exam_time']:
             if key in data.keys() and data[key] is not None:
                 data[key] = datetime.datetime.fromisoformat(data[key])
         return cls(**data)
 
 
 class EyeBscanMeta(EyeMeta):
-    """ """
+    """"""
 
     def __init__(
         self,
-        start_pos: Tuple[float, float],
-        end_pos: Tuple[float, float],
+        start_pos: tuple[float, float],
+        end_pos: tuple[float, float],
         pos_unit: str,
         **kwargs,
     ) -> None:
-        """A dict with required keys to hold meta data for OCT B-scans
+        """A dict with required keys to hold meta data for OCT B-scans.
 
         Args:
             start_pos: B-scan start on the enface (in enface space)
@@ -107,7 +110,7 @@ class EyeBscanMeta(EyeMeta):
 
 
 class EyeVolumeMeta(EyeMeta):
-    """ """
+    """"""
 
     def __init__(
         self,
@@ -115,10 +118,10 @@ class EyeVolumeMeta(EyeMeta):
         scale_x: float,
         scale_y: float,
         scale_unit: str,
-        bscan_meta: List[EyeBscanMeta],
+        bscan_meta: list[EyeBscanMeta],
         **kwargs,
     ):
-        """A dict with required keys to hold meta data for OCT volumes
+        """A dict with required keys to hold meta data for OCT volumes.
 
         Args:
             scale_z: Distance between neighbouring B-scans
@@ -137,18 +140,18 @@ class EyeVolumeMeta(EyeMeta):
             **kwargs,
         )
 
-    def as_dict(self) -> Dict:
+    def as_dict(self) -> dict:
         """
 
         Returns:
 
         """
         data = super().as_dict()
-        data["bscan_meta"] = [bm.as_dict() for bm in data["bscan_meta"]]
+        data['bscan_meta'] = [bm.as_dict() for bm in data['bscan_meta']]
         return data
 
     @classmethod
-    def from_dict(cls, data: dict) -> "EyeVolumeMeta":
+    def from_dict(cls, data: dict) -> 'EyeVolumeMeta':
         """
 
         Args:
@@ -157,8 +160,8 @@ class EyeVolumeMeta(EyeMeta):
         Returns:
 
         """
-        data["bscan_meta"] = [EyeBscanMeta(**d) for d in data["bscan_meta"]]
-        for key in ["visit_date", "exam_time"]:
+        data['bscan_meta'] = [EyeBscanMeta(**d) for d in data['bscan_meta']]
+        for key in ['visit_date', 'exam_time']:
             if key in data.keys() and data[key] is not None:
                 data[key] = datetime.datetime.fromisoformat(data[key])
         return cls(**data)

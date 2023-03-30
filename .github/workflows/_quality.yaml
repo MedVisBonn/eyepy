@@ -1,14 +1,26 @@
-name: Test
+name: Quality
 
-on: workflow_call
+on:
+  workflow_call:
+  pull_request:
+    branches: [ master ]
 
 jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+      - uses: pre-commit/action@v3.0.0
+      - uses: pre-commit-ci/lite-action@v1.0.0
+        if: always()
+
   test:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
-        python-version: [ "3.8" ]#, "3.9", "3.10"]
+        python-version: [ "3.8" , "3.9", "3.10"]
 
     steps:
       - uses: actions/checkout@v2

@@ -4,7 +4,7 @@ import pytest
 import eyepy as ep
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope='module')
 def eyevolume():
     n_bscans = 10
     bscan_height = 50

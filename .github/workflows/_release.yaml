@@ -1,4 +1,4 @@
-name: Semantic release
+name: Semantic Release
 
 on:
   workflow_call:
@@ -9,14 +9,12 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    concurrency: release
+
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: "3.x"
 
       - name: Python Semantic Release
         uses: relekang/python-semantic-release@master
