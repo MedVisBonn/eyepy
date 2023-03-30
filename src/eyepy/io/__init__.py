@@ -22,7 +22,7 @@ logger = logging.getLogger('eyepy.io')
 
 
 def import_topcon_fda(path: Union[str, Path]) -> EyeVolume:
-    """ Read a Topcon fda file
+    """Read a Topcon fda file.
 
     This function is a wrapper around the FDA reader in OCT-Converter.
 
@@ -44,7 +44,7 @@ def import_topcon_fda(path: Union[str, Path]) -> EyeVolume:
         segmentation = oct_volume.contours
         metadata = oct_volume.metadata
     except:
-        logger.warn("Regular B-scan read failed. Using alternative.")
+        logger.warn('Regular B-scan read failed. Using alternative.')
         oct_volume = reader.read_oct_volume_2()
         segmentation = reader.read_segmentation()
         metadata = reader.read_all_metadata()
@@ -80,16 +80,16 @@ def import_topcon_fda(path: Union[str, Path]) -> EyeVolume:
         z = z_0 + i * scale_z
         bscan_meta.append(EyeBscanMeta(start_pos=(x_0, z),
                                        end_pos=(x_1, z),
-                                       pos_unit="mm"))
+                                       pos_unit='mm'))
 
     volume_meta = EyeVolumeMeta(scale_x=scale_x, scale_y=scale_y,
         scale_z=scale_z, scale_unit='mm', bscan_meta=bscan_meta)
 
     localizer_meta = EyeEnfaceMeta(scale_x=scale_x_fun,
                                    scale_y=scale_z_fun,
-                                   scale_unit="mm",
-                                   modality="CFP",
-                                   laterality="unknown")
+                                   scale_unit='mm',
+                                   modality='CFP',
+                                   laterality='unknown')
 
     # build image ojects
     localizer = EyeEnface(localizer_image, localizer_meta)
