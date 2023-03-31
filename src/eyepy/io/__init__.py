@@ -78,12 +78,14 @@ def import_topcon_fda(path: Union[str, Path]) -> EyeVolume:
     bscan_meta = []
     for i in range(n_bscan):
         z = z_0 + i * scale_z
-        bscan_meta.append(EyeBscanMeta(start_pos=(x_0, z),
-                                       end_pos=(x_1, z),
-                                       pos_unit='mm'))
+        bscan_meta.append(
+            EyeBscanMeta(start_pos=(x_0, z), end_pos=(x_1, z), pos_unit='mm'))
 
-    volume_meta = EyeVolumeMeta(scale_x=scale_x, scale_y=scale_y,
-        scale_z=scale_z, scale_unit='mm', bscan_meta=bscan_meta)
+    volume_meta = EyeVolumeMeta(scale_x=scale_x,
+                                scale_y=scale_y,
+                                scale_z=scale_z,
+                                scale_unit='mm',
+                                bscan_meta=bscan_meta)
 
     localizer_meta = EyeEnfaceMeta(scale_x=scale_x_fun,
                                    scale_y=scale_z_fun,
@@ -94,11 +96,13 @@ def import_topcon_fda(path: Union[str, Path]) -> EyeVolume:
     # build image ojects
     localizer = EyeEnface(localizer_image, localizer_meta)
     dims = (n_bscan, n_axial, n_ascan)
-    transformation = _compute_localizer_oct_transform(
-                volume_meta, localizer.meta, dims)
+    transformation = _compute_localizer_oct_transform(volume_meta,
+                                                      localizer.meta, dims)
 
-    ev = EyeVolume(data=np.stack(bscan), meta=volume_meta,
-        localizer=localizer, transformation=transformation)
+    ev = EyeVolume(data=np.stack(bscan),
+                   meta=volume_meta,
+                   localizer=localizer,
+                   transformation=transformation)
 
     if segmentation:
         for name, i in segmentation.items():
@@ -235,7 +239,7 @@ def import_duke_mat(path: Union[str, Path]) -> EyeVolume:
         scale_z=0.067,
         scale_unit='mm',
         bscan_meta=bscan_meta,
-        age=loaded['Age'],
+        age=loaded['Age'][0][0],
     )
 
     volume = EyeVolume(data=volume, meta=meta)
