@@ -16,7 +16,6 @@ from eyepy.core.eyemeta import EyeVolumeMeta
 from eyepy.core.eyevolume import EyeVolume
 from eyepy.io.utils import _compute_localizer_oct_transform
 from eyepy.io.utils import _get_date_from_xml
-from eyepy.io.utils import _get_datetime_from_xml
 from eyepy.io.utils import _get_first_as_float
 from eyepy.io.utils import _get_first_as_int
 from eyepy.io.utils import _get_first_as_str

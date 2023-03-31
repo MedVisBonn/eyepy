@@ -608,7 +608,7 @@ class E2ESeriesStructure(E2EStructureMixin):
                 scale_z=1,  #get_bscan_spacing(bscan_meta) if
                 #(bscan_meta[0]["scan_pattern"] not in [1, 2]) else 0.03,
                 scale_unit='px',
-                laterality=self.laterality,
+                laterality=self.laterality(),
                 visit_date=None,
                 exam_time=None,
                 bscan_meta=bscan_meta,

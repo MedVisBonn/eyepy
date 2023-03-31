@@ -92,12 +92,13 @@ class DateTimeAdapter(cs.Adapter):
                                     minute=0)
 
     def _decode(self, obj: bytes, context, path):
-        return self.start_epoch + datetime.timedelta(
-            seconds=cs.Int64ul.parse(obj) * 1e-7)
+        return (self.start_epoch + datetime.timedelta(
+            seconds=cs.Int64ul.parse(obj) * 1e-7)).isoformat()
 
-    def _encode(self, obj: datetime.datetime, context, path):
+    def _encode(self, obj: str, context, path):
         return cs.Int64ul.build(
-            int((obj - self.start_epoch).total_seconds() * 1e7))
+            int((datetime.datetime.fromisoformat(obj) -
+                 self.start_epoch).total_seconds() * 1e7))
 
 
 LocalizerNIR = LocalizerNIRAdapter(cs.Bytes(cs.this.n_values))

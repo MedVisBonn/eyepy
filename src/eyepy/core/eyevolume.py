@@ -26,8 +26,6 @@ from eyepy.core.eyeenface import EyeEnface
 from eyepy.core.eyemeta import EyeBscanMeta
 from eyepy.core.eyemeta import EyeEnfaceMeta
 from eyepy.core.eyemeta import EyeVolumeMeta
-from eyepy.core.plotting import plot_scalebar
-from eyepy.core.plotting import plot_watermark
 from eyepy.core.utils import intensity_transforms
 
 logger = logging.getLogger('eyepy.core.eyevolume')

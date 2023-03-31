@@ -26,9 +26,6 @@ class EyeMeta(MutableMapping):
 
         """
         data = self._store.copy()
-        for key in ['visit_date', 'exam_time']:
-            if key in data.keys() and data[key] is not None:
-                data[key] = data[key].isoformat()
         return data
 
     def __getitem__(self, key: str) -> Any:
@@ -47,7 +44,8 @@ class EyeMeta(MutableMapping):
         return len(self._store)
 
     def __str__(self) -> str:
-        return f'{os.linesep}'.join([f'{f}: {self[f]}' for f in self if f != '__empty'])
+        return f'{os.linesep}'.join(
+            [f'{f}: {self[f]}' for f in self if f != '__empty'])
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -56,7 +54,8 @@ class EyeMeta(MutableMapping):
 class EyeEnfaceMeta(EyeMeta):
     """"""
 
-    def __init__(self, scale_x: float, scale_y: float, scale_unit: str, **kwargs) -> None:
+    def __init__(self, scale_x: float, scale_y: float, scale_unit: str,
+                 **kwargs) -> None:
         """A dict with required keys to hold meta data for enface images of the
         eye.
 
@@ -66,9 +65,10 @@ class EyeEnfaceMeta(EyeMeta):
             scale_unit: Unit of the scale. e.g. µm if scale is given in µm/pixel
             **kwargs:
         """
-        super().__init__(
-            scale_x=scale_x, scale_y=scale_y, scale_unit=scale_unit, **kwargs
-        )
+        super().__init__(scale_x=scale_x,
+                         scale_y=scale_y,
+                         scale_unit=scale_unit,
+                         **kwargs)
 
     @classmethod
     def from_dict(cls, data: dict) -> 'EyeEnfaceMeta':
@@ -104,9 +104,12 @@ class EyeBscanMeta(EyeMeta):
             pos_unit: Unit of the positions
             **kwargs:
         """
-        super().__init__(
-            start_pos=start_pos, end_pos=end_pos, pos_unit=pos_unit, **kwargs
-        )
+        start_pos = tuple(start_pos)
+        end_pos = tuple(end_pos)
+        super().__init__(start_pos=start_pos,
+                         end_pos=end_pos,
+                         pos_unit=pos_unit,
+                         **kwargs)
 
 
 class EyeVolumeMeta(EyeMeta):
@@ -161,7 +164,4 @@ class EyeVolumeMeta(EyeMeta):
 
         """
         data['bscan_meta'] = [EyeBscanMeta(**d) for d in data['bscan_meta']]
-        for key in ['visit_date', 'exam_time']:
-            if key in data.keys() and data[key] is not None:
-                data[key] = datetime.datetime.fromisoformat(data[key])
         return cls(**data)

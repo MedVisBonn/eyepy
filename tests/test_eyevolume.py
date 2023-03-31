@@ -141,12 +141,13 @@ def test_delete_voxel_annotation(eyevolume):
     assert 'delete_volume' not in eyevolume[2].area_maps
 
 
+# Saving is not possible when executed by GitHub Actions
 #def test_save_load(eyevolume, tmp_path):
 #    # Save
-#    eyevolume.save(tmp_path / "test.eye")
+#    eyevolume.save(tmp_path / 'test.eye')
 #    # Load
-#    eyevolume2 = ep.EyeVolume.load(tmp_path / "test.eye")
+#    eyevolume2 = ep.EyeVolume.load(tmp_path / 'test.eye')
 #    # Test whether loaded eyevolume is the same as the original
-#    assert len(eyevolume.meta) == len(eyevolume2.meta)
+#    assert eyevolume.meta == eyevolume2.meta
 #    assert len(eyevolume.layers) == len(eyevolume2.layers)
 #    assert len(eyevolume.volume_maps) == len(eyevolume2.volume_maps)

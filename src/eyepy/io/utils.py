@@ -100,7 +100,7 @@ def _get_date_from_xml(elements):
     except IndexError:
         year = month = day = 1
 
-    return datetime(year, month, day).date()
+    return datetime(year, month, day).isoformat()
 
 
 def _compute_localizer_oct_transform(
@@ -137,10 +137,11 @@ def get_date_adapter(construct, epoch, second_frac):
     class DateAdapter(cs.Adapter):
 
         def _decode(self, obj, context, path):
-            return epoch + timedelta(seconds=obj * second_frac)
+            return (epoch + timedelta(seconds=obj * second_frac)).isoformat()
 
         def _encode(self, obj, context, path):
-            return int((obj - epoch).total_seconds() / second_frac)
+            return (datetime.fromisoformat(obj) -
+                    epoch).total_seconds() / second_frac
 
     return DateAdapter(construct)
 
