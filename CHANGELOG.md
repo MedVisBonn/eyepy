@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.11.1 (2023-03-31)
+### Fix
+* **EyeVolumeMeta:** Fixes saving issue by storing all dates as string in isoformat to avoid problems with dumping to json and loading ([`3fc7424`](https://github.com/MedVisBonn/eyepy/commit/3fc742485667b03505fd17d3bf25b8d2f20516de))
+
 ## v0.11.0 (2023-03-30)
 ### Feature
 * **io.__init__.py:** Adds support for topcon fda files ([#12](https://github.com/MedVisBonn/eyepy/issues/12)) ([`53f2908`](https://github.com/MedVisBonn/eyepy/commit/53f2908f95556c2be7a3259bfd5653208188ff71))
