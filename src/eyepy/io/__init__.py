@@ -239,7 +239,7 @@ def import_duke_mat(path: Union[str, Path]) -> EyeVolume:
         scale_z=0.067,
         scale_unit='mm',
         bscan_meta=bscan_meta,
-        age=loaded['Age'][0][0],
+        age=int(loaded['Age'][0][0]),
     )
 
     volume = EyeVolume(data=volume, meta=meta)

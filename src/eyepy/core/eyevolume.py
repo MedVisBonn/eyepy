@@ -141,8 +141,10 @@ class EyeVolume:
                               meta_file)
 
             # Zip and copy to location
-            name = shutil.make_archive(str(tmpdirname / Path(path).stem),
-                                       'zip', tmpdirname)
+            name = shutil.make_archive(str(path),
+                                       'zip',
+                                       root_dir=str(tmpdirname))
+            # Remove zip extension
             shutil.move(name, path)
 
     @classmethod
