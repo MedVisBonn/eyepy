@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.11.2 (2023-04-02)
+### Fix
+* **EyeVolume:** Fix saving, old method sometimes tried to recursively add the archive to the archive ([`e6064cc`](https://github.com/MedVisBonn/eyepy/commit/e6064cc26bb00865a1d9f42fd63ca950239fd55f))
+* **import_duke_mat:** Fixes age parsing from duke data ([`ecbcbc2`](https://github.com/MedVisBonn/eyepy/commit/ecbcbc21349414d12746a9d46353b0494b79ef83))
+
 ## v0.11.1 (2023-03-31)
 ### Fix
 * **EyeVolumeMeta:** Fixes saving issue by storing all dates as string in isoformat to avoid problems with dumping to json and loading ([`3fc7424`](https://github.com/MedVisBonn/eyepy/commit/3fc742485667b03505fd17d3bf25b8d2f20516de))
