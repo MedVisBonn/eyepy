@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.11.3 (2023-04-04)
+### Fix
+* **eyepy.io:** Fixes duke layer heights import ([`eb18f2a`](https://github.com/MedVisBonn/eyepy/commit/eb18f2aa10a7da8ab6f53c49053a80cfab764e68))
+
+### Documentation
+* **README.md;-cookbook.md:** Add examples for importing data from different sources ([`2a71e11`](https://github.com/MedVisBonn/eyepy/commit/2a71e111c75a31dc396ac4464ef627b84dcfa0d5))
+
 ## v0.11.2 (2023-04-02)
 ### Fix
 * **EyeVolume:** Fix saving, old method sometimes tried to recursively add the archive to the archive ([`e6064cc`](https://github.com/MedVisBonn/eyepy/commit/e6064cc26bb00865a1d9f42fd63ca950239fd55f))
