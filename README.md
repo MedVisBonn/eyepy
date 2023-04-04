@@ -14,7 +14,7 @@ The `eyepy` python package provides a simple interface to import and process OCT
 
 ## Features
 
-* Import Data (Heyex-E2E, Heyex-VOL, Heyex-XML, B-Scan collections, [RETOUCH Challenge](https://retouch.grand-challenge.org/), [AMD Dataset from Duke University](https://people.duke.edu/~sf59/RPEDC_Ophth_2013_dataset.htm))
+* Import Data (Heyex-E2E, Heyex-VOL, Heyex-XML, Topcon-FDA, B-Scan collections, [RETOUCH Challenge](https://retouch.grand-challenge.org/), [AMD Dataset from Duke University](https://people.duke.edu/~sf59/RPEDC_Ophth_2013_dataset.htm))
 * Analyze OCT volumes (compute and quantify drusen)
 * Visualize OCT volumes with annotations and quantifications
 * Save and load EyeVolume objects
@@ -24,11 +24,29 @@ The `eyepy` python package provides a simple interface to import and process OCT
 ### Installation
 To install the latest version of eyepy run `pip install -U eyepie`. It is `eyepie` and not `eyepy` for installation with pip.
 
+### Getting Started
 When you don't hava a supported OCT volume at hand you can check out our sample dataset to get familiar with `eyepy`.
+
 ```python
 from eyepy.data import load
-# Import HEYEX XML export
 ev = load("drusen_patient")
+```
+
+If you have data at hand use one of eyepys import functions.
+
+```python
+# Import HEYEX E2E export
+ev = ep.import_heyex_e2e("path/to/file.e2e")
+# Import HEYEX XML export
+ev = ep.import_heyex_xml("path/to/folder")
+# Import HEYEX VOL export
+ev = ep.import_heyex_vol("path/to/file.vol")
+# Import Topcon FDA export
+ev = ep.import_topcon_fda("path/to/file.fda")
+# Import volume from Duke public dataset
+ev = ep.import_duke_mat("path/to/file.mat")
+# Import volume form RETOUCH challenge
+ev = ep.import_retouch("path/to/volume_folder")
 ```
 
 # Related Projects:

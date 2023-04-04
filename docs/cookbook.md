@@ -4,16 +4,22 @@ Here you learn how to use eyepy to perform common tasks.
 
 ## Import OCT data
 
-Currently `eyepy` supports the HEYEX E2E, VOL and XML formats, as well as reading data from several public OCT datasets. All functions return a single `EyeVolume` object representing the data. E2E files may contain several OCT volumes which you can retrieve by setting the parameter `single` to `False`. While you can use Reader objects to parse the data and access specific information, it is recommended to use the provided import functions to get `EyeVolume` object which are a convenient interface to the data that provides a unified interface to data imported from various sources.
+Currently `eyepy` supports the HEYEX E2E, VOL and XML formats, as well as reading data from several public OCT datasets. All functions return a single `EyeVolume` object representing the data. E2E files may contain several OCT volumes. The import function only returns the first OCT volume in the file. If you want to read several volumes from a file use the [HeE2eReader][eyepy.io.he.e2e_reader.HeE2eReader] class. While you can use Reader objects to parse the data and access specific information, it is recommended to use when possible, the provided import functions to get `EyeVolume` object which are a convenient interface to the data that provides a unified interface to data imported from various sources.
 
 ```python
 import eyepy as ep
 # Import HEYEX E2E export
-ev = ep.import_heyex_e2e("path/to/file.e2e", single=True)
+ev = ep.import_heyex_e2e("path/to/file.e2e")
 # Import HEYEX XML export
 ev = ep.import_heyex_xml("path/to/folder")
 # Import HEYEX VOL export
 ev = ep.import_heyex_vol("path/to/file.vol")
+# Import Topcon FDA export
+ev = ep.import_topcon_fda("path/to/file.fda")
+# Import volume from Duke public dataset
+ev = ep.import_duke_mat("path/to/file.mat")
+# Import volume form RETOUCH challenge
+ev = ep.import_retouch("path/to/volume_folder")
 ```
 
 !!! Warning "Missing scale information"
