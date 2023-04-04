@@ -246,7 +246,7 @@ def import_duke_mat(path: Union[str, Path]) -> EyeVolume:
     names = {0: 'ILM', 1: 'IBRPE', 2: 'BM'}
     for i, height_map in enumerate(layer_maps):
         volume.add_layer_annotation(
-            np.flip(height_map, axis=0),
+            height_map,
             name=names[i],
         )
 
