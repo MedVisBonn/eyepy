@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.12.0 (2023-05-31)
+### Breaking
+
+*  ([`8d07a17`](https://github.com/MedVisBonn/eyepy/commit/8d07a176aae030e5dd343f4c125f18b8395d7cc4))
+
 ## v0.11.3 (2023-04-04)
 ### Fix
 * **eyepy.io:** Fixes duke layer heights import ([`eb18f2a`](https://github.com/MedVisBonn/eyepy/commit/eb18f2aa10a7da8ab6f53c49053a80cfab764e68))
