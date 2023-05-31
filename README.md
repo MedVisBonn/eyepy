@@ -22,7 +22,9 @@ The `eyepy` python package provides a simple interface to import and process OCT
 ## Getting Started
 
 ### Installation
-To install the latest version of eyepy run `pip install -U eyepie`. It is `eyepie` and not `eyepy` for installation with pip.
+**Attention:** If you want to use a version prior to 0.12.0 you have to install from the `eyepie` name instead. This is because we used `eyepie` as a package name on PyPI until the previous owner of the `eyepy` name on PyPI was so kind to transfer it to us.
+
+To install the latest version of eyepy run `pip install -U eyepy`. (It is `eyepie` for versions < 0.12.0)
 
 ### Getting Started
 When you don't hava a supported OCT volume at hand you can check out our sample dataset to get familiar with `eyepy`.

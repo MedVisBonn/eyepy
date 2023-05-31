@@ -32,7 +32,7 @@ repos:
     - id: upgrade-type-hints
       args: [--futures=true]
 - repo: https://github.com/PyCQA/docformatter
-  rev: v1.6.0-rc2
+  rev: v1.7.1
   hooks:
     - id: docformatter
       additional_dependencies: [tomli]

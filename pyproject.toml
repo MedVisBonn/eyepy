@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "eyepie"
+name = "eyepy"
 packages = [
     {include = "eyepy", from = "src"},
 ]
