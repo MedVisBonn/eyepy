@@ -57,11 +57,11 @@ bscan_format = cs.Struct(
     '__empty' / cs.Padding(168) * 'Spare bytes for future use.',
     # cs.Probe(cs.this.bscan_hdr.sizeof(cs.this)),
     'layer_segmentations' / Segmentations *
-    'Layer segmentations for 17 Layers. If layers are not segmented the data is empty',
-    '__empty' /
-    cs.Padding(cs.this.bscan_hdr_size - 256 - 17 * 4 * cs.this._.size_x) *
+    'Layer segmentations for num_seg Layers. If layers are not segmented the data is empty',
+    '__empty' / cs.Padding(cs.this.bscan_hdr_size - 256 -
+                           cs.this.num_seg * 4 * cs.this._.size_x) *
     "B-scan data starts after 'bscan_hdr_size' bytes from the start of the"
-    'B-scan. This header contains 256 bytes for general information, then 17 '
+    'B-scan. This header contains 256 bytes for general information, then "num_seg" '
     'layer segmentations each composed size_x * 4 bytes. Then we have padding'
     'to fill the bscan_hdr_size.',
     'data' / Bscan * 'B-scan data',
@@ -200,14 +200,27 @@ class HeVolReader:
 
         layer_height_maps = self.layers
         for name, i in SEG_MAPPING.items():
+            if i >= layer_height_maps.shape[0]:
+                logger.warning(
+                    'The volume contains less layers than expected. The naming might not be correct.'
+                )
+                break
             volume.add_layer_annotation(layer_height_maps[i], name=name)
 
         return volume
 
     @property
     def layers(self):
-        layers = np.stack(
-            [b.layer_segmentations for b in self.parsed_file.bscans], axis=0)
+        la = [b.layer_segmentations for b in self.parsed_file.bscans]
+        n_layers = np.unique([len(l) for l in la])
+        if len(n_layers) > 1:
+            max_layers = np.max(n_layers)
+            la = [
+                np.pad(l, ((0, max_layers - len(l)), (0, 0)),
+                       'constant',
+                       constant_values=np.nan) for l in la
+            ]
+        layers = np.stack(la, axis=0)
         layers[layers >= 3.0e+38] = np.nan
         # Currently the shape is (n_bscans, n_layers, width). Swap the first two axes
         # to get (n_layers, n_bscans, width)
@@ -302,7 +315,8 @@ class HeVolWriter:
                  grid_type1=0,
                  grid_offset1=0,
                  prog_id='unknown',
-                 localizer=skimage.util.img_as_ubyte(self.volume.localizer.data),
+                 localizer=skimage.util.img_as_ubyte(
+                     self.volume.localizer.data),
                  bscans=self._bscan_dicts))
 
     @property

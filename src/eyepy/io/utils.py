@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def _get_meta_attr(meta_attr):
+
     def prop_func(self):
         return getattr(self.meta, meta_attr)
 
@@ -134,6 +135,7 @@ def _compute_localizer_oct_transform(
 
 
 def get_date_adapter(construct, epoch, second_frac):
+
     class DateAdapter(cs.Adapter):
 
         def _decode(self, obj, context, path):
@@ -173,7 +175,7 @@ class SegmentationsAdapter(cs.Adapter):
     def _decode(self, obj, context, path):
         return np.ndarray(buffer=obj,
                           dtype='float32',
-                          shape=(17, context._.size_x))
+                          shape=(context.num_seg, context._.size_x))
 
     def _encode(self, obj, context, path):
         return obj.tobytes()
@@ -182,7 +184,8 @@ class SegmentationsAdapter(cs.Adapter):
 IntDate = get_date_adapter(cs.Int64ul, datetime(1601, 1, 1), 1e-7)
 FloatDate = get_date_adapter(cs.Float64l, datetime(1899, 12, 30), 60 * 60 * 24)
 Localizer = LocalizerAdapter(cs.Bytes(cs.this.size_x_slo * cs.this.size_y_slo))
-Segmentations = SegmentationsAdapter(cs.Bytes(17 * cs.this._.size_x * 4))
+Segmentations = SegmentationsAdapter(
+    cs.Bytes(cs.this.num_seg * cs.this._.size_x * 4))
 Bscan = BscanAdapter(cs.Bytes(cs.this._.size_y * cs.this._.size_x * 4))
 
 

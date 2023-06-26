@@ -253,6 +253,87 @@ def import_duke_mat(path: Union[str, Path]) -> EyeVolume:
     return volume
 
 
+def import_dukechiu2_mat(path: Union[str, Path]) -> EyeVolume:
+    """Import an OCT volume from the Duke dataset (Chiu_BOE_2014).
+
+    The dataset is available at https://people.duke.edu/~sf59/Chiu_BOE_2014_dataset.htm
+    OCT volumes are stored as .mat files which are parsed by this function and returned as
+    EyeVolume object.
+
+    Args:
+        path: Path to the .mat file
+
+    Returns:
+        Parsed data as EyeVolume object
+    """
+    import scipy.io as sio
+
+    loaded = sio.loadmat(path)
+    volume = np.moveaxis(loaded['images'], -1, 0)
+
+    layer_versions = [
+        'manualLayers1', 'manualLayers2', 'automaticLayersDME',
+        'automaticLayersNormal'
+    ]
+    fluid_versions = ['manualFluid1', 'manualFluid2', 'automaticFluidDME']
+    all_layer_maps = {
+        x: np.moveaxis(loaded[x], -1, 1).astype(np.float32)
+        for x in layer_versions
+    }
+    # Manual annotations are instances of fluid regions, we convert to binary here
+    all_pixel_maps = {
+        x: (np.moveaxis(loaded[x], -1, 0) > 0).astype(bool)
+        for x in fluid_versions
+    }
+
+    bscan_meta = [
+        EyeBscanMeta(
+            start_pos=(0, 0.123 * i),
+            end_pos=(0.01133 * (volume.shape[2] - 1), 0.123 * i),
+            pos_unit='mm',
+        ) for i in range(volume.shape[0] - 1, -1, -1)
+    ]
+    meta = EyeVolumeMeta(
+        scale_x=
+        0.01133,  # This value is the average of min and max values given in the paper.
+        scale_y=0.00387,
+        scale_z=
+        0.123,  # This value is the average of min and max values given in the paper.
+        scale_unit='mm',
+        bscan_meta=bscan_meta,
+    )
+
+    volume = EyeVolume(data=volume, meta=meta)
+    names = {
+        7: 'BM',
+        6: 'OS/RPE',
+        5: 'ISM/ISE',
+        4: 'OPL/ONL',
+        3: 'INL/OPL',
+        2: 'IPL/INL',
+        1: 'NFL/GCL',
+        0: 'ILM'
+    }
+
+    for layer_version in layer_versions:
+        layer_maps = all_layer_maps[layer_version]
+        for i, height_map in enumerate(layer_maps):
+            volume.add_layer_annotation(
+                height_map,
+                name=f'{layer_version}_{names[i]}',
+            )
+
+    for fluid_version in fluid_versions:
+        pixel_map = all_pixel_maps[fluid_version]
+        for i, height_map in enumerate(pixel_map):
+            volume.add_pixel_annotation(
+                pixel_map,
+                name=fluid_version,
+            )
+
+    return volume
+
+
 def import_retouch(path: Union[str, Path]) -> EyeVolume:
     """Import an OCT volume from the Retouch dataset.
 
