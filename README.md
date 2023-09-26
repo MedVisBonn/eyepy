@@ -6,7 +6,7 @@ Use Python to import, analyse and visualize retinal imaging data.
 ![header_gif](https://user-images.githubusercontent.com/5720058/228815448-4b561246-dac9-4f8f-abde-e0dd5457a72b.gif)
 
 [![Documentation](https://img.shields.io/badge/docs-eyepy-blue)](https://MedVisBonn.github.io/eyepy)
-[![PyPI version](https://badge.fury.io/py/eyepie.svg)](https://badge.fury.io/py/eyepie)
+[![PyPI version](https://badge.fury.io/py/eyepy.svg)](https://badge.fury.io/py/eyepy)
 [![DOI](https://zenodo.org/badge/292547201.svg)](https://zenodo.org/badge/latestdoi/292547201)
 
 
@@ -53,6 +53,7 @@ ev = ep.import_retouch("path/to/volume_folder")
 
 # Related Projects:
 
++ [eyeseg](https://github.com/MedVisBonn/eyeseg): A python package for segmentation of retinal layers and drusen in OCT data.
 + [OCT-Converter](https://github.com/marksgraham/OCT-Converter): Extract raw optical coherence tomography (OCT) and fundus data from proprietary file formats. (.fds/.fda/.e2e/.img/.oct/.dcm)
 + [eyelab](https://github.com/MedVisBonn/eyelab): A GUI for annotation of OCT data based on eyepy
 + Projects by the [Translational Neuroimaging Laboratory](https://github.com/neurodial)

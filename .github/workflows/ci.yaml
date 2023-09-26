@@ -15,8 +15,6 @@ jobs:
   Release:
     needs: Quality
     uses: MedVisBonn/eyepy/.github/workflows/_release.yaml@master
-    secrets:
-      PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
 
   Documentation:
     needs: Release
