@@ -26,6 +26,10 @@ class EyeMeta(MutableMapping):
 
         """
         data = self._store.copy()
+
+        for key in data:
+            if isinstance(data[key], datetime.datetime):
+                data[key] = data[key].isoformat()
         return data
 
     def __getitem__(self, key: str) -> Any:
