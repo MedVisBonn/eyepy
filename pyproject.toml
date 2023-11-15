@@ -14,7 +14,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
     "Topic :: Scientific/Engineering :: Visualization",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
     "License :: OSI Approved :: MIT License",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
@@ -25,10 +25,10 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.12"
+python = ">=3.9,<3.12"
 numpy = ">=1.22.0"
 pandas = "^1.5.3"
-scikit-image = "0.20.0"
+scikit-image = ">=0.22.0"
 imagecodecs = "^2023.1.23"
 matplotlib = "^3.5.1"
 nptyping = "^2.3.1"
