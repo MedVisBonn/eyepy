@@ -64,11 +64,10 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.semantic_release]
 major_on_zero = false
-version_variable = ["src/eyepy/__init__.py:__version__"]
+version_variables = ["src/eyepy/__init__.py:__version__"]
 version_toml = ["pyproject.toml:tool.poetry.version"]
-version_pattern = ["CITATION.cff:v(\\d+\\.\\d+\\.\\d+)"]
 upload_to_pypi = true
-upload_to_release = true
+upload_to_vsc_release = true
 build_command = "pip install poetry && poetry build"
 
 [tool.docformatter]
