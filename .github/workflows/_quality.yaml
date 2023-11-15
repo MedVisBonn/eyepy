@@ -32,16 +32,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Cache Poetry
-        uses: actions/cache@v3
-        id: poetry-cache
-        with:
-          path: |
-            ~/.local
-          key: poetry-1.6.1
-          restore-keys: |
-            poetry-1.6.1
-
       - name: Cache virtualenv
         uses: actions/cache@v3
         id: virtualenv-cache
@@ -53,7 +43,6 @@ jobs:
             virtualenv-Python${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Install and configure Poetry
-        if: steps.poetry-cache.outputs.cache-hit != 'true'
         uses: snok/install-poetry@v1
         with:
           version: 1.6.1
