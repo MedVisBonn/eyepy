@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from numpy import typing as npt
 import numpy as np
 from skimage import transform
-from skimage.transform._geometric import GeometricTransform
+from skimage.transform._geometric import _GeometricTransform
 
 from eyepy import config
 from eyepy.core.annotations import EyeVolumeLayerAnnotation
@@ -39,7 +39,7 @@ class EyeVolume:
         data: npt.NDArray[np.float32],
         meta: Optional[EyeVolumeMeta] = None,
         localizer: Optional[EyeEnface] = None,
-        transformation: Optional[GeometricTransform] = None,
+        transformation: Optional[_GeometricTransform] = None,
     ) -> None:
         """
 

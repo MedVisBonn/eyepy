@@ -12,7 +12,7 @@ from typing import Optional, Union
 import construct as cs
 import numpy as np
 from skimage import transform
-from skimage.transform._geometric import GeometricTransform
+from skimage.transform._geometric import _GeometricTransform
 
 from eyepy.core.eyemeta import EyeBscanMeta
 
