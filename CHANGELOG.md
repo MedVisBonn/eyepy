@@ -2,6 +2,31 @@
 
 
 
+## v0.12.2 (2023-11-15)
+
+### Build
+
+* build(_quality.yaml): removes caching of poetry ([`a7c20e1`](https://github.com/MedVisBonn/eyepy/commit/a7c20e14c46b1c17ec4b6a644d897852903c21f6))
+
+* build(eyepy): updates versions ([`23fec54`](https://github.com/MedVisBonn/eyepy/commit/23fec5472f5e0dbfd5e9699660acdc2c2e80d9df))
+
+* build(eyepy): removes python 3.8 from testing matrix ([`b2bcf7b`](https://github.com/MedVisBonn/eyepy/commit/b2bcf7bd85814b08affbd5964fed26f43d0b03eb))
+
+* build(eyepy): upgrades dependencies ([`e66fd8b`](https://github.com/MedVisBonn/eyepy/commit/e66fd8b6fa96f4bfc22881a04e8b6c323f350e35))
+
+### Fix
+
+* fix(_release.yaml): corrects python-semantic-release version ([`f7171ba`](https://github.com/MedVisBonn/eyepy/commit/f7171bac689273660c8535b7498613f6c7a1afe8))
+
+* fix(eyemeta.py): convert dates to string for saving as json ([`5d715cd`](https://github.com/MedVisBonn/eyepy/commit/5d715cd4295acb3a1c291f815e958cb3fc2a30e1))
+
+### Refactor
+
+* refactor(eyevolume.py): changes skimage import of GeometricTransform ([`31ce767`](https://github.com/MedVisBonn/eyepy/commit/31ce76776920ce7c91efc4f227b0e582d4f09cb9))
+
+* refactor(EyeVolume): rename method from remove_pixel_annotations to remove_pixel_annotation ([`6727a60`](https://github.com/MedVisBonn/eyepy/commit/6727a60aed792e8f3fd36978a5279789e52b0bc6))
+
+
 ## v0.12.1 (2023-09-26)
 
 ### Ci
