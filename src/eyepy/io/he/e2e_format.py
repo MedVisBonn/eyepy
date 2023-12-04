@@ -195,7 +195,7 @@ class Type10004(DataclassMixin, TypeMixin):
         doc=
         'Quality according to LibE2E<br>**Does not match the quality value in the XML export which is an integer compared to a float here with value 0.84 for a complete volume. Maybe this is the focus length, at least it is similar to the value given in the XML (0.87)**'
     )
-    scale_x: float = csfield(cs.Float32l, doc='Scale of Bscan x-axis (width)')
+    unknown5: float = csfield(cs.Float32l)
 
 
 type10004_format = DataclassStruct(Type10004)
