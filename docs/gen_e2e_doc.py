@@ -153,9 +153,9 @@ for t in file_structures:
             offset = offset + size if (type(size) == int
                                        and type(offset) == int) else 'variable'
 
-with mkdocs_gen_files.open('formats/he_e2e_structures/SUMMARY.md',
-                           'w') as nav_file:
-    nav_file.writelines(nav.build_literate_nav())
+#with mkdocs_gen_files.open('formats/he_e2e_structures/SUMMARY.md',
+#                           'w') as nav_file:
+#    nav_file.writelines(nav.build_literate_nav())
 
 
 # Generate Documentation of E2E Hierarchy layers (E2EFile, E2EPatient, E2EStudy, E2ESeries, E2ESlice)
@@ -186,7 +186,7 @@ for layer, types in e2e_reader.type_occurence.items():
                 description = ''
 
             print(
-                f'|[{t} :material-link:](/formats/he_e2e_types/Type{t})|{content}|{size}|{description}|',
+                f'|[{t} :material-link:](../../../formats/he_e2e_types/Type{t}/)|{content}|{size}|{description}|',
                 file=fd)
 
 with mkdocs_gen_files.open('formats/he_e2e_hierarchy/SUMMARY.md',

@@ -130,6 +130,7 @@ def define_env(env):
                     description = ''
 
                 text += f'|[{t} :material-link:](/formats/he_e2e_types/Type{t})|{content}|{size}|{description}|\n'
+                #text += f'|[{t} :material-link:](../formats/he_e2e_types/Type{t}/popel/)|{content}|{size}|{description}|\n'
 
             return text
         raise ValueError(f'Level {level_name} not found in E2E hierarchy.')

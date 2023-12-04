@@ -69,7 +69,7 @@ First you might want to get an overview about the data stored in the hierarchy. 
 from eyepy.io import HeE2eReader
 
 with HeE2eReader("filename.E2E") as e2e_reader:
-    print(e2e_reader.inspect(iterative=True)) # (1)
+    print(e2e_reader.inspect(recursive=True)) # (1)
 ```
 
 1.  This method is basically an extended version of `print(HeE2eReader("filename.E2E"))` that adds for every level of the hierarchy a table with information about the containded data.
@@ -90,7 +90,7 @@ classDiagram
     E2EStructureMixin <|-- E2ESliceStructure
 
     class E2EStructureMixin{
-      - inspect(interative, ind_prefix, tables)
+      - inspect(recursive, ind_prefix, tables)
       - get_folder_data(folder_type, offset, data_construct)
     }
 
