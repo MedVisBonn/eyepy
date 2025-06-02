@@ -608,6 +608,14 @@ class EyeVolumeSlabAnnotation:
         
         return np.round(q75 + factor * iqr)
 
+    def apply_contrast(self, enface: np.ndarray, contrast: float) -> np.ndarray:
+        """Apply contrast to the enface projection."""
+        if contrast <= 0:
+            logger.warning(f"Invalid contrast value: {contrast}. Using default contrast of 4.")
+            contrast = 4
+        
+        return np.clip(enface / contrast, 0, 1.0)
+
     def plot(
         self,
         ax: Optional[plt.Axes] = None,
@@ -655,7 +663,7 @@ class EyeVolumeSlabAnnotation:
         else:
             contrast = int(contrast)
 
-        enface_crop = np.clip(enface_projection[region] / contrast, 0, 1.0)
+        enface_crop = self.apply_contrast(enface_projection[region], contrast)
 
         ax = plt.gca() if ax is None else ax
     

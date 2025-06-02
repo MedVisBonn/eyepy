@@ -297,7 +297,7 @@ class HeVolReader:
             exam_time=self.parsed_file.exam_time,
             bscan_meta=bscan_meta,
             intensity_transform=self.intensity_transform,
-            par_algorithm='default',
+            par_algorithm='sum',
         )
 
 
