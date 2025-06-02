@@ -4,6 +4,7 @@ from collections import defaultdict
 
 # Line Style for Layers in B-Scan
 layer_kwargs = {'linewidth': 1, 'linestyle': '-'}
+slab_kwargs = {'alpha': 0.5}
 area_kwargs = {'alpha': 0.5}
 ascan_kwargs = {'alpha': 0.5}
 
@@ -30,3 +31,17 @@ _layer_colors = {
 }
 
 layer_colors = defaultdict(lambda: 'FF0000', **_layer_colors)
+
+# Colors for different Slabs
+_slab_colors = {
+    'NFLVP': '00598C',
+    'SVP': '0057E5',
+    'ICP': '41B6E6',
+    'DCP': '3EA908',
+    'SVC': 'F0CC2E',
+    'DVC': 'EC894D',
+    'AVAC': 'E50000',
+    'RET': 'E641B6',
+}
+
+slab_colors = defaultdict(lambda: 'FBB2C4', **_slab_colors)

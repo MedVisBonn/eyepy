@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
+import scipy.ndimage as ndi
 from skimage.util import img_as_float32
 from skimage.util import img_as_ubyte
 
@@ -24,6 +25,26 @@ class DynamicDefaultDict(dict):
     def __missing__(self, key):
         self[key] = self.factory(key)
         return self[key]
+
+
+def angio_intensity_transform(data: NDArrayFloat) -> NDArrayInt:
+    """Wrapper around from_angio_intensity.
+
+    Transform intensities from Heyex ANGIO exports to achieve a constrast similar to the one used in Heyex.
+
+    Args:
+        data: Input data
+    
+    Returns:
+        Transformed data
+    """
+    return from_angio_intensity(data)
+
+
+def from_angio_intensity(data: NDArrayFloat) -> NDArrayInt:
+    # Zero anything that is not in the range [0, 1]
+    data[np.isnan(data)] = 0
+    return np.where((data < 0) | (data > 1), 0, data)
 
 
 def vol_intensity_transform(data: NDArrayFloat) -> NDArrayInt:
@@ -78,6 +99,32 @@ def default_intensity_transform(data: np.ndarray) -> np.ndarray:
 intensity_transforms = {
     'default': default_intensity_transform,
     'vol': vol_intensity_transform,
+    'angio': angio_intensity_transform,
+}
+
+
+def sum_par_algorithm(data: np.ndarray) -> np.ndarray:
+    data[np.isnan(data)] = 0
+    data = np.where((data < 0) | (data > 1), 0, data)
+    
+    csum = np.cumsum(data[:,::-1,:], axis=1)[:, ::-1, :]
+    max_val = np.nanmax(csum, axis=1, keepdims=True)
+    csum = np.divide(csum, max_val, out=np.zeros_like(csum), where=max_val != 0)
+    
+    par_data = data * csum
+    max_val = np.nanmax(par_data, axis=1, keepdims=True)
+    par_data = np.divide(par_data, max_val, out=np.zeros_like(par_data), where=max_val != 0)
+    return par_data
+
+
+def default_par_algorithm(data: np.ndarray) -> np.ndarray:
+    """Default Projection Artifact Removal (PAR) algorithm."""
+    return data
+
+
+par_algorithms = {
+    'default': default_par_algorithm, 
+    'sum': sum_par_algorithm
 }
 
 

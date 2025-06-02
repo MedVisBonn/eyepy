@@ -165,6 +165,21 @@ def import_heyex_vol(path: Union[str, Path]) -> EyeVolume:
     return HeVolReader(path).volume
 
 
+def import_heyex_angio_vol(path: Union[str, Path]) -> EyeVolume:
+    """Read a Heyex Angio VOL file.
+
+    This function is a thin wrapper around the HeVolReader class
+    which you can use directly if you need more control.
+
+    Args:
+        path: Path to the Angio VOL file
+
+    Returns:
+        Parsed data as EyeVolume object
+    """
+    return HeVolReader(path, type='octa').volume
+
+
 def import_bscan_folder(path: Union[str, Path]) -> EyeVolume:
     """Read B-Scans from a folder.
 

@@ -9,6 +9,7 @@ import numpy as np
 
 from eyepy import config
 from eyepy.core.annotations import EyeBscanLayerAnnotation
+from eyepy.core.annotations import EyeBscanSlabAnnotation
 from eyepy.core.eyemeta import EyeBscanMeta
 from eyepy.core.plotting import plot_scalebar
 from eyepy.core.plotting import plot_watermark
@@ -16,7 +17,8 @@ from eyepy.core.utils import DynamicDefaultDict
 
 if TYPE_CHECKING:
     from eyepy import EyeVolume
-
+    
+    
 
 class EyeBscan:
     """"""
@@ -36,6 +38,8 @@ class EyeBscan:
             self.volume.layers[x], self.index))
         self.area_maps = DynamicDefaultDict(
             lambda x: self.volume.volume_maps[x].data[self.index])
+        self.slabs = DynamicDefaultDict(lambda x: EyeBscanSlabAnnotation(
+            self.volume.slabs[x], self.index))
 
     @property
     def meta(self) -> EyeBscanMeta:
@@ -79,9 +83,11 @@ class EyeBscan:
         ax: Optional[plt.Axes] = None,
         layers: Union[bool, list[str]] = False,
         areas: Union[bool, list[str]] = False,
+        slabs: Union[bool, list[str]] = False,
         #ascans=None,
         layer_kwargs: Optional[dict] = None,
         area_kwargs: Optional[dict] = None,
+        slab_kwargs: Optional[dict] = None,
         #ascan_kwargs=None,
         annotations_only: bool = False,
         region: tuple[slice, slice] = np.s_[:, :],
@@ -97,10 +103,12 @@ class EyeBscan:
             ax: Axes to plot on. If not provided plot on the current axes (plt.gca()).
             layers: If `True` plot all layers (default: `False`). If a list of strings is given, plot the layers with the given names.
             areas: If `True` plot all areas (default: `False`). If a list of strings is given, plot the areas with the given names.
+            slabs: If `True` plot all slabs (default: `False`). If a list of strings is given, plot the slabs with the given names.
             annotations_only: If `True` do not plot the B-scan image
             region: Region of the localizer to plot (default: `np.s_[:, :]`)
             layer_kwargs: Optional keyword arguments for customizing the OCT layers. If `None` default values are used which are {"linewidth": 1, "linestyle": "-"}
             area_kwargs: Optional keyword arguments for customizing area annotions on the B-scan If `None` default values are used which are {"alpha": 0.5}
+            slab_kwargs: Optional keyword arguments for customizing slab annotations on the B-scan If `None` default values are used which are {"alpha": 0.5}
             scalebar: Position of the scalebar, one of "topright", "topleft", "botright", "botleft" or `False` (default: "botleft"). If `True` the scalebar is placed in the bottom left corner. You can custumize the scalebar using the `scalebar_kwargs` argument.
             scalebar_kwargs: Optional keyword arguments for customizing the scalebar. Check the documentation of [plot_scalebar][eyepy.core.plotting.plot_scalebar] for more information.
             watermark: If `True` plot a watermark on the image (default: `True`). When removing the watermark, please consider to cite eyepy in your publication.
@@ -126,6 +134,13 @@ class EyeBscan:
             areas = []
         elif areas is True:
             areas = list(self.volume.volume_maps.keys())
+            
+        if not slabs:
+            slabs = []
+        elif slabs is True:
+            slabs = list(self.volume.slabs.keys())
+            # Exclude 'RET' slab from the list of slabs to plot
+            slabs = [s for s in slabs if s != 'RET']
 
         #if ascans is None:
         #    ascans = []
@@ -141,6 +156,11 @@ class EyeBscan:
             area_kwargs = config.area_kwargs
         else:
             area_kwargs = {**config.area_kwargs, **area_kwargs}
+            
+        if slab_kwargs is None:
+            slab_kwargs = config.slab_kwargs
+        else:
+            slab_kwargs = {**config.slab_kwargs, **slab_kwargs}
 
         #if ascan_kwargs is None:
         #    ascan_kwargs = config.area_kwargs
@@ -198,6 +218,28 @@ class EyeBscan:
                 label=layer,
                 **layer_kwargs,
             )
+        if slabs:
+            # Create a composite RGB image
+            composite = np.zeros((*self.data[region].shape[:2], 3))
+            overlap_count = np.zeros(self.data[region].shape[:2])
+            
+            for slab in slabs:
+                color = config.slab_colors[slab]
+                color_rgb = mcolors.to_rgb('#' + color)
+                
+                slab_mask = self.slabs[slab].mask
+                slab_mask = slab_mask[region]
+                
+                # Add to composite where mask is True
+                mask_indices = slab_mask > 0
+                composite[mask_indices, :] += np.array(color_rgb)
+                overlap_count[mask_indices] += 1
+            
+            # Normalize by the actual number of overlapping slabs per pixel
+            valid_pixels = overlap_count > 0
+            composite[valid_pixels, :] /= overlap_count[valid_pixels, np.newaxis]
+            
+            ax.imshow(composite, **slab_kwargs)
 
         # Make sure tick labels match the image region
         y_start = region[0].start if region[0].start is not None else 0

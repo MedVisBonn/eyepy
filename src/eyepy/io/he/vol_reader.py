@@ -9,6 +9,7 @@ import datetime
 import logging
 import warnings
 
+from typing import Literal
 import construct as cs
 import numpy as np
 import skimage
@@ -166,13 +167,32 @@ SEG_MAPPING = {
     'PR1': 14,
     'PR2': 15,
     'RPE': 16,
+    'IPL+': 17,
+    'IPL-': 18,
+}
+
+SLAB_MAPPING = {
+    'NFLVP': ('ILM', 'RNFL'), 
+    'SVP': ('RNFL', 'IPL-'),
+    'ICP': ('IPL-', 'IPL+'),
+    'DCP': ('IPL+', 'OPL'),
+    'SVC': ('ILM', 'IPL-'),
+    'DVC': ('IPL-', 'OPL'),
+    'AVAC': ('OPL', 'BM'), # Avascular Complex
+    'RET': ('ILM', 'BM'), # Retina
+}
+
+TYPE_INTENSITY_MAPPING = {
+    'oct': 'vol',
+    'octa': 'angio',
 }
 
 
 class HeVolReader:
 
-    def __init__(self, path):
+    def __init__(self, path, type: Literal['oct', 'octa'] = 'oct'):
         self.path = path
+        self.intensity_transform = TYPE_INTENSITY_MAPPING.get(type, 'vol')
         with open(self.path, 'rb') as vol_file:
             self.parsed_file = vol_format.parse_stream(vol_file)
 
@@ -206,6 +226,14 @@ class HeVolReader:
                 )
                 break
             volume.add_layer_annotation(layer_height_maps[i], name=name)
+
+        for name, (top, bottom) in SLAB_MAPPING.items():
+            slab_meta = {
+                'name': name,
+                'top_layer': top,
+                'bottom_layer': bottom
+            }
+            volume.add_slab_annotation(meta=slab_meta)
 
         return volume
 
@@ -268,7 +296,8 @@ class HeVolReader:
             visit_date=self.parsed_file.visit_date,
             exam_time=self.parsed_file.exam_time,
             bscan_meta=bscan_meta,
-            intensity_transform='vol',
+            intensity_transform=self.intensity_transform,
+            par_algorithm='default',
         )
 
 

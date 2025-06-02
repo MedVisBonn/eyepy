@@ -21,12 +21,14 @@ from skimage.transform._geometric import _GeometricTransform
 from eyepy import config
 from eyepy.core.annotations import EyeVolumeLayerAnnotation
 from eyepy.core.annotations import EyeVolumePixelAnnotation
+from eyepy.core.annotations import EyeVolumeSlabAnnotation
 from eyepy.core.eyebscan import EyeBscan
 from eyepy.core.eyeenface import EyeEnface
 from eyepy.core.eyemeta import EyeBscanMeta
 from eyepy.core.eyemeta import EyeEnfaceMeta
 from eyepy.core.eyemeta import EyeVolumeMeta
 from eyepy.core.utils import intensity_transforms
+from eyepy.core.utils import par_algorithms
 
 logger = logging.getLogger('eyepy.core.eyevolume')
 
@@ -51,6 +53,7 @@ class EyeVolume:
         """
         self._raw_data = data
         self._data = None
+        self._data_par = None
 
         self._bscans = {}
 
@@ -58,11 +61,15 @@ class EyeVolume:
             self.meta = self._default_meta(self._raw_data)
         else:
             self.meta = meta
-        if not 'intensity_transform' in self.meta:
+        if 'intensity_transform' not in self.meta:
             self.meta['intensity_transform'] = 'default'
+        if 'par_algorithm' not in self.meta:
+            self.meta['par_algorithm'] = 'default'
 
         self.set_intensity_transform(self.meta['intensity_transform'])
+        self.set_par_algorithm(self.meta['par_algorithm'])
 
+        self._slabs = []
         self._layers = []
         self._volume_maps = []
         self._ascan_maps = []
@@ -120,6 +127,13 @@ class EyeVolume:
                 )
                 with open(layers_path / 'meta.json', 'w') as meta_file:
                     json.dump([l.meta for l in self._layers], meta_file)
+                    
+            if not len(self._slabs) == 0:
+                # Save slab annotations
+                slabs_path = tmpdirname / 'annotations' / 'slabs'
+                slabs_path.mkdir(exist_ok=True, parents=True)
+                with open(slabs_path / 'meta.json', 'w') as meta_file:
+                    json.dump([s.meta for s in self._slabs], meta_file)
 
             # Save Localizer
             localizer_path = tmpdirname / 'localizer'
@@ -193,7 +207,15 @@ class EyeVolume:
             else:
                 layer_annotations = []
                 layers_meta = []
-
+                
+            # Load slabs
+            slabs_path = tmpdirname / 'annotations' / 'slabs'
+            if slabs_path.exists():
+                with open(slabs_path / 'meta.json', 'r') as meta_file:
+                    slabs_meta = json.load(meta_file)
+            else:
+                slabs_meta = []
+                
             # Load Localizer and meta
             localizer_path = tmpdirname / 'localizer'
             localizer_data = np.load(localizer_path / 'localizer.npy')
@@ -225,6 +247,9 @@ class EyeVolume:
             )
             for meta, annotation in zip(layers_meta, layer_annotations):
                 ev.add_layer_annotation(annotation, meta)
+                
+            for meta in slabs_meta:
+                ev.add_slab_annotation(meta)
 
             for meta, annotation in zip(voxels_meta, voxel_annotations):
                 ev.add_pixel_annotation(annotation, meta)
@@ -363,6 +388,32 @@ class EyeVolume:
             self.intensity_transform = func
             self._data = None
 
+    def set_par_algorithm(self, func: Union[str, Callable]) -> None:
+        """
+
+        Args:
+            func: Either a string specifying a par algorithm from eyepy.core.utils.par_algorithms or a function
+
+        Returns:
+
+        """
+        if isinstance(func, str):
+            if func in par_algorithms:
+                self.meta['par_algorithm'] = func
+                self.par_algorithm = par_algorithms[func]
+                self._data_par = None
+            elif func == 'custom':
+                logger.warning(
+                    'Custom par algorithms can not be loaded currently')
+            else:
+                logger.warning(
+                    f"Provided par algorithm name {func} is not known. Valid names are 'default'. You can also pass your own function."
+                )
+        elif isinstance(func, Callable):
+            self.meta['par_algorithm'] = 'custom'
+            self.par_algorithm = func
+            self._data_par = None
+    
     @property
     def data(self) -> np.ndarray:
         """
@@ -373,7 +424,18 @@ class EyeVolume:
         if self._data is None:
             self._data = self.intensity_transform(np.copy(self._raw_data))
         return self._data
+    
+    @property
+    def data_par(self) -> np.ndarray:
+        """
 
+        Returns:
+
+        """
+        if self._data_par is None:
+            self._data_par = self.par_algorithm(np.copy(self._raw_data))
+        return self._data_par
+    
     @property
     def shape(self) -> tuple[int, int, int]:
         """
@@ -523,6 +585,16 @@ class EyeVolume:
         return {layer.name: layer for layer in self._layers}
 
     @property
+    def slabs(self) -> dict[str, EyeVolumeSlabAnnotation]:
+        """
+
+        Returns:
+
+        """
+        # Create a dict to access slabs by their name
+        return {slab.name: slab for slab in self._slabs}
+
+    @property
     def volume_maps(self) -> dict[str, EyeVolumePixelAnnotation]:
         """
 
@@ -611,16 +683,55 @@ class EyeVolume:
             if name in bscan.layers:
                 bscan.layers.pop(name)
 
+    def add_slab_annotation(self,
+                            meta: Optional[dict] = None,
+                            **kwargs) -> EyeVolumeSlabAnnotation:
+        """
+
+        Args:
+            meta: Metadata for the slab annotation
+            **kwargs: Additional keyword arguments
+
+        Returns:
+            EyeVolumeSlabAnnotation: The created slab annotation
+        """
+        if meta is None:
+            meta = {}
+        meta.update(**kwargs)
+        slab_annotation = EyeVolumeSlabAnnotation(self, **meta)
+        self._slabs.append(slab_annotation)
+        return slab_annotation
+    
+    def remove_slab_annotation(self, name: str) -> None:
+        """
+
+        Args:
+            name:
+            
+        Returns:
+        
+        """
+        for i, slab in enumerate(self._slabs):
+            if slab.name == name:
+                self._slabs.pop(i)
+
+        # Remove references from B-scans
+        for bscan in self:
+            if name in bscan.slabs:
+                bscan.slabs.pop(name)
+
     def plot(
         self,
         ax: Optional[plt.Axes] = None,
         projections: Union[bool, list[str]] = False,
+        slabs: Union[bool, list[str]] = False,
         bscan_region: bool = False,
         bscan_positions: Union[bool, list[int]] = False,
         quantification: Optional[str] = None,
         region: tuple[slice, slice] = np.s_[:, :],
         annotations_only: bool = False,
         projection_kwargs: Optional[dict] = None,
+        slab_kwargs: Optional[dict] = None,
         line_kwargs: Optional[dict] = None,
         scalebar: Union[bool, str] = 'botleft',
         scalebar_kwargs: Optional[dict] = None,
@@ -633,12 +744,14 @@ class EyeVolume:
         Args:
             ax: Axes to plot on. If not provided plot on the current axes (plt.gca()).
             projections: If `True` plot all projections (default: `False`). If a list of strings is given, plot the projections with the given names. Projections are 2D enface views on oct volume annotations such as drusen.
+            slabs: If `True` plot all slab projections (default: `False`). If a list of strings is given, plot the slabs with the given names. Slab projections are 2D enface views on OCTA volume annotations such as NFLVP or SVP.
             bscan_region: If `True` plot the region B-scans are located in (default: `False`)
             bscan_positions: If `True` plot positions of all B-scan (default: `False`). If a list of integers is given, plot the B-scans with the respective indices. Indexing starts at the bottom of the localizer.
             quantification: Name of the OCT volume annotations to plot a quantification for (default: `None`). Quantifications are performed on circular grids.
             region: Region of the localizer to plot (default: `np.s_[...]`)
             annotations_only: If `True` localizer image is not plotted (defaualt: `False`)
             projection_kwargs: Optional keyword arguments for the projection plots. If `None` default values are used (default: `None`). If a dictionary is given, the keys are the projection names and the values are dictionaries of keyword arguments.
+            slab_kwargs: Optional keyword arguments for the slab plots. If `None` default values are used (default: `None`). If a dictionary is given, the keys are the slab names and the values are dictionaries of keyword arguments.
             line_kwargs: Optional keyword arguments for customizing the lines to show B-scan region and positions plots. If `None` default values are used which are {"linewidth": 0.2, "linestyle": "-", "color": "green"}
             scalebar: Position of the scalebar, one of "topright", "topleft", "botright", "botleft" or `False` (default: "botleft"). If `True` the scalebar is placed in the bottom left corner. You can custumize the scalebar using the `scalebar_kwargs` argument.
             scalebar_kwargs: Optional keyword arguments for customizing the scalebar. Check the documentation of [plot_scalebar][eyepy.core.plotting.plot_scalebar] for more information.
@@ -671,15 +784,30 @@ class EyeVolume:
             projections = list(self.volume_maps.keys())
         elif not projections:
             projections = []
+            
+        if slabs is True:
+            slabs = list(self.slabs.keys())
+        elif not slabs:
+            slabs = []
 
         if projection_kwargs is None:
             projection_kwargs = defaultdict(lambda: {})
         for name in projections:
-            if not name in projection_kwargs.keys():
+            if name not in projection_kwargs.keys():
                 projection_kwargs[name] = {}
             self.volume_maps[name].plot(ax=ax,
                                         region=region,
                                         **projection_kwargs[name])
+
+        if slab_kwargs is None:
+            slab_kwargs = defaultdict(lambda: {})
+        for name in slabs:
+            if name not in slab_kwargs.keys():
+                slab_kwargs[name] = {}
+            self.slabs[name].plot(ax=ax,
+                                  region=region,
+                                  transform=True,
+                                  **slab_kwargs[name])
 
         if line_kwargs is None:
             line_kwargs = config.line_kwargs
