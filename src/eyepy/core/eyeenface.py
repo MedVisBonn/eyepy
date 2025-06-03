@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 class EyeEnface:
     """"""
 
-    def __init__(self, data: npt.NDArray[np.int_],
+    def __init__(self, data: npt.NDArray[np.int64],
                  meta: 'EyeEnfaceMeta') -> None:
         """
 

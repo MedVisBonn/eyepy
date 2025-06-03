@@ -127,7 +127,7 @@ class EyeVolume:
                 )
                 with open(layers_path / 'meta.json', 'w') as meta_file:
                     json.dump([l.meta for l in self._layers], meta_file)
-                    
+
             if not len(self._slabs) == 0:
                 # Save slab annotations
                 slabs_path = tmpdirname / 'annotations' / 'slabs'
@@ -207,7 +207,7 @@ class EyeVolume:
             else:
                 layer_annotations = []
                 layers_meta = []
-                
+
             # Load slabs
             slabs_path = tmpdirname / 'annotations' / 'slabs'
             if slabs_path.exists():
@@ -215,7 +215,7 @@ class EyeVolume:
                     slabs_meta = json.load(meta_file)
             else:
                 slabs_meta = []
-                
+
             # Load Localizer and meta
             localizer_path = tmpdirname / 'localizer'
             localizer_data = np.load(localizer_path / 'localizer.npy')
@@ -247,7 +247,7 @@ class EyeVolume:
             )
             for meta, annotation in zip(layers_meta, layer_annotations):
                 ev.add_layer_annotation(annotation, meta)
-                
+
             for meta in slabs_meta:
                 ev.add_slab_annotation(meta)
 
@@ -256,7 +256,7 @@ class EyeVolume:
 
         return ev
 
-    def _default_meta(self, volume: npt.NDArray[np.float_]) -> EyeVolumeMeta:
+    def _default_meta(self, volume: npt.NDArray[np.float64]) -> EyeVolumeMeta:
         bscan_meta = [
             EyeBscanMeta(start_pos=(0, i),
                          end_pos=((volume.shape[2] - 1), i),
@@ -273,7 +273,7 @@ class EyeVolume:
         )
         return meta
 
-    def _default_localizer(self, data: npt.NDArray[np.float_]) -> EyeEnface:
+    def _default_localizer(self, data: npt.NDArray[np.float64]) -> EyeEnface:
         projection = np.flip(np.nanmean(data, axis=1), axis=0)
         image = transform.warp(
             projection,
@@ -413,7 +413,7 @@ class EyeVolume:
             self.meta['par_algorithm'] = 'custom'
             self.par_algorithm = func
             self._data_par = None
-    
+
     @property
     def data(self) -> np.ndarray:
         """
@@ -424,7 +424,7 @@ class EyeVolume:
         if self._data is None:
             self._data = self.intensity_transform(np.copy(self._raw_data))
         return self._data
-    
+
     @property
     def data_par(self) -> np.ndarray:
         """
@@ -435,7 +435,7 @@ class EyeVolume:
         if self._data_par is None:
             self._data_par = self.par_algorithm(np.copy(self._raw_data))
         return self._data_par
-    
+
     @property
     def shape(self) -> tuple[int, int, int]:
         """
@@ -645,7 +645,7 @@ class EyeVolume:
 
     def add_layer_annotation(self,
                              height_map: Optional[npt.NDArray[
-                                 np.float_]] = None,
+                                 np.float64]] = None,
                              meta: Optional[dict] = None,
                              **kwargs) -> EyeVolumeLayerAnnotation:
         """
@@ -701,15 +701,15 @@ class EyeVolume:
         slab_annotation = EyeVolumeSlabAnnotation(self, **meta)
         self._slabs.append(slab_annotation)
         return slab_annotation
-    
+
     def remove_slab_annotation(self, name: str) -> None:
         """
 
         Args:
             name:
-            
+
         Returns:
-        
+
         """
         for i, slab in enumerate(self._slabs):
             if slab.name == name:
@@ -784,7 +784,7 @@ class EyeVolume:
             projections = list(self.volume_maps.keys())
         elif not projections:
             projections = []
-            
+
         if slabs is True:
             slabs = list(self.slabs.keys())
         elif not slabs:

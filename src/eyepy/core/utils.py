@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
-import scipy.ndimage as ndi
 from skimage.util import img_as_float32
 from skimage.util import img_as_ubyte
 
@@ -10,9 +9,9 @@ from eyepy.core.filter import filter_by_height_enface
 
 from .annotations import EyeVolumeLayerAnnotation
 
-NDArrayFloat = npt.NDArray[np.float_]
+NDArrayFloat = npt.NDArray[np.float64]
 NDArrayBool = npt.NDArray[np.bool_]
-NDArrayInt = npt.NDArray[np.int_]
+NDArrayInt = npt.NDArray[np.int64]
 
 
 class DynamicDefaultDict(dict):
@@ -34,7 +33,7 @@ def angio_intensity_transform(data: NDArrayFloat) -> NDArrayInt:
 
     Args:
         data: Input data
-    
+
     Returns:
         Transformed data
     """
@@ -106,11 +105,11 @@ intensity_transforms = {
 def sum_par_algorithm(data: np.ndarray) -> np.ndarray:
     data[np.isnan(data)] = 0
     data = np.where((data < 0) | (data > 1), 0, data)
-    
+
     csum = np.cumsum(data[:,::-1,:], axis=1)[:, ::-1, :]
     max_val = np.nanmax(csum, axis=1, keepdims=True)
     csum = np.divide(csum, max_val, out=np.zeros_like(csum), where=max_val != 0)
-    
+
     par_data = data * csum
     max_val = np.nanmax(par_data, axis=1, keepdims=True)
     par_data = np.divide(par_data, max_val, out=np.zeros_like(par_data), where=max_val != 0)
@@ -123,7 +122,7 @@ def default_par_algorithm(data: np.ndarray) -> np.ndarray:
 
 
 par_algorithms = {
-    'default': default_par_algorithm, 
+    'default': default_par_algorithm,
     'sum': sum_par_algorithm
 }
 

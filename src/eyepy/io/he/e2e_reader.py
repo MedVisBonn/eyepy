@@ -9,11 +9,10 @@ from pathlib import Path
 import sys
 from textwrap import indent
 import traceback
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 import construct as cs
 import numpy as np
-import pandas as pd
 from skimage.transform import AffineTransform
 from skimage.transform import warp
 
@@ -147,6 +146,11 @@ class E2EStructureMixin:
             np.min(v),
             np.max(v), False if k not in type_occurence[structure] else True
         ] for k, v in data.items()]
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError(
+                'pandas is required for table output. Please install pandas or use the inspect function without tables=True.')
         text = pd.DataFrame.from_records(data,
                                          columns=[
                                              'Type', 'Count', 'Mean Size',

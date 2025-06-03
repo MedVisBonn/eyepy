@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterable
 import logging
-from typing import Any, Optional, TYPE_CHECKING, Union, Literal
+from typing import Any, Literal, Optional, TYPE_CHECKING, Union
 
 from matplotlib import cm
 from matplotlib import colors
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger('eyepy.core.annotations')
 
 SLAB_PROJECTION_DEFAULTS = {
-    'NFLVP': {'PAR': False, 'contrast': 2}, 
+    'NFLVP': {'PAR': False, 'contrast': 2},
     'SVP': {'PAR': False, 'contrast': 2},
     'ICP': {'PAR': True, 'contrast': 2},
     'DCP': {'PAR': True, 'contrast': 2},
@@ -40,7 +40,7 @@ class EyeVolumeLayerAnnotation:
     def __init__(
         self,
         volume: EyeVolume,
-        data: Optional[npt.NDArray[np.float_]] = None,
+        data: Optional[npt.NDArray[np.float64]] = None,
         meta: Optional[dict] = None,
         **kwargs,
     ) -> None:
@@ -472,7 +472,7 @@ class EyeVolumePixelAnnotation:
 
 class EyeVolumeSlabAnnotation:
     """"""
-    
+
     def __init__(
         self,
         volume: EyeVolume,
@@ -480,7 +480,7 @@ class EyeVolumeSlabAnnotation:
         **kwargs,
     ) -> None:
         """
-        
+
         Args:
             volume: An EyeVolume object
             meta: dict with additional meta data
@@ -488,84 +488,84 @@ class EyeVolumeSlabAnnotation:
         """
         self.volume = volume
         self._mask = None
-        
+
         if meta is None:
             self.meta = kwargs
         else:
             self.meta = meta
             self.meta.update(**kwargs)
-            
+
         # Set default values if not provided
         if 'name' not in self.meta:
             self.meta['name'] = 'OCTA Slab'
-        
+
         # Ensure layer references are present
         if 'top_layer' not in self.meta:
             self.meta['top_layer'] = None
         if 'bottom_layer' not in self.meta:
             self.meta['bottom_layer'] = None
-            
+
     @property
     def name(self) -> str:
         """Slab name."""
         return self.meta['name']
-    
+
     @name.setter
     def name(self, value: str) -> None:
         self.meta['name'] = value
-        
+
     @property
     def top_layer(self) -> Optional[str]:
         """Top layer name/acronym."""
         return self.meta['top_layer']
-    
+
     @top_layer.setter
     def top_layer(self, value: str) -> None:
         self.meta['top_layer'] = value
-    
+
     @property
     def bottom_layer(self) -> Optional[str]:
         """Bottom layer name/acronym."""
         return self.meta['bottom_layer']
-    
+
     @bottom_layer.setter
     def bottom_layer(self, value: str) -> None:
         self.meta['bottom_layer'] = value
-        
+
     @property
     def mask(self) -> npt.NDArray[np.bool_]:
         """Mask of the slab in the volume."""
         if self.top_layer is None or self.bottom_layer is None:
-            logger.warning("Top or bottom layer not set. Cannot create slab mask.")
+            logger.warning('Top or bottom layer not set. Cannot create slab mask.')
             return np.zeros(self.volume.shape, dtype=bool)
-        
+
         if self.top_layer not in self.volume.layers or self.bottom_layer not in self.volume.layers:
-            logger.warning("Top or bottom layer not found in the volume layers. Cannot create slab mask.")
+            logger.warning('Top or bottom layer not found in the volume layers. Cannot create slab mask.')
             return np.zeros(self.volume.shape, dtype=bool)
-        
+
         if self._mask is None:
             top_data = self.volume.layers[self.top_layer].data
             bottom_data = self.volume.layers[self.bottom_layer].data
-            
+
             # Mask for valid data points (not NaN)
             valid_mask = ~(np.isnan(top_data) | np.isnan(bottom_data))
 
             # Include top layer, exclude bottom layer
             min_depths = np.floor(np.minimum(top_data, bottom_data))
             max_depths = np.floor(np.maximum(top_data, bottom_data))
-            
+
             min_depths = np.clip(min_depths, 0, self.volume.size_y - 1)
             max_depths = np.clip(max_depths, 0, self.volume.size_y - 1)
-            
+
             y_coords = np.arange(self.volume.size_y)
-            
+
             # Use broadcasting to create mask
             mask_condition = (
                 (y_coords[None, :, None] >= min_depths[:, None, :]) &
                 (y_coords[None, :, None] <= max_depths[:, None, :]) &
                 valid_mask[:, None, :]
             )
-            
+
             self._mask = mask_condition
 
         return self._mask
@@ -596,24 +596,24 @@ class EyeVolumeSlabAnnotation:
                 cval=np.nan,
             )
         return get_enface
-    
+
     def iqr_contrast(self, enface: np.ndarray, factor: float=1.5) -> float:
         valid_data = enface[~np.isnan(enface)]
         if len(valid_data) == 0:
             return 1.0
-        
+
         q75 = np.percentile(valid_data, 75)
         q25 = np.percentile(valid_data, 25)
         iqr = q75 - q25
-        
+
         return np.round(q75 + factor * iqr)
 
     def apply_contrast(self, enface: np.ndarray, contrast: float) -> np.ndarray:
         """Apply contrast to the enface projection."""
         if contrast <= 0:
-            logger.warning(f"Invalid contrast value: {contrast}. Using default contrast of 4.")
+            logger.warning(f'Invalid contrast value: {contrast}. Using default contrast of 4.')
             contrast = 4
-        
+
         return np.clip(enface / contrast, 0, 1.0)
 
     def plot(
@@ -627,7 +627,7 @@ class EyeVolumeSlabAnnotation:
         alpha: float = 1,
         contrast: Union[int, Literal['auto']] = None,
         par: bool = None,
-        transform: bool = False, 
+        transform: bool = False,
         **kwargs
     ) -> None:
         """Plot the annotation on the enface plane.
@@ -658,7 +658,7 @@ class EyeVolumeSlabAnnotation:
             contrast = self.iqr_contrast(self.projection(par), kwargs.get('factor', 1.5))
         elif not isinstance(contrast, (int, float)) or contrast <= 0:
             logger.warning(
-                f"Invalid contrast value: {contrast}. Using default contrast of 4.")
+                f'Invalid contrast value: {contrast}. Using default contrast of 4.')
             contrast = 4
         else:
             contrast = int(contrast)
@@ -666,7 +666,7 @@ class EyeVolumeSlabAnnotation:
         enface_crop = self.apply_contrast(enface_projection[region], contrast)
 
         ax = plt.gca() if ax is None else ax
-    
+
         if vmin is None:
             vmin = 0
         if vmax is None:
@@ -720,12 +720,12 @@ class EyeBscanLayerAnnotation:
         self.eyevolumelayerannotation.meta['name'] = value
 
     @property
-    def data(self) -> npt.NDArray[np.float_]:
+    def data(self) -> npt.NDArray[np.float64]:
         """Layer heights."""
         return self.eyevolumelayerannotation.data[self.index, :]
 
     @data.setter
-    def data(self, value: npt.NDArray[np.float_]) -> None:
+    def data(self, value: npt.NDArray[np.float64]) -> None:
         self.eyevolumelayerannotation.data[self.index, :] = value
 
     @property
@@ -739,7 +739,7 @@ class EyeBscanLayerAnnotation:
 
 
 class EyeBscanSlabAnnotation:
-    
+
     def __init__(self, eyevolumeslabannotation: EyeVolumeSlabAnnotation,
                  index: int) -> None:
         """Slab annotation for a single B-scan.
@@ -773,7 +773,7 @@ class EyeBscanSlabAnnotation:
     def mask(self, value: npt.NDArray[np.bool_]) -> None:
         """Set the mask for the slab in the B-scan."""
         self.eyevolumeslabannotation._mask[self.index, :, :] = value
-    
+
 
 class EyeEnfacePixelAnnotation:
 
