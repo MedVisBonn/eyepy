@@ -1,8 +1,6 @@
 """Generate the E2E file documentatinon pages."""
 
-import inspect
 from pathlib import Path
-from typing import List
 
 import mkdocs_gen_files
 
@@ -50,9 +48,9 @@ def _get_parses_to(type_annotation):
         for t in type_annotation.__args__:
             return f'List[{_get_parses_to(t)}]'
     if type_annotation in types:
-        return f'[{type_annotation.__name__}](../../he_e2e_types/{type_annotation.__name__})'
+        return f'[{type_annotation.__name__}](../he_e2e_types/{type_annotation.__name__}.md)'
     elif type_annotation in file_structures:
-        return f'[{type_annotation.__name__}](../{type_annotation.__name__})'
+        return f'[{type_annotation.__name__}]({type_annotation.__name__}.md)'
 
     return str(type_annotation.__name__)
 
@@ -67,7 +65,8 @@ for t in types:
     doc_title = doc.splitlines()[0]
     t_id = int(t.__name__.lstrip('Type'))
     type_occ = [k for k, v in e2e_reader.type_occurence.items() if t_id in v]
-    type_occ = [f'[{t}](formats/he_e2e_types/{t})' for t in type_occ]
+    type_occ = [f'[{t}](../he_e2e_hierarchy/{t}.md)' for t in type_occ]
+
     type_occ = ', '.join(type_occ)
     size = [
         l.lstrip('Size: ') for l in doc.splitlines() if l.startswith('Size: ')
@@ -185,9 +184,14 @@ for layer, types in e2e_reader.type_occurence.items():
                 size = ''
                 description = ''
 
-            print(
-                f'|[{t} :material-link:](../../../formats/he_e2e_types/Type{t}/)|{content}|{size}|{description}|',
-                file=fd)
+            # Do not create a link if there is no content (Type not known)
+            if not content:
+                print(f'|{t}|{content}|{size}|{description}|', file=fd)
+            else:
+                # Create a link to the type documentation
+                print(
+                    f'|[{t} :material-link:](../../../formats/he_e2e_types/Type{t}/)|{content}|{size}|{description}|',
+                    file=fd)
 
 with mkdocs_gen_files.open('formats/he_e2e_hierarchy/SUMMARY.md',
                            'w') as nav_file:

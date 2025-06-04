@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class BscanAdapter(cs.Adapter):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: t.Any, **kwargs: t.Any):
         super().__init__(*args, **kwargs)
         self.LUT = self._make_LUT()
         self.inv_LUT = self._make_inv_LUT()

@@ -834,7 +834,7 @@ class HeE2eReader(AbstractContextManager):
                  excluded_folders: list[Union[int,
                                               str]] = ['images', 'layers'],
                  slice_id: Optional[int] = None,
-                 **kwargs) -> dict[int, dict[int, dict[str, list[int]]]]:
+                 **kwargs: Any) -> dict[int, dict[int, dict[str, list[int]]]]:
         """Find an integer value in the e2e file.
 
         Args:
@@ -869,7 +869,7 @@ class HeE2eReader(AbstractContextManager):
                    excluded_folders: list[Union[int,
                                                 str]] = ['images', 'layers'],
                    slice_id: Optional[int] = None,
-                   **kwargs) -> dict[int, dict[int, dict[str, list[int]]]]:
+                   **kwargs: Any) -> dict[int, dict[int, dict[str, list[int]]]]:
         """Find a float value in the e2e file.
 
         Args:
@@ -904,7 +904,7 @@ class HeE2eReader(AbstractContextManager):
                     excluded_folders: list[Union[int,
                                                  str]] = ['images', 'layers'],
                     slice_id: Optional[int] = None,
-                    **kwargs) -> dict[int, dict[int, dict[str, list[int]]]]:
+                    **kwargs: Any) -> dict[int, dict[int, dict[str, list[int]]]]:
         """Find a number value in the e2e file.
 
         Use this function if you don't know if the value is an integer or a float.

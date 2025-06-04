@@ -42,7 +42,7 @@ class EyeEnface:
     def add_area_annotation(self,
                             area_map: Optional[npt.NDArray[np.bool_]] = None,
                             meta: Optional[dict] = None,
-                            **kwargs) -> EyeEnfacePixelAnnotation:
+                            **kwargs: Any) -> EyeEnfacePixelAnnotation:
         """
 
         Args:

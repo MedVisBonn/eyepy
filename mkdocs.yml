@@ -1,12 +1,13 @@
 site_name: eyepy
 site_url: https://example.com/
-copyright: Copyright &copy; 2019 - 2023 Olivier Morelle
+copyright: Copyright &copy; 2019 - 2025 Olivier Morelle
 nav:
     - Home: index.md
     - Cookbook: cookbook.md
     - File formats: formats/
     - Reference: reference/
     - Changelog: changelog.md
+    - Contributing: contributing.md
 
 # Plugins
 plugins:

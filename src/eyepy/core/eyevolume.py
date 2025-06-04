@@ -607,7 +607,7 @@ class EyeVolume:
     def add_pixel_annotation(self,
                              voxel_map: Optional[npt.NDArray[np.bool_]] = None,
                              meta: Optional[dict] = None,
-                             **kwargs) -> EyeVolumePixelAnnotation:
+                             **kwargs: Any) -> EyeVolumePixelAnnotation:
         """
 
         Args:
@@ -647,7 +647,7 @@ class EyeVolume:
                              height_map: Optional[npt.NDArray[
                                  np.float64]] = None,
                              meta: Optional[dict] = None,
-                             **kwargs) -> EyeVolumeLayerAnnotation:
+                             **kwargs: Any) -> EyeVolumeLayerAnnotation:
         """
 
         Args:
@@ -685,7 +685,7 @@ class EyeVolume:
 
     def add_slab_annotation(self,
                             meta: Optional[dict] = None,
-                            **kwargs) -> EyeVolumeSlabAnnotation:
+                            **kwargs: Any) -> EyeVolumeSlabAnnotation:
         """
 
         Args:

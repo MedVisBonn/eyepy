@@ -6,7 +6,11 @@ import mkdocs_gen_files
 from eyepy.io.he import e2e_format
 from eyepy.io.he import e2e_reader
 
+types = e2e_format.__all_types__
+file_structures = e2e_format.__e2efile_structures__
 
+
+# The next two functions are duplicated since they are needed in gen_e2e_doc.py as well
 def clean_docstring(docstring):
     """Cleans a Python docstring for use in a Markdown file.
 
@@ -33,25 +37,17 @@ def clean_docstring(docstring):
     # Join the lines back together and return the result
     return '\n'.join(lines)
 
-
 def _get_parses_to(type_annotation):
     """Convert type annotations to markdown links."""
     if type_annotation.__name__ == 'List':
         for t in type_annotation.__args__:
-            return f'`List[`{_get_parses_to(t)}`]`'
+            return f'List[{_get_parses_to(t)}]'
     if type_annotation in types:
-        return f'[`{type_annotation.__name__}` :material-link:](../../he_e2e_types/{type_annotation.__name__})'
+        return f'[{type_annotation.__name__}](../he_e2e_types/{type_annotation.__name__}.md)'
     elif type_annotation in file_structures:
-        return f'[`{type_annotation.__name__}` :material-link:](../{type_annotation.__name__})'
+        return f'[{type_annotation.__name__}]({type_annotation.__name__}.md)'
 
-    return f'`{str(type_annotation.__name__)}`'
-
-
-excluded = ['src/eyepy/config.py']
-
-types = e2e_format.__all_types__
-file_structures = e2e_format.__e2efile_structures__
-
+    return str(type_annotation.__name__)
 
 def define_env(env):
     'Hook function'
@@ -128,8 +124,10 @@ def define_env(env):
                     content = ''
                     size = ''
                     description = ''
-
-                text += f'|[{t} :material-link:](/formats/he_e2e_types/Type{t})|{content}|{size}|{description}|\n'
+                if not content:
+                    text += f'|{t}|{content}|{size}|{description}|\n'
+                else:
+                    text += f'|[{t} :material-link:](/formats/he_e2e_types/Type{t})|{content}|{size}|{description}|\n'
                 #text += f'|[{t} :material-link:](../formats/he_e2e_types/Type{t}/popel/)|{content}|{size}|{description}|\n'
 
             return text

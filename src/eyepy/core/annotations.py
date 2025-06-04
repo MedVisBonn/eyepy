@@ -43,7 +43,7 @@ class EyeVolumeLayerAnnotation:
         volume: EyeVolume,
         data: Optional[npt.NDArray[np.float64]] = None,
         meta: Optional[dict] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Layer annotation for a single layer in an EyeVolume.
 
@@ -140,7 +140,7 @@ class EyeVolumePixelAnnotation:
         n_sectors: Iterable[int] = (1, 4),
         offsets: Iterable[int] = (0, 45),
         center: Optional[tuple[float, float]] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Pixel annotation for an EyeVolume.
 
@@ -478,7 +478,7 @@ class EyeVolumeSlabAnnotation:
         self,
         volume: EyeVolume,
         meta: Optional[dict] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """
 
@@ -767,7 +767,7 @@ class EyeEnfacePixelAnnotation:
         enface: EyeEnface,
         data: Optional[npt.NDArray[np.bool_]] = None,
         meta: Optional[dict] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Pixel annotation for an enface image.
 

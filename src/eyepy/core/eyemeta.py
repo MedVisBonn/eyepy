@@ -9,7 +9,7 @@ from typing import Any, Iterable, MutableMapping, Union
 class EyeMeta(MutableMapping):
     """"""
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """
 
         Args:
@@ -59,7 +59,7 @@ class EyeEnfaceMeta(EyeMeta):
     """"""
 
     def __init__(self, scale_x: float, scale_y: float, scale_unit: str,
-                 **kwargs) -> None:
+                 **kwargs: Any) -> None:
         """A dict with required keys to hold meta data for enface images of the
         eye.
 
@@ -98,7 +98,7 @@ class EyeBscanMeta(EyeMeta):
         start_pos: tuple[float, float],
         end_pos: tuple[float, float],
         pos_unit: str,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """A dict with required keys to hold meta data for OCT B-scans.
 
@@ -126,7 +126,7 @@ class EyeVolumeMeta(EyeMeta):
         scale_y: float,
         scale_unit: str,
         bscan_meta: list[EyeBscanMeta],
-        **kwargs,
+        **kwargs: Any,
     ):
         """A dict with required keys to hold meta data for OCT volumes.
 
