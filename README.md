@@ -1,6 +1,6 @@
 <h1 align="center">eyepy</h1>
 <p align="center">
-Use Python to import, analyse and visualize retinal imaging data.
+A powerful Python package for importing, analyzing, and visualizing retinal imaging data, including OCT and OCT Angiography.
 </p>
 
 ![header_gif](https://user-images.githubusercontent.com/5720058/228815448-4b561246-dac9-4f8f-abde-e0dd5457a72b.gif)
@@ -9,14 +9,16 @@ Use Python to import, analyse and visualize retinal imaging data.
 [![PyPI version](https://badge.fury.io/py/eyepy.svg)](https://badge.fury.io/py/eyepy)
 [![DOI](https://zenodo.org/badge/292547201.svg)](https://zenodo.org/badge/latestdoi/292547201)
 
-
-The `eyepy` python package provides a simple interface to import and process OCT volumes. Everything you import with one of our import functions becomes an `EyeVolume` object which provides a unified interface to the data. The `EyeVolume` object provides methods to plot the localizer (fundus) image and B-scans as well as to compute and plot quantifications of voxel annotations such as drusen. Check out the [documentation](https://MedVisBonn.github.io/eyepy), especially the [Cookbook](https://medvisbonn.github.io/eyepy/cookbook/) chapter, for more information.
+`eyepy` provides a unified and user-friendly interface for working with retinal imaging data. With support for a wide range of file formats, it enables researchers and clinicians to import, process, and visualize OCT volumes and angiography data with ease. The core `EyeVolume` object offers intuitive methods for plotting fundus images, B-scans, and quantitative analyses such as drusen and retinal layer thickness. Comprehensive documentation and example workflows are available to help you get started quickly.
 
 ## Features
 
-* Import Data (Heyex-E2E, Heyex-VOL, Heyex-XML, Topcon-FDA, B-Scan collections, [RETOUCH Challenge](https://retouch.grand-challenge.org/), [AMD Dataset from Duke University](https://people.duke.edu/~sf59/RPEDC_Ophth_2013_dataset.htm))
+* Import Structural Data (HEYEX-E2E, HEYEX-VOL, HEYEX-XML, Topcon-FDA, B-Scan collections, [RETOUCH Challenge](https://retouch.grand-challenge.org/), [AMD Dataset from Duke University](https://people.duke.edu/~sf59/RPEDC_Ophth_2013_dataset.htm))
+* Import Angiographic OCT Data (HEYEX-VOL)
 * Analyze OCT volumes (compute and quantify drusen)
 * Visualize OCT volumes with annotations and quantifications
+* Compute and visualize retinal layer thickness
+* Compute and visualize OCTA enface projections.
 * Save and load EyeVolume objects
 
 ## Getting Started
@@ -27,14 +29,16 @@ The `eyepy` python package provides a simple interface to import and process OCT
 To install the latest version of eyepy run `pip install -U eyepy`. (It is `eyepie` for versions < 0.12.0)
 
 ### Getting Started
-When you don't hava a supported OCT volume at hand you can check out our sample dataset to get familiar with `eyepy`.
+When you don't have a supported OCT volume at hand you can check out our sample datasets to get familiar with `eyepy`.
 
 ```python
 from eyepy.data import load
-ev = load("drusen_patient")
+struc_ev = load("drusen_patient")
+struc_ev = load("healthy_OD")
+angio_ev = load("healthy_OD_Angio")
 ```
 
-If you have data at hand use one of eyepys import functions.
+If you have data at hand use one of eyepy's import functions.
 
 ```python
 # Import HEYEX E2E export
@@ -47,9 +51,39 @@ ev = ep.import_heyex_vol("path/to/file.vol")
 ev = ep.import_topcon_fda("path/to/file.fda")
 # Import volume from Duke public dataset
 ev = ep.import_duke_mat("path/to/file.mat")
-# Import volume form RETOUCH challenge
+# Import volume from RETOUCH challenge
 ev = ep.import_retouch("path/to/volume_folder")
+# Import HEYEX OCTA VOL export
+ev_angio = ep.import_heyex_angio_vol("path/to/volume_folder")
 ```
+
+## Spectralis OCTA (OCT Angiography) Support
+
+`eyepy` is capable of reading and visualizing OCT Angiography (OCTA) data from Heidelberg Spectralis devices. You can explore and analyze both structural and angiography volumes using the same unified interface.
+
+### Example: Load and Visualize Spectralis OCTA Sample Data
+
+The following example demonstrates how to load OCTA sample data, and plot the enface projections.
+
+```python
+import eyepy as ep
+import matplotlib.pyplot as plt
+
+# Load sample data
+angio_OD = ep.data.load("healthy_OD_Angio")
+angio_OS = ep.data.load("healthy_OS_Angio")
+
+fig, axes = plt.subplots(1, 2, figsize=(14, 7))
+for i, (angio, title) in enumerate(zip([angio_OD, angio_OS], ["Right Eye (OD)", "Left Eye (OS)"])):
+    # Show localizer with Angiography overlay for the complete retina
+    angio.plot(ax=axes[i], slabs=["RET"])
+    axes[i].set_title(title)
+    axes[i].axis("off")
+
+plt.tight_layout()
+```
+![Example OCTA](https://github.com/user-attachments/assets/95b73e2b-0387-40cc-a09c-2765a8b2096a)
+
 
 # Related Projects:
 
@@ -64,3 +98,12 @@ ev = ep.import_retouch("path/to/volume_folder")
 + [OCTAnnotate](https://github.com/krzyk87/OCTAnnotate)
 + [heyexReader](https://github.com/ayl/heyexReader)
 + [OCTExplorer](https://www.iibi.uiowa.edu/oct-reference) Iowa Reference Algorithm
+
+
+# Citation
+
+If you use eyepy in your research, please cite it. You can find citation information and export BibTeX entries via the Zenodo record: [![DOI](https://zenodo.org/badge/292547201.svg)](https://zenodo.org/badge/latestdoi/292547201)
+
+# Contributing
+
+For details on contributing and setting up a development environment, see the [Contributing Guide](https://medvisbonn.github.io/eyepy/contributing/).
