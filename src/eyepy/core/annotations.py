@@ -14,6 +14,7 @@ import numpy.typing as npt
 from skimage import transform
 
 from eyepy import config
+from eyepy.core.utils import mask_from_boundaries
 
 if TYPE_CHECKING:
     import matplotlib as mpl
@@ -546,27 +547,11 @@ class EyeVolumeSlabAnnotation:
         if self._mask is None:
             top_data = self.volume.layers[self.top_layer].data
             bottom_data = self.volume.layers[self.bottom_layer].data
-
-            # Mask for valid data points (not NaN)
-            valid_mask = ~(np.isnan(top_data) | np.isnan(bottom_data))
-
-            # Include top layer, exclude bottom layer
-            min_depths = np.floor(np.minimum(top_data, bottom_data))
-            max_depths = np.floor(np.maximum(top_data, bottom_data))
-
-            min_depths = np.clip(min_depths, 0, self.volume.size_y - 1)
-            max_depths = np.clip(max_depths, 0, self.volume.size_y - 1)
-
-            y_coords = np.arange(self.volume.size_y)
-
-            # Use broadcasting to create mask
-            mask_condition = (
-                (y_coords[None, :, None] >= min_depths[:, None, :]) &
-                (y_coords[None, :, None] <= max_depths[:, None, :]) &
-                valid_mask[:, None, :]
+            self._mask = mask_from_boundaries(
+                upper=top_data,
+                lower=bottom_data,
+                height=self.volume.size_y,
             )
-
-            self._mask = mask_condition
 
         return self._mask
 

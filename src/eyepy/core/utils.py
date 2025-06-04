@@ -195,24 +195,91 @@ def drusen(rpe_height: NDArrayFloat,
         bm_height = np.copy(bm_height.data)
 
     irpe = ideal_rpe(rpe_height, bm_height, volume_shape)
-    # Create drusen map
-    drusen_map = np.zeros(volume_shape, dtype=bool)
-    # Exclude normal RPE and RPE from the drusen area.
-    nans = np.isnan(rpe_height + irpe)
-
-    rpe = np.rint(rpe_height + 1)
-    rpe[nans] = 0
-    rpe = rpe.astype(int)
-
-    irpe = np.rint(irpe)
-    irpe[nans] = 0
-    irpe = irpe.astype(int)
-
-    for sli in range(drusen_map.shape[0]):
-        for col in range(drusen_map.shape[2]):
-            if not nans[sli, col]:
-                drusen_map[sli, rpe[sli, col]:irpe[sli, col], col] = 1
-
+    # Create drusen map, exclude layer boundaries from the mask (rpe_height+1).
+    drusen_map = mask_from_boundaries_loop(
+        upper=rpe_height+1, lower=irpe, height=volume_shape[1]
+    )
     drusen_map = filter_by_height_enface(drusen_map, minimum_height)
 
     return drusen_map
+
+def mask_from_boundaries(upper: np.ndarray, lower: np.ndarray, height: int) -> np.ndarray:
+    """Compute a boolean mask from upper and lower boundaries for each column
+    using numpy broadcasting.
+
+    The mask includes the upper boundary and excludes the lower boundary.
+    To exclude the upper layer, add 1 to it before calling this function.
+    To include the lower layer, add 1 to it before calling this function.
+
+    This method is generally faster and more efficient for typical use cases.
+    Use this when the proportion of NaN values in the boundaries is below 20%.
+    For large volumes with mostly valid data, broadcasting is recommended.
+
+    Args:
+        upper: 2D array (slices, columns) of upper boundary indices.
+        lower: 2D array (slices, columns) of lower boundary indices.
+        height: int, the number of rows (y-dimension) in the mask.
+
+    Returns:
+        mask: 3D boolean array (slices, height, columns)
+    """
+    upper = np.asarray(upper, dtype=float)
+    lower = np.asarray(lower, dtype=float)
+    nans = np.isnan(upper) | np.isnan(lower)
+    # Avoid casting issues with NaNs
+    upper = np.where(nans, -1, upper)
+    lower = np.where(nans, -1, lower)
+    # Round to nearest integer and clip to valid range
+    upper_idx = np.rint(upper).astype(int)
+    lower_idx = np.rint(lower).astype(int)
+    upper_idx = np.clip(upper_idx, 0, height)
+    lower_idx = np.clip(lower_idx, 0, height)
+
+    valid = ~nans & (upper_idx < lower_idx)
+    y_coords = np.arange(height)
+    mask = (
+        (y_coords[None, :, None] >= upper_idx[:, None, :]) &
+        (y_coords[None, :, None] < lower_idx[:, None, :]) &
+        (valid[:, None, :])
+    )
+    return mask
+
+
+def mask_from_boundaries_loop(
+    upper: np.ndarray, lower: np.ndarray, height: int
+) -> np.ndarray:
+    """Looping variant of mask_from_boundaries, iterating only over valid columns.
+
+    The mask includes the upper boundary and excludes the lower boundary.
+    To exclude the upper layer, add 1 to it before calling this function.
+    To include the lower layer, add 1 to it before calling this function.
+
+    This method can be more efficient than broadcasting when the NaN or invalid
+    column proportion (where upper > lower) is above 20%.
+    For highly masked data, the looping approach avoids extra work.
+
+    Args:
+        upper: 2D array (slices, columns) of upper boundary indices.
+        lower: 2D array (slices, columns) of lower boundary indices.
+        height: int, the number of rows (y-dimension) in the mask.
+
+    Returns:
+        mask: 3D boolean array (slices, height, columns)
+    """
+    upper = np.asarray(upper, dtype=float)
+    lower = np.asarray(lower, dtype=float)
+    nans = np.isnan(upper) | np.isnan(lower)
+    # Avoid casting issues with NaNs
+    upper = np.where(nans, -1, upper)
+    lower = np.where(nans, -1, lower)
+    # Round to nearest integer and clip to valid range
+    upper_idx = np.rint(upper).astype(int)
+    lower_idx = np.rint(lower).astype(int)
+    upper_idx = np.clip(upper_idx, 0, height)
+    lower_idx = np.clip(lower_idx, 0, height)
+
+    valid = ~nans & (upper_idx < lower_idx)
+    mask = np.zeros((upper.shape[0], height, upper.shape[1]), dtype=bool)
+    for sli, col in zip(*np.where(valid)):
+        mask[sli, upper_idx[sli, col]:lower_idx[sli, col], col] = True
+    return mask
