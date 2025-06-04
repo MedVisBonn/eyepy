@@ -17,8 +17,8 @@ from eyepy.core.utils import DynamicDefaultDict
 
 if TYPE_CHECKING:
     from eyepy import EyeVolume
-    
-    
+
+
 
 class EyeBscan:
     """"""
@@ -134,7 +134,7 @@ class EyeBscan:
             areas = []
         elif areas is True:
             areas = list(self.volume.volume_maps.keys())
-            
+
         if not slabs:
             slabs = []
         elif slabs is True:
@@ -156,7 +156,7 @@ class EyeBscan:
             area_kwargs = config.area_kwargs
         else:
             area_kwargs = {**config.area_kwargs, **area_kwargs}
-            
+
         if slab_kwargs is None:
             slab_kwargs = config.slab_kwargs
         else:
@@ -222,24 +222,34 @@ class EyeBscan:
             # Create a composite RGB image
             composite = np.zeros((*self.data[region].shape[:2], 3))
             overlap_count = np.zeros(self.data[region].shape[:2])
-            
+
             for slab in slabs:
                 color = config.slab_colors[slab]
                 color_rgb = mcolors.to_rgb('#' + color)
-                
+
                 slab_mask = self.slabs[slab].mask
                 slab_mask = slab_mask[region]
-                
+
                 # Add to composite where mask is True
                 mask_indices = slab_mask > 0
                 composite[mask_indices, :] += np.array(color_rgb)
                 overlap_count[mask_indices] += 1
-            
+
             # Normalize by the actual number of overlapping slabs per pixel
             valid_pixels = overlap_count > 0
             composite[valid_pixels, :] /= overlap_count[valid_pixels, np.newaxis]
-            
-            ax.imshow(composite, **slab_kwargs)
+
+            alpha = slab_kwargs.pop('alpha', 0.5)
+
+            # Add alpha channel to composite
+            composite_with_alpha = np.zeros((*composite.shape[:2], 4))
+            composite_with_alpha[..., :3] = composite
+            composite_with_alpha[..., 3] = valid_pixels * alpha
+
+            # pop alpha from slab_kwargs since we already added it to the composite
+            slab_kwargs.pop('alpha', None)
+            ax.imshow(composite_with_alpha,
+                      **slab_kwargs)
 
         # Make sure tick labels match the image region
         y_start = region[0].start if region[0].start is not None else 0

@@ -673,7 +673,7 @@ class EyeVolumeSlabAnnotation:
             vmax = np.nanmax([np.nanmax(enface_crop), vmin])
 
         visible = np.zeros(enface_crop.shape)
-        visible[np.logical_and(vmin <= enface_crop, enface_crop <= vmax)] = 1
+        visible[np.logical_and(vmin < enface_crop, enface_crop <= vmax)] = 1
 
         if cbar:
             divider = make_axes_locatable(ax)
