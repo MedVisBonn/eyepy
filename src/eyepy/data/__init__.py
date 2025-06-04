@@ -22,11 +22,11 @@ SAMPLE_DATA = {
     ),
     'healthy_OS_Angio': (
         'https://github.com/MedVisBonn/eyepydata/releases/download/v1.0.0/healthy_OS_Angio.vol',
-        ep.import_heyex_vol,
+        ep.import_heyex_angio_vol,
     ),
     'healthy_OD_Angio': (
         'https://github.com/MedVisBonn/eyepydata/releases/download/v1.0.0/healthy_OD_Angio.vol',
-        ep.import_heyex_vol,
+        ep.import_heyex_angio_vol,
     ),
 }
 

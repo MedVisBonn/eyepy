@@ -107,7 +107,7 @@ def plot_watermark(ax: plt.Axes) -> None:
             ha='right',
             va='bottom',
             alpha=0.4,
-            transform=plt.gca().transAxes,
+            transform=ax.transAxes,
             bbox=dict(boxstyle='Round',
                       facecolor='gray',
                       alpha=0.2,

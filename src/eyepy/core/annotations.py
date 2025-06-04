@@ -14,7 +14,7 @@ import numpy.typing as npt
 from skimage import transform
 
 from eyepy import config
-from eyepy.core.utils import mask_from_boundaries
+import eyepy as ep
 
 if TYPE_CHECKING:
     import matplotlib as mpl
@@ -547,7 +547,7 @@ class EyeVolumeSlabAnnotation:
         if self._mask is None:
             top_data = self.volume.layers[self.top_layer].data
             bottom_data = self.volume.layers[self.bottom_layer].data
-            self._mask = mask_from_boundaries(
+            self._mask = ep.core.utils.mask_from_boundaries(
                 upper=top_data,
                 lower=bottom_data,
                 height=self.volume.size_y,
