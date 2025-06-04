@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import datetime
 import logging
+from typing import Literal
 import warnings
 
-from typing import Literal
 import construct as cs
 import numpy as np
 import skimage
@@ -172,7 +172,7 @@ SEG_MAPPING = {
 }
 
 SLAB_MAPPING = {
-    'NFLVP': ('ILM', 'RNFL'), 
+    'NFLVP': ('ILM', 'RNFL'),
     'SVP': ('RNFL', 'IPL-'),
     'ICP': ('IPL-', 'IPL+'),
     'DCP': ('IPL+', 'OPL'),

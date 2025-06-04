@@ -21,19 +21,20 @@ repos:
       additional_dependencies: [toml]
       args: [--style, google]
 - repo: https://github.com/commitizen-tools/commitizen
-  rev: v2.42.1
+  rev: v4.8.2
   hooks:
     - id: commitizen
       stages:
         - commit-msg
 - repo: https://github.com/sondrelg/pep585-upgrade
-  rev: v1.0.1
+  rev: v1.0
   hooks:
     - id: upgrade-type-hints
       args: [--futures=true]
 - repo: https://github.com/PyCQA/docformatter
-  rev: v1.7.1
+  rev: v1.7.7
   hooks:
     - id: docformatter
+      language: python
       additional_dependencies: [tomli]
       args: [--config, ./pyproject.toml]
