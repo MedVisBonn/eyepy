@@ -14,7 +14,29 @@ jobs:
 
   Release:
     needs: Quality
-    uses: MedVisBonn/eyepy/.github/workflows/_release.yaml@master
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Python Semantic Release
+        id: release
+        uses: python-semantic-release/python-semantic-release@v10.0.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          force: minor
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        if: steps.release.outputs.released == 'true'
+      - name: Publish package to GitHub Release
+        uses: python-semantic-release/upload-to-gh-release@v9.8.9
+        if: steps.release.outputs.released == 'true'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ steps.release.outputs.tag }}
 
   Documentation:
     needs: Release
