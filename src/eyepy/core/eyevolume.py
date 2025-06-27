@@ -856,8 +856,8 @@ class EyeVolume:
 
             for pos in [start, end]:
                 # Check for both axis if pos is in region
-                if not (0 <= pos[0] <= region[0].stop - region[0].start
-                        and 0 <= pos[1] <= region[1].stop - region[1].start):
+                if not (0 <= pos[0] <= region[1].stop - region[1].start
+                        and 0 <= pos[1] <= region[0].stop - region[0].start):
                     logger.warning(
                         'B-scan position can not be plotted because the visualized region does not contain the complete B-scan.'
                     )
@@ -896,8 +896,8 @@ class EyeVolume:
 
         for pos in [upper_left, lower_left, lower_right, upper_right]:
             # Check for both axis if pos is in region
-            if not (0 <= pos[0] < region[0].stop - region[0].start
-                    and 0 <= pos[1] < region[1].stop - region[1].start):
+            if not (0 <= pos[0] < region[1].stop - region[1].start
+                    and 0 <= pos[1] < region[0].stop - region[0].start):
                 logger.warning(
                     'B-scan region can not be plotted because the visualized region does not contain the complete B-scan region.'
                 )
