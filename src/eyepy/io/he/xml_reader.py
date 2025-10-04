@@ -188,7 +188,8 @@ xml_bscan_format = {
 
 @functools.lru_cache(maxsize=4, typed=False)
 def get_xml_root(filepath) -> ElementTree.Element:
-    tree = ElementTree.parse(filepath)
+    with open(filepath, encoding='utf-8', errors='replace') as mf:
+        tree = ElementTree.parse(mf)
     return tree.getroot()
 
 
