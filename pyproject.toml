@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "eyepy"
 packages = [{ include = "eyepy", from = "src" }]
-version = "0.14.0"
+version = "0.15.0"
 description = "A python package to read, analyse and visualize OCT and fundus data form various sources."
 authors = ["Olivier Morelle <oli4morelle@gmail.com>"]
 license = "MIT"
