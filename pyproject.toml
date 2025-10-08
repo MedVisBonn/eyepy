@@ -47,11 +47,11 @@ Repository = "https://github.com/MedVisBonn/eyepy"
 
 [dependency-groups]
 dev = [
-    "pytest>=6.2.5,<7",
-    "pytest-cov>=3.0.0,<4",
-    "yapf>=0.32.0,<0.33",
-    "pre-commit>=2.16.0,<3",
-    "commitizen>=2.20.4,<3",
+    "pytest>=8.0.0,<9",
+    "pytest-cov>=6.0.0,<7",
+    "yapf>=0.40.0,<0.41",
+    "pre-commit>=4.0.0,<5",
+    "commitizen>=3.0.0,<4",
     "mkdocs>=1.6.1,<2",
     "mkdocs-material>=9.6.14,<10",
     "mkdocstrings>=0.29.1,<0.30",
