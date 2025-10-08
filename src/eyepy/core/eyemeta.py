@@ -21,7 +21,7 @@ class EyeMeta(MutableMapping):
 
     def as_dict(self) -> dict:
         """Return a copy of the metadata as a regular dictionary.
-        
+
         Datetime objects are converted to ISO format strings.
 
         Returns:
@@ -36,19 +36,19 @@ class EyeMeta(MutableMapping):
 
     def copy(self) -> 'EyeMeta':
         """Create a shallow copy of this metadata object.
-        
+
         Creates a new instance with the same metadata. Note that this is a
         shallow copy - the dictionary values themselves are not deeply copied.
         This is typically sufficient since metadata values are usually
         primitives (int, float, str) or immutable objects (datetime).
-        
+
         This is useful when creating modified versions of metadata
         without affecting the original, particularly during image
         transformations.
-        
+
         Returns:
             New EyeMeta instance with the same data
-            
+
         Example:
             >>> original_meta = EyeMeta(key1='value1', key2='value2')
             >>> copied_meta = original_meta.copy()
@@ -116,15 +116,15 @@ class EyeEnfaceMeta(EyeMeta):
 
     def copy(self) -> 'EyeEnfaceMeta':
         """Create a shallow copy of this enface metadata object.
-        
+
         Creates a new instance with the same metadata. Note that this is a
         shallow copy - the dictionary values themselves are not deeply copied.
         This is typically sufficient since metadata values are usually
         primitives (int, float, str) or immutable objects (datetime).
-        
+
         Returns:
             New EyeEnfaceMeta instance with the same data
-            
+
         Example:
             >>> meta = EyeEnfaceMeta(scale_x=10.0, scale_y=10.0, scale_unit='µm')
             >>> copied = meta.copy()

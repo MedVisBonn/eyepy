@@ -141,10 +141,10 @@ class EyeVolume:
             np.save(localizer_path / 'localizer.npy', self.localizer.data)
             with open(localizer_path / 'meta.json', 'w') as meta_file:
                 json.dump(self.localizer.meta.as_dict(), meta_file)
-            
+
             # Save localizer transform
             if self.localizer_transform is not None:
-                np.save(localizer_path / 'transform_params.npy', 
+                np.save(localizer_path / 'transform_params.npy',
                        self.localizer_transform.params)
 
             # Save Localizer Annotations
@@ -158,7 +158,7 @@ class EyeVolume:
                 with open(pixels_path / 'meta.json', 'w') as meta_file:
                     json.dump([p.meta for p in self.localizer._area_maps],
                               meta_file)
-            
+
             # Save Optic Disc annotation
             if self.localizer.optic_disc is not None:
                 optic_disc_path = localizer_path / 'annotations' / 'optic_disc'
@@ -168,7 +168,7 @@ class EyeVolume:
                 if self.localizer.optic_disc.shape is not None:
                     with open(optic_disc_path / 'shape.json', 'w') as f:
                         json.dump(self.localizer.optic_disc.shape, f)
-            
+
             # Save Fovea annotation
             if self.localizer.fovea is not None:
                 fovea_path = localizer_path / 'annotations' / 'fovea'
@@ -246,7 +246,7 @@ class EyeVolume:
             localizer_data = np.load(localizer_path / 'localizer.npy')
             with open(localizer_path / 'meta.json', 'r') as meta_file:
                 localizer_meta = EyeEnfaceMeta.from_dict(json.load(meta_file))
-            
+
             # Load Optic Disc annotation if it exists
             optic_disc = None
             optic_disc_path = localizer_path / 'annotations' / 'optic_disc'
@@ -259,7 +259,7 @@ class EyeVolume:
                     with open(shape_file, 'r') as f:
                         shape = tuple(json.load(f))
                 optic_disc = EyeEnfaceOpticDiscAnnotation(polygon=polygon, shape=shape)
-            
+
             # Load Fovea annotation if it exists
             fovea = None
             fovea_path = localizer_path / 'annotations' / 'fovea'
@@ -272,8 +272,8 @@ class EyeVolume:
                     with open(shape_file, 'r') as f:
                         shape = tuple(json.load(f))
                 fovea = EyeEnfaceFoveaAnnotation(polygon=polygon, shape=shape)
-            
-            localizer = EyeEnface(data=localizer_data, meta=localizer_meta, 
+
+            localizer = EyeEnface(data=localizer_data, meta=localizer_meta,
                                  optic_disc=optic_disc, fovea=fovea)
 
             # Load Localizer Annotations
