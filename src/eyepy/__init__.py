@@ -16,6 +16,12 @@
 + [EyeVolumePixelAnnotation][eyepy.core.annotations.EyeVolumePixelAnnotation]
 
 + [EyeVolumeSlabAnnotation][eyepy.core.annotations.EyeVolumeSlabAnnotation]
+
++ [PolygonAnnotation][eyepy.core.annotations.PolygonAnnotation]
+
++ [EyeEnfaceOpticDiscAnnotation][eyepy.core.annotations.EyeEnfaceOpticDiscAnnotation]
+
++ [EyeEnfaceFoveaAnnotation][eyepy.core.annotations.EyeEnfaceFoveaAnnotation]
 """
 # isort: skip_file
 
@@ -36,12 +42,19 @@ from eyepy.core import EyeVolumeLayerAnnotation
 from eyepy.core import EyeVolumeMeta
 from eyepy.core import EyeVolumePixelAnnotation
 from eyepy.core import EyeVolumeSlabAnnotation
+from eyepy.core import EyeEnfaceFoveaAnnotation
+from eyepy.core import EyeEnfaceOpticDiscAnnotation
+from eyepy.core import PolygonAnnotation
 from eyepy.io import import_bscan_folder
 from eyepy.io import import_duke_mat
 from eyepy.io import import_heyex_e2e
 from eyepy.io import import_heyex_vol
 from eyepy.io import import_heyex_angio_vol
 from eyepy.io import import_heyex_xml
+
+# Backward compatibility aliases
+OpticDisc = EyeEnfaceOpticDiscAnnotation
+Fovea = EyeEnfaceFoveaAnnotation
 from eyepy.io import import_retouch
 from eyepy.io import import_topcon_fda
 from eyepy import data
