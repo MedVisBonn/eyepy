@@ -20,10 +20,12 @@ class EyeMeta(MutableMapping):
         self.update(dict(*args, **kwargs))  # use the free update to set keys
 
     def as_dict(self) -> dict:
-        """
+        """Return a copy of the metadata as a regular dictionary.
+        
+        Datetime objects are converted to ISO format strings.
 
         Returns:
-
+            Dictionary containing all metadata key-value pairs
         """
         data = self._store.copy()
 
@@ -31,6 +33,29 @@ class EyeMeta(MutableMapping):
             if isinstance(data[key], datetime.datetime):
                 data[key] = data[key].isoformat()
         return data
+
+    def copy(self) -> 'EyeMeta':
+        """Create a shallow copy of this metadata object.
+        
+        Creates a new instance with the same metadata. Note that this is a
+        shallow copy - the dictionary values themselves are not deeply copied.
+        This is typically sufficient since metadata values are usually
+        primitives (int, float, str) or immutable objects (datetime).
+        
+        This is useful when creating modified versions of metadata
+        without affecting the original, particularly during image
+        transformations.
+        
+        Returns:
+            New EyeMeta instance with the same data
+            
+        Example:
+            >>> original_meta = EyeMeta(key1='value1', key2='value2')
+            >>> copied_meta = original_meta.copy()
+            >>> copied_meta['key1'] = 'modified'
+            >>> print(original_meta['key1'])  # Still 'value1'
+        """
+        return self.__class__(**dict(self._store))
 
     def __getitem__(self, key: str) -> Any:
         return self._store[key]
@@ -76,18 +101,37 @@ class EyeEnfaceMeta(EyeMeta):
 
     @classmethod
     def from_dict(cls, data: dict) -> 'EyeEnfaceMeta':
-        """
+        """Create an EyeEnfaceMeta instance from a dictionary.
 
         Args:
-            data:
+            data: Dictionary containing metadata key-value pairs
 
         Returns:
-
+            New EyeEnfaceMeta instance
         """
         for key in ['visit_date', 'exam_time']:
             if key in data.keys() and data[key] is not None:
                 data[key] = datetime.datetime.fromisoformat(data[key])
         return cls(**data)
+
+    def copy(self) -> 'EyeEnfaceMeta':
+        """Create a shallow copy of this enface metadata object.
+        
+        Creates a new instance with the same metadata. Note that this is a
+        shallow copy - the dictionary values themselves are not deeply copied.
+        This is typically sufficient since metadata values are usually
+        primitives (int, float, str) or immutable objects (datetime).
+        
+        Returns:
+            New EyeEnfaceMeta instance with the same data
+            
+        Example:
+            >>> meta = EyeEnfaceMeta(scale_x=10.0, scale_y=10.0, scale_unit='µm')
+            >>> copied = meta.copy()
+            >>> copied['scale_x'] = 20.0
+            >>> print(meta['scale_x'])  # Still 10.0
+        """
+        return self.__class__(**dict(self._store))
 
 
 class EyeBscanMeta(EyeMeta):
