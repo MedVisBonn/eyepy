@@ -141,6 +141,11 @@ class EyeVolume:
             np.save(localizer_path / 'localizer.npy', self.localizer.data)
             with open(localizer_path / 'meta.json', 'w') as meta_file:
                 json.dump(self.localizer.meta.as_dict(), meta_file)
+            
+            # Save localizer transform
+            if self.localizer_transform is not None:
+                np.save(localizer_path / 'transform_params.npy', 
+                       self.localizer_transform.params)
 
             # Save Localizer Annotations
             if not len(self.localizer._area_maps) == 0:
@@ -153,6 +158,26 @@ class EyeVolume:
                 with open(pixels_path / 'meta.json', 'w') as meta_file:
                     json.dump([p.meta for p in self.localizer._area_maps],
                               meta_file)
+            
+            # Save Optic Disc annotation
+            if self.localizer.optic_disc is not None:
+                optic_disc_path = localizer_path / 'annotations' / 'optic_disc'
+                optic_disc_path.mkdir(exist_ok=True, parents=True)
+                np.save(optic_disc_path / 'polygon.npy', self.localizer.optic_disc.polygon)
+                # Save shape if available
+                if self.localizer.optic_disc.shape is not None:
+                    with open(optic_disc_path / 'shape.json', 'w') as f:
+                        json.dump(self.localizer.optic_disc.shape, f)
+            
+            # Save Fovea annotation
+            if self.localizer.fovea is not None:
+                fovea_path = localizer_path / 'annotations' / 'fovea'
+                fovea_path.mkdir(exist_ok=True, parents=True)
+                np.save(fovea_path / 'polygon.npy', self.localizer.fovea.polygon)
+                # Save shape if available
+                if self.localizer.fovea.shape is not None:
+                    with open(fovea_path / 'shape.json', 'w') as f:
+                        json.dump(self.localizer.fovea.shape, f)
 
             # Zip and copy to location
             name = shutil.make_archive(str(path),
@@ -221,7 +246,35 @@ class EyeVolume:
             localizer_data = np.load(localizer_path / 'localizer.npy')
             with open(localizer_path / 'meta.json', 'r') as meta_file:
                 localizer_meta = EyeEnfaceMeta.from_dict(json.load(meta_file))
-            localizer = EyeEnface(data=localizer_data, meta=localizer_meta)
+            
+            # Load Optic Disc annotation if it exists
+            optic_disc = None
+            optic_disc_path = localizer_path / 'annotations' / 'optic_disc'
+            if optic_disc_path.exists():
+                from eyepy.core.annotations import EyeEnfaceOpticDiscAnnotation
+                polygon = np.load(optic_disc_path / 'polygon.npy')
+                shape = None
+                shape_file = optic_disc_path / 'shape.json'
+                if shape_file.exists():
+                    with open(shape_file, 'r') as f:
+                        shape = tuple(json.load(f))
+                optic_disc = EyeEnfaceOpticDiscAnnotation(polygon=polygon, shape=shape)
+            
+            # Load Fovea annotation if it exists
+            fovea = None
+            fovea_path = localizer_path / 'annotations' / 'fovea'
+            if fovea_path.exists():
+                from eyepy.core.annotations import EyeEnfaceFoveaAnnotation
+                polygon = np.load(fovea_path / 'polygon.npy')
+                shape = None
+                shape_file = fovea_path / 'shape.json'
+                if shape_file.exists():
+                    with open(shape_file, 'r') as f:
+                        shape = tuple(json.load(f))
+                fovea = EyeEnfaceFoveaAnnotation(polygon=polygon, shape=shape)
+            
+            localizer = EyeEnface(data=localizer_data, meta=localizer_meta, 
+                                 optic_disc=optic_disc, fovea=fovea)
 
             # Load Localizer Annotations
             pixels_path = localizer_path / 'annotations' / 'pixel'
@@ -234,10 +287,16 @@ class EyeVolume:
                     localizer.add_area_annotation(pixel_annotations[i],
                                                   pixel_meta)
 
-            from eyepy.io.utils import _compute_localizer_oct_transform
-
-            transformation = _compute_localizer_oct_transform(
-                volume_meta, localizer_meta, data.shape)
+            # Load localizer transform if it exists, otherwise compute it
+            transform_params_path = localizer_path / 'transform_params.npy'
+            if transform_params_path.exists():
+                transform_params = np.load(transform_params_path)
+                transformation = transform.AffineTransform(matrix=transform_params)
+            else:
+                # Backward compatibility: compute transform if not saved
+                from eyepy.io.utils import _compute_localizer_oct_transform
+                transformation = _compute_localizer_oct_transform(
+                    volume_meta, localizer_meta, data.shape)
 
             ev = cls(
                 data=data,
