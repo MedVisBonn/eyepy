@@ -37,7 +37,7 @@ def _get_first(unpacked: tuple):
 
 def _date_in_seconds(
     dt: datetime,
-    epoche: datetime = datetime.utcfromtimestamp(0),
+    epoche: datetime = datetime.fromtimestamp(0, timezone.utc),
     second_frac: Union[float, int] = 1,
 ):
     seconds = (dt - epoche).total_seconds() / second_frac
@@ -48,7 +48,7 @@ def _date_in_seconds(
 
 def _date_from_seconds(
     s: int,
-    epoche: datetime = datetime.utcfromtimestamp(0),
+    epoche: datetime = datetime.fromtimestamp(0, timezone.utc),
     second_frac: Union[float, int] = 1,
 ):
     return epoche + timedelta(seconds=s * second_frac)
