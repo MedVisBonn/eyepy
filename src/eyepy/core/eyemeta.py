@@ -147,10 +147,10 @@ class EyeBscanMeta(EyeMeta):
         """A dict with required keys to hold meta data for OCT B-scans.
 
         Args:
-            start_pos: B-scan start on the enface (in enface space)
-            end_pos: B-scan end on the enface (in enface space)
-            pos_unit: Unit of the positions
-            **kwargs:
+            start_pos: B-scan start position on the enface (x, y) in physical coordinates, not pixel indices
+            end_pos: B-scan end position on the enface (x, y) in physical coordinates, not pixel indices
+            pos_unit: Unit of the positions (e.g., 'mm')
+            **kwargs: Additional metadata
         """
         start_pos = tuple(start_pos)
         end_pos = tuple(end_pos)

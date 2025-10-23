@@ -4,23 +4,27 @@ If you want to contribute to eyepy, this is a guide on how to do it. We are happ
 This section describes the setup of the eyepy project, mainly for internal documentation purposes, but feel free to use it as a guide for your own projects.
 
 ### Dependency management and packaging
-We use [Poetry](https://python-poetry.org/docs/) for dependency management and packaging. To contribute to eyepy, install Poetry as described in their [documentation](https://python-poetry.org/docs/#installation).
+We use `uv` for dependency management and task running. Install `uv` in your environment (python -m pip install uv) and use the commands below.
 
 Install all dependencies (including development dependencies):
 
 ```bash
-poetry install --with=dev
+uv sync --all-groups
 ```
 
-You will use Poetry to install the project's dependencies in a virtual environment or run the project's scripts and tests.
+You can also install with pip/hatch if you prefer:
+
+```bash
+python -m pip install -e .[dev]
+```
 
 To run the tests in the project's virtual environment:
 
 ```bash
-poetry run pytest
+uv run pytest
 ```
 
-Poetry is also used to build the package and deploy it to [PyPI](https://pypi.org/project/eyepie/). This is done via [GitHub Actions] triggered by a push to the master branch.
+Package builds and releases are handled by CI using hatchling and python-semantic-release.
 
 ### Code formatting and linting
 Do not spend your time on code formatting. We use yapf and isort to format the code automatically. You can run them via pre-commit hooks. See the section on [pre-commit hooks](#install-and-run-the-pre-commit-hooks) for more information.
@@ -53,7 +57,10 @@ git checkout -b my-feature
 Install dependencies (including dev dependencies):
 
 ```bash
-poetry install --with=dev
+uv sync --all-groups
+
+# or (if you prefer pip/hatch):
+python -m pip install -e .[dev]
 ```
 
 This will create a virtual environment and install all required and development dependencies.
@@ -67,7 +74,7 @@ This will create a virtual environment and install all required and development 
 Before committing, make sure all tests pass:
 
 ```bash
-poetry run pytest
+uv run pytest
 ```
 
 ### Install and run the pre-commit hooks
@@ -75,13 +82,13 @@ poetry run pytest
 Install the pre-commit hooks (only needed once):
 
 ```bash
-poetry run pre-commit install
+uv run pre-commit install
 ```
 
 Run all hooks manually before committing:
 
 ```bash
-poetry run pre-commit run --all-files
+uv run pre-commit run --all-files
 ```
 
 pre-commit might change your files to match the code style. You have to add them again before committing. After installation, hooks will also run automatically on every `git commit`. Since the commit with [Commitizen] fails if the pre-commit hooks fails, run the hooks before committing.
@@ -91,7 +98,7 @@ pre-commit might change your files to match the code style. You have to add them
 We use [Commitizen] for semantic commit messages. To create a commit message interactively:
 
 ```bash
-poetry run cz commit
+uv run cz commit
 ```
 
 ---
@@ -101,7 +108,7 @@ poetry run cz commit
 To build and serve the documentation locally with live reload:
 
 ```bash
-poetry run mkdocs serve
+uv run mkdocs serve
 ```
 
 Then open http://127.0.0.1:8000/ in your browser.

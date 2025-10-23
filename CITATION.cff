@@ -19,8 +19,8 @@ authors:
       Ophthalmology
 identifiers:
   - type: url
-    value: 'https://github.com/MedVisBonn/eyepy/tree/v0.12.2'
-repository-code: 'https://github.com/MedVisBonn/eyepy/tree/v0.12.2'
+    value: 'https://github.com/MedVisBonn/eyepy/tree/v0.15.0'
+repository-code: 'https://github.com/MedVisBonn/eyepy/tree/v0.15.0'
 abstract: >-
   Eye imaging data from different device vendors
   often come in different file formats. Additionally,
@@ -45,5 +45,5 @@ keywords:
   - HEYEX
   - ETDRS
 license: MIT
-version: v0.12.2
-date-released: '2023-11-15'
+version: v0.15.0
+date-released: '2025-10-24'

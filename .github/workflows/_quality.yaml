@@ -38,21 +38,16 @@ jobs:
         with:
           path: |
             ~/.cache
-          key: virtualenv-Python${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+          key: virtualenv-Python${{ matrix.python-version }}-${{ hashFiles('**/uv.lock') }}
           restore-keys: |
-            virtualenv-Python${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+            virtualenv-Python${{ matrix.python-version }}-${{ hashFiles('**/uv.lock') }}
 
-      - name: Install and configure Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: 1.6.1
-          virtualenvs-create: true
-          virtualenvs-in-project: false
-          installer-parallel: true
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
 
       - name: Install Dependencies
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
-        run: poetry install
+        run: uv sync --all-groups
 
       - name: Test with pytest
-        run: poetry run pytest --cov .
+        run: uv run pytest --cov .

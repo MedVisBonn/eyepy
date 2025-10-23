@@ -16,7 +16,7 @@ def enface_with_annotations():
     meta = EyeEnfaceMeta(scale_x=10.0, scale_y=10.0, scale_unit='µm', laterality='OD')
 
     # For right eye (OD): optic disc should end up on the right, fovea on the left
-    # Create optic disc at (50, 60) - to the right
+    # Create optic disc at (row=50, col=60) - to the right
     optic_disc_polygon = np.array([
         [48.0, 58.0],
         [48.0, 62.0],
@@ -25,12 +25,9 @@ def enface_with_annotations():
     ])
     optic_disc = EyeEnfaceOpticDiscAnnotation(optic_disc_polygon, shape=(100, 100))
 
-    # Create fovea at (50, 40) - to the left
+    # Create fovea at (row=50, col=40) - to the left
     fovea_polygon = np.array([
-        [48.0, 38.0],
-        [48.0, 42.0],
-        [52.0, 42.0],
-        [52.0, 38.0]
+        [50.0, 40.0]
     ])
     fovea = EyeEnfaceFoveaAnnotation(fovea_polygon, shape=(100, 100))
 
@@ -44,7 +41,7 @@ def enface_horizontal_alignment():
     data = np.random.rand(100, 100).astype(np.float32)
     meta = EyeEnfaceMeta(scale_x=10.0, scale_y=10.0, scale_unit='µm', laterality='OD')
 
-    # Right eye: optic disc on right (x=70), fovea on left (x=30), same horizontal line (y=50)
+    # Right eye: optic disc on right (col=70), fovea on left (col=30), same horizontal line (row=50)
     optic_disc_polygon = np.array([
         [48.0, 68.0],
         [48.0, 72.0],
@@ -54,10 +51,7 @@ def enface_horizontal_alignment():
     optic_disc = EyeEnfaceOpticDiscAnnotation(optic_disc_polygon, shape=(100, 100))
 
     fovea_polygon = np.array([
-        [48.0, 28.0],
-        [48.0, 32.0],
-        [52.0, 32.0],
-        [52.0, 28.0]
+        [50.0, 40.0]
     ])
     fovea = EyeEnfaceFoveaAnnotation(fovea_polygon, shape=(100, 100))
 
@@ -71,7 +65,7 @@ def enface_left_eye():
     meta = EyeEnfaceMeta(scale_x=10.0, scale_y=10.0, scale_unit='µm', laterality='OS')
 
     # For left eye (OS): optic disc should end up on the left, fovea on the right
-    # Create optic disc at (50, 40) - to the left
+    # Create optic disc at (row=50, col=40) - to the left
     optic_disc_polygon = np.array([
         [48.0, 38.0],
         [48.0, 42.0],
@@ -80,7 +74,7 @@ def enface_left_eye():
     ])
     optic_disc = EyeEnfaceOpticDiscAnnotation(optic_disc_polygon, shape=(100, 100))
 
-    # Create fovea at (50, 60) - to the right
+    # Create fovea at (row=50, col=60) - to the right
     fovea_polygon = np.array([
         [48.0, 58.0],
         [48.0, 62.0],
@@ -109,9 +103,10 @@ class TestStandardRotation:
         od_center = rotated.optic_disc.center
         fovea_center = rotated.fovea.center
 
-        # Check that y-coordinates are approximately equal (within tolerance for floating point)
+        # Check that row-coordinates are approximately equal (within tolerance for floating point)
+        # center is (row, col), so index 0 is row (vertical position)
         assert abs(od_center[0] - fovea_center[0]) < 0.5, \
-            f"Centers not aligned: OD y={od_center[0]}, Fovea y={fovea_center[0]}"
+            f'Centers not aligned: OD row={od_center[0]}, Fovea row={fovea_center[0]}'
 
     def test_standard_rotation_preserves_shape(self, enface_with_annotations):
         """Test that standard_rotation preserves image shape."""
@@ -181,7 +176,7 @@ class TestStandardRotation:
         meta = EyeEnfaceMeta(scale_x=10.0, scale_y=10.0, scale_unit='µm', laterality='OD')
 
         # Create annotations at 45-degree angle
-        # OD at (60, 60), Fovea at (40, 40) - diagonal, fovea upper-left
+        # OD at (row=60, col=60), Fovea at (row=40, col=40) - diagonal, fovea upper-left
         optic_disc_polygon = np.array([
             [58.0, 58.0],
             [58.0, 62.0],
@@ -255,7 +250,7 @@ class TestStandardRotation:
 
         # For right eye, optic disc should be to the right (larger x coordinate)
         assert od_center[1] > fovea_center[1], \
-            f"Right eye: OD should be right of fovea. OD x={od_center[1]}, Fovea x={fovea_center[1]}"
+            f'Right eye: OD should be right of fovea. OD x={od_center[1]}, Fovea x={fovea_center[1]}'
 
         # Should be horizontally aligned
         assert abs(od_center[0] - fovea_center[0]) < 0.5
@@ -270,7 +265,7 @@ class TestStandardRotation:
 
         # For left eye, optic disc should be to the left (smaller x coordinate)
         assert od_center[1] < fovea_center[1], \
-            f"Left eye: OD should be left of fovea. OD x={od_center[1]}, Fovea x={fovea_center[1]}"
+            f'Left eye: OD should be left of fovea. OD x={od_center[1]}, Fovea x={fovea_center[1]}'
 
         # Should be horizontally aligned
         assert abs(od_center[0] - fovea_center[0]) < 0.5

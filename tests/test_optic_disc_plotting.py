@@ -12,8 +12,8 @@ def optic_disc():
     """Create a simple optic disc annotation for testing."""
     return EyeEnfaceOpticDiscAnnotation.from_ellipse(
         center=(100, 100),
-        width=30,
-        height=35,
+        minor_axis=30,
+        major_axis=35,
         rotation=0.1,
         shape=(200, 200)
     )
@@ -88,17 +88,17 @@ class TestOpticDiscPlotting:
         fig, ax = plt.subplots()
 
         # Plot with offset
-        offset = (10, 20)
+        offset = (10, 20)  # (row_offset, col_offset)
         optic_disc.plot(ax=ax, offset=offset)
 
         lines = ax.get_lines()
         assert len(lines) > 0, 'Expected lines to be plotted'
 
-        # Get the plotted data
+        # Get the plotted data (matplotlib uses x, y format)
         xdata = lines[0].get_xdata()
         ydata = lines[0].get_ydata()
 
-        # Original polygon center
+        # Original polygon center (row, col format)
         original_center = optic_disc.center
 
         # The plotted center should be offset
@@ -106,8 +106,10 @@ class TestOpticDiscPlotting:
         plotted_center_y = np.mean(ydata)
 
         # Check that offset was applied (approximately)
-        expected_x = original_center[1] - offset[1]
-        expected_y = original_center[0] - offset[0]
+        # Center is (row, col), offset is (row_offset, col_offset)
+        # Matplotlib gets (x, y) = (col - col_offset, row - row_offset)
+        expected_x = original_center[1] - offset[1]  # col - col_offset
+        expected_y = original_center[0] - offset[0]  # row - row_offset
 
         assert abs(plotted_center_x - expected_x) < 5, 'X offset not applied correctly'
         assert abs(plotted_center_y - expected_y) < 5, 'Y offset not applied correctly'
@@ -183,7 +185,7 @@ class TestOpticDiscPlotting:
 
         patches = ax.patches
         assert len(patches) > 0, 'Expected filled area to be plotted'
-        assert patches[0].get_alpha() == custom_alpha, f"Alpha should be {custom_alpha}"
+        assert patches[0].get_alpha() == custom_alpha, f'Alpha should be {custom_alpha}'
 
         plt.close(fig)
 

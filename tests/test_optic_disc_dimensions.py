@@ -14,8 +14,8 @@ class TestOpticDiscDimensions:
         # Create a circular optic disc
         optic_disc = EyeEnfaceOpticDiscAnnotation.from_ellipse(
             center=(100, 100),
-            width=30,
-            height=30,  # Same as width -> circle
+            minor_axis=30,
+            major_axis=30,  # Same as width -> circle
             rotation=0,
             shape=(200, 200)
         )
@@ -30,25 +30,25 @@ class TestOpticDiscDimensions:
         # Create an elliptical optic disc
         optic_disc = EyeEnfaceOpticDiscAnnotation.from_ellipse(
             center=(100, 100),
-            width=25,
-            height=35,  # Taller than wide
+            minor_axis=25,
+            major_axis=35,  # Taller than wide
             rotation=0,
             shape=(200, 200)
         )
 
-        # For an axis-aligned ellipse, width should match horizontal extent
-        # and height should match vertical extent
-        assert optic_disc.width < optic_disc.height, 'Width should be less than height for vertical ellipse'
-        assert abs(optic_disc.width - 25) < 3, 'Width should be approximately 25'
-        assert abs(optic_disc.height - 35) < 3, 'Height should be approximately 35'
+        # For an axis-aligned ellipse, width measures horizontal (major_axis), height measures vertical (minor_axis)
+        # minor_axis=25 (vertical), major_axis=35 (horizontal) -> wider than tall
+        assert optic_disc.width > optic_disc.height, 'Width should be greater than height for horizontal ellipse'
+        assert abs(optic_disc.width - 35) < 3, 'Width (horizontal) should be approximately 35 (major_axis)'
+        assert abs(optic_disc.height - 25) < 3, 'Height (vertical) should be approximately 25 (minor_axis)'
 
     def test_width_height_from_circle(self):
         """Test horizontal/vertical dimensions for a circular optic disc."""
         # Create a circular optic disc
         optic_disc = EyeEnfaceOpticDiscAnnotation.from_ellipse(
             center=(100, 100),
-            width=30,
-            height=30,
+            minor_axis=30,
+            major_axis=30,
             rotation=0,
             shape=(200, 200)
         )
@@ -57,8 +57,8 @@ class TestOpticDiscDimensions:
         width = optic_disc.width
         height = optic_disc.height
 
-        assert abs(width - 30) < 2, f"Horizontal extent should be approximately 30, got {width}"
-        assert abs(height - 30) < 2, f"Vertical extent should be approximately 30, got {height}"
+        assert abs(width - 30) < 2, f'Horizontal extent should be approximately 30, got {width}'
+        assert abs(height - 30) < 2, f'Vertical extent should be approximately 30, got {height}'
         assert abs(width - height) < 2, 'Horizontal and vertical extents should be nearly equal for a circle'
 
     def test_width_height_from_ellipse_no_rotation(self):
@@ -66,8 +66,8 @@ class TestOpticDiscDimensions:
         # Create an ellipse with no rotation
         optic_disc = EyeEnfaceOpticDiscAnnotation.from_ellipse(
             center=(100, 100),
-            width=25,   # Horizontal extent
-            height=35,  # Vertical extent
+            minor_axis=25,   # Vertical extent (row direction)
+            major_axis=35,  # Horizontal extent (col direction)
             rotation=0,
             shape=(200, 200)
         )
@@ -76,16 +76,16 @@ class TestOpticDiscDimensions:
         height = optic_disc.height
 
         # For an unrotated ellipse, width should match width, height should match height
-        assert abs(width - 25) < 3, f"Horizontal extent should be approximately 25, got {width}"
-        assert abs(height - 35) < 3, f"Vertical extent should be approximately 35, got {height}"
+        assert abs(width - 35) < 3, f'Horizontal extent (major_axis) should be approximately 35, got {width}'
+        assert abs(height - 25) < 3, f'Vertical extent (minor_axis) should be approximately 25, got {height}'
 
     def test_width_height_from_rotated_ellipse(self):
         """Test that horizontal/vertical dimensions change with rotation."""
         # Create an ellipse rotated 45 degrees
         optic_disc = EyeEnfaceOpticDiscAnnotation.from_ellipse(
             center=(100, 100),
-            width=20,
-            height=40,
+            minor_axis=20,
+            major_axis=40,
             rotation=np.pi/4,  # 45 degrees
             shape=(200, 200)
         )
@@ -106,8 +106,8 @@ class TestOpticDiscDimensions:
         # Create an ellipse with width < height
         optic_disc = EyeEnfaceOpticDiscAnnotation.from_ellipse(
             center=(100, 100),
-            width=25,
-            height=35,
+            minor_axis=25,
+            major_axis=35,
             rotation=0,
             shape=(200, 200)
         )
@@ -118,8 +118,8 @@ class TestOpticDiscDimensions:
         # Rotate 90 degrees
         optic_disc_90 = EyeEnfaceOpticDiscAnnotation.from_ellipse(
             center=(100, 100),
-            width=25,
-            height=35,
+            minor_axis=25,
+            major_axis=35,
             rotation=np.pi/2,  # 90 degrees
             shape=(200, 200)
         )
@@ -136,8 +136,8 @@ class TestOpticDiscDimensions:
         # Create a rotated ellipse
         optic_disc = EyeEnfaceOpticDiscAnnotation.from_ellipse(
             center=(100, 100),
-            width=20,
-            height=40,
+            minor_axis=20,
+            major_axis=40,
             rotation=np.pi/6,  # 30 degrees
             shape=(200, 200)
         )
@@ -147,17 +147,17 @@ class TestOpticDiscDimensions:
         height = optic_disc.height
 
         # Width and height should still reflect that this is a taller structure
-        assert width < height, 'Width should be less than height'
+        assert width > height, 'Width should be greater than height (major > minor)'
         # Both should be between the original dimensions
-        assert 20 <= width <= 40, f"Width should be between 20 and 40, got {width}"
-        assert 20 <= height <= 40, f"Height should be between 20 and 40, got {height}"
+        assert 20 <= width <= 40, f'Width should be between 20 and 40, got {width}'
+        assert 20 <= height <= 40, f'Height should be between 20 and 40, got {height}'
 
     def test_center_consistency_across_measurements(self):
         """Test that all measurements use the same center point."""
         optic_disc = EyeEnfaceOpticDiscAnnotation.from_ellipse(
             center=(100, 150),
-            width=25,
-            height=35,
+            minor_axis=25,
+            major_axis=35,
             rotation=0.3,
             shape=(200, 200)
         )
@@ -184,8 +184,8 @@ class TestOpticDiscDimensions:
         height = optic_disc.height
 
         # Rectangle is 40 wide (x: 80-120) and 20 tall (y: 90-110)
-        assert abs(width - 40) < 2, f"Horizontal extent should be approximately 40, got {width}"
-        assert abs(height - 20) < 2, f"Vertical extent should be approximately 20, got {height}"
+        assert abs(width - 40) < 2, f'Horizontal extent should be approximately 40, got {width}'
+        assert abs(height - 20) < 2, f'Vertical extent should be approximately 20, got {height}'
 
     def test_dimensions_change_with_rotation(self):
         """Test that dimensions change as expected with rotation."""
@@ -193,31 +193,33 @@ class TestOpticDiscDimensions:
 
         # At 0 rotation: width ≈ width, height ≈ height
         optic_disc_0 = EyeEnfaceOpticDiscAnnotation.from_ellipse(
-            center=(100, 100), width=width, height=height,
+            center=(100, 100), minor_axis=width, major_axis=height,
             rotation=0, shape=(200, 200)
         )
 
         # At 90 rotation: dimensions should swap
         optic_disc_90 = EyeEnfaceOpticDiscAnnotation.from_ellipse(
-            center=(100, 100), width=width, height=height,
+            center=(100, 100), minor_axis=width, major_axis=height,
             rotation=np.pi/2, shape=(200, 200)
         )
 
         # At 45 rotation: dimensions should be more similar
         optic_disc_45 = EyeEnfaceOpticDiscAnnotation.from_ellipse(
-            center=(100, 100), width=width, height=height,
+            center=(100, 100), minor_axis=width, major_axis=height,
             rotation=np.pi/4, shape=(200, 200)
         )
 
         # Check that 0-degree has width < height
-        assert optic_disc_0.width < optic_disc_0.height
+        assert optic_disc_0.width > optic_disc_0.height  # major_axis > minor_axis
 
         # Check that 90-degree has width > height (swapped)
-        assert optic_disc_90.width > optic_disc_90.height
+        assert optic_disc_90.width < optic_disc_90.height  # After 90° rotation, dimensions swap
 
         # Check that 45-degree has more similar dimensions
-        ratio_0 = optic_disc_0.height / optic_disc_0.width
-        ratio_45 = optic_disc_45.height / optic_disc_45.width
+        # At 0°: width(major)=40, height(minor)=20 -> ratio = width/height = 2.0
+        # At 45°: ratio should be closer to 1.0
+        ratio_0 = optic_disc_0.width / optic_disc_0.height  # Should be ~2.0
+        ratio_45 = optic_disc_45.width / optic_disc_45.height  # Should be closer to 1.0
         assert ratio_45 < ratio_0, '45-degree rotation should make dimensions more similar'
 
     def test_hv_dimensions_change_with_rotation(self):
@@ -226,19 +228,19 @@ class TestOpticDiscDimensions:
 
         # At 0 rotation: width ≈ width, height ≈ height
         optic_disc_0 = EyeEnfaceOpticDiscAnnotation.from_ellipse(
-            center=(100, 100), width=width, height=height,
+            center=(100, 100), minor_axis=width, major_axis=height,
             rotation=0, shape=(200, 200)
         )
 
         # At 90° rotation: they should swap
         optic_disc_90 = EyeEnfaceOpticDiscAnnotation.from_ellipse(
-            center=(100, 100), width=width, height=height,
+            center=(100, 100), minor_axis=width, major_axis=height,
             rotation=np.pi/2, shape=(200, 200)
         )
 
         # At 45° rotation: they should be more similar
         optic_disc_45 = EyeEnfaceOpticDiscAnnotation.from_ellipse(
-            center=(100, 100), width=width, height=height,
+            center=(100, 100), minor_axis=width, major_axis=height,
             rotation=np.pi/4, shape=(200, 200)
         )
 
