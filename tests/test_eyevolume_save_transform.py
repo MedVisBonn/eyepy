@@ -262,5 +262,5 @@ class TestEyeVolumeSaveLoadTransform:
                 np.testing.assert_array_almost_equal(
                     loaded_volume.localizer_transform.params,
                     original_params,
-                    err_msg=f"Failed for transform with params:\n{original_params}"
+                    err_msg=f'Failed for transform with params:\n{original_params}'
                 )

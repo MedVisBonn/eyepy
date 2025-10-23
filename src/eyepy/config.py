@@ -45,3 +45,9 @@ _slab_colors = {
 }
 
 slab_colors = defaultdict(lambda: 'FBB2C4', **_slab_colors)
+
+# Colors for different Area annotations
+_area_colors = {
+}
+
+area_colors = defaultdict(lambda: 'FF0000', **_area_colors)

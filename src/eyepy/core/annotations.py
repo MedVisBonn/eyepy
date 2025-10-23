@@ -44,6 +44,11 @@ class PolygonAnnotation:
     This is a base class for polygon-based annotations like optic disc,
     macula, lesions, etc. The polygon is stored internally and
     transformations return new instances.
+
+    **Coordinate System:** All coordinates are in (row, col) format
+    consistent with NumPy array indexing and scikit-image conventions.
+    Row corresponds to the vertical axis (y-direction), and col
+    corresponds to the horizontal axis (x-direction).
     """
 
     def __init__(self, polygon: npt.NDArray[np.float64],
@@ -51,13 +56,13 @@ class PolygonAnnotation:
         """Initialize PolygonAnnotation from polygon vertices.
 
         Args:
-            polygon: Nx2 array of (y, x) coordinates defining the polygon vertices
+            polygon: Nx2 array of (row, col) coordinates defining the polygon vertices
             shape: Shape (height, width) of the image for mask generation. Optional,
                    can be used later if needed for mask generation.
         """
         self._polygon = np.asarray(polygon, dtype=np.float64)
         if self._polygon.ndim != 2 or self._polygon.shape[1] != 2:
-            raise ValueError('Polygon must be an Nx2 array of (y, x) coordinates')
+            raise ValueError('Polygon must be an Nx2 array of (row, col) coordinates')
 
         self._shape = shape
         self._cached_mask = None
@@ -78,14 +83,15 @@ class PolygonAnnotation:
         if len(contours) == 0:
             raise ValueError('No contours found in mask')
 
-        # Take the largest contour
+        # Take the largest contour (returns row, col)
         largest_contour = max(contours, key=len)
 
         return cls(polygon=largest_contour, shape=mask.shape)
 
     @property
     def polygon(self) -> npt.NDArray[np.float64]:
-        """Get the polygon representation as Nx2 array of (y, x) coordinates."""
+        """Get the polygon representation as Nx2 array of (row, col)
+        coordinates."""
         return self._polygon.copy()
 
     @property
@@ -109,7 +115,7 @@ class PolygonAnnotation:
         if self._cached_mask is not None:
             return self._cached_mask
 
-        # Create mask from polygon
+        # Create mask from polygon (draw.polygon expects row, col)
         mask = np.zeros(self._shape, dtype=bool)
         rr, cc = draw.polygon(self._polygon[:, 0], self._polygon[:, 1],
                              shape=self._shape)
@@ -123,7 +129,7 @@ class PolygonAnnotation:
 
         Args:
             factor: Scaling factor (e.g., 1.5 for 150% size, 0.5 for 50% size)
-            center: Center point (y, x) for scaling. If None, uses the polygon's centroid.
+            center: Center point (row, col) for scaling. If None, uses the polygon's centroid.
 
         Returns:
             New PolygonAnnotation instance with scaled polygon
@@ -140,23 +146,23 @@ class PolygonAnnotation:
 
         return self.transform(scale_matrix, center=center)
 
-    def translate(self, dy: float, dx: float) -> 'PolygonAnnotation':
+    def translate(self, drow: float, dcol: float) -> 'PolygonAnnotation':
         """Return a new PolygonAnnotation with translated polygon.
 
         Args:
-            dy: Translation in y direction (rows)
-            dx: Translation in x direction (columns)
+            drow: Translation offset in the row direction (vertical). Positive moves downward.
+            dcol: Translation offset in the col direction (horizontal). Positive moves rightward.
 
         Returns:
             New PolygonAnnotation instance with translated polygon
 
         Example:
-            >>> ann_moved = ann.translate(10, 20)  # Move 10 pixels down, 20 right
+            >>> ann_moved = ann.translate(10, 20)  # Move 10 pixels down, 20 pixels right
         """
         # Create translation matrix (2x3 format with translation vector)
         translation_matrix = np.array([
-            [1, 0, dx],
-            [0, 1, dy]
+            [1, 0, drow],
+            [0, 1, dcol]
         ])
 
         return self.transform(translation_matrix)
@@ -166,7 +172,7 @@ class PolygonAnnotation:
 
         Args:
             angle: Rotation angle in radians (positive = counter-clockwise)
-            center: Center point (y, x) for rotation. If None, uses the polygon's centroid.
+            center: Center point (row, col) for rotation. If None, uses the polygon's centroid.
 
         Returns:
             New PolygonAnnotation instance with rotated polygon
@@ -190,7 +196,7 @@ class PolygonAnnotation:
 
         Args:
             matrix: 2x2 affine transformation matrix or 2x3 matrix (last column is translation)
-            center: Center point (y, x) for transformation. If None, uses the polygon's centroid.
+            center: Center point (row, col) for transformation. If None, uses the polygon's centroid.
                    Only used if matrix is 2x2 (ignored for 2x3 matrices with translation).
 
         Returns:
@@ -211,10 +217,9 @@ class PolygonAnnotation:
             transform_matrix = matrix[:, :2]
             translation = matrix[:, 2]
 
-            # polygon is (y, x), matrix expects (x, y)
-            swapped = self._polygon[:, [1, 0]]
-            transformed = swapped @ transform_matrix.T + translation
-            result = transformed[:, [1, 0]]
+            # polygon is (row, col), matrix also expects (row, col)
+            transformed = self._polygon @ transform_matrix.T + translation
+            result = transformed
 
         elif matrix.shape == (2, 2):
             # Pure linear transformation (rotation, scale, shear)
@@ -224,13 +229,11 @@ class PolygonAnnotation:
             # Translate to origin
             centered = self._polygon - np.array(center)
 
-            # polygon is (y, x), matrix expects (x, y)
-            swapped = centered[:, [1, 0]]
-            transformed = swapped @ matrix.T
-            swapped_back = transformed[:, [1, 0]]
+            # polygon is (row, col), matrix also expects (row, col)
+            transformed = centered @ matrix.T
 
             # Translate back
-            result = swapped_back + np.array(center)
+            result = transformed + np.array(center)
         else:
             raise ValueError('Matrix must be 2x2 or 2x3')
 
@@ -238,13 +241,12 @@ class PolygonAnnotation:
 
     def plot(self, ax: Optional[plt.Axes] = None, offset: tuple[float, float] = (0, 0),
              **kwargs) -> None:
-        """Plot the polygon annotation on the given axes.
+        """Plot the polygon outline on the given axes.
 
         Args:
-            ax: Matplotlib axes to plot on. If None, uses current axes (plt.gca())
-            offset: (y_offset, x_offset) to apply to polygon coordinates for region plotting
-            **kwargs: Additional keyword arguments passed to ax.plot() for styling
-                     (e.g., color, linewidth, linestyle, etc.)
+            ax: Matplotlib axes. If None, uses current axes (plt.gca())
+            offset: (row_offset, col_offset) to adjust polygon position before plotting
+            **kwargs: Additional keyword arguments passed to ax.plot()
 
         Returns:
             None
@@ -253,12 +255,12 @@ class PolygonAnnotation:
             ax = plt.gca()
 
         # Apply offset to polygon coordinates
-        y_offset, x_offset = offset
+        row_offset, col_offset = offset
         polygon = self._polygon.copy()
-        polygon[:, 0] -= y_offset
-        polygon[:, 1] -= x_offset
+        polygon[:, 0] -= row_offset
+        polygon[:, 1] -= col_offset
 
-        # Plot polygon outline (x, y order for plotting)
+        # Plot polygon outline (matplotlib expects x, y, so swap col, row)
         ax.plot(polygon[:, 1], polygon[:, 0], **kwargs)
         # Close the polygon
         ax.plot([polygon[-1, 1], polygon[0, 1]],
@@ -414,6 +416,10 @@ class EyeVolumePixelAnnotation:
 
         if 'name' not in self.meta:
             self.meta['name'] = 'Voxel Annotation'
+
+        # Set default color from config if not already specified
+        if 'color' not in self.meta:
+            self.meta['color'] = '#' + config.area_colors[self.meta['name']]
 
     @property
     def name(self) -> str:
@@ -1027,6 +1033,10 @@ class EyeEnfacePixelAnnotation:
         if 'name' not in self.meta:
             self.meta['name'] = 'Pixel Annotation'
 
+        # Set default color from config if not already specified
+        if 'color' not in self.meta:
+            self.meta['color'] = '#' + config.area_colors[self.meta['name']]
+
     @property
     def name(self) -> str:
         """Name of the pixel annotation."""
@@ -1054,7 +1064,7 @@ class EyeEnfaceOpticDiscAnnotation(PolygonAnnotation):
         """Initialize EyeEnfaceOpticDiscAnnotation from a polygon.
 
         Args:
-            polygon: Nx2 array of (y, x) coordinates defining the polygon vertices
+            polygon: Nx2 array of (row, col) coordinates defining the polygon vertices
             shape: Shape (height, width) of the image for mask generation. Optional,
                    can be used later if needed for mask generation.
         """
@@ -1062,65 +1072,70 @@ class EyeEnfaceOpticDiscAnnotation(PolygonAnnotation):
         self._cached_ellipse = None
 
     @classmethod
-    def from_ellipse(cls, center: tuple[float, float], width: float, height: float,
+    def from_ellipse(cls, center: tuple[float, float], minor_axis: float, major_axis: float,
                      rotation: float = 0.0, num_points: int = 64,
                      shape: Optional[tuple[int, int]] = None) -> 'EyeEnfaceOpticDiscAnnotation':
         """Create EyeEnfaceOpticDiscAnnotation from ellipse parameters.
 
         Args:
-            center: (y, x) coordinates of ellipse center
-            width: Width of the ellipse (along minor axis before rotation)
-            height: Height of the ellipse (along major axis before rotation)
-            rotation: Rotation angle in radians
+            center: (row, col) coordinates of ellipse center
+            minor_axis: Length of the minor axis (shorter diameter)
+            major_axis: Length of the major axis (longer diameter)
+            rotation: Rotation angle in radians (rotates the ellipse axes)
             num_points: Number of points to sample on the ellipse perimeter
             shape: Shape (height, width) of the image for mask generation
 
         Returns:
             EyeEnfaceOpticDiscAnnotation instance
+
+        Note:
+            Before rotation, the minor axis is aligned with the row direction (vertical)
+            and the major axis is aligned with the col direction (horizontal).
         """
         # Generate points on ellipse perimeter
         theta = np.linspace(0, 2 * np.pi, num_points, endpoint=False)
 
-        # Ellipse in standard position
-        x = (width / 2) * np.cos(theta)
-        y = (height / 2) * np.sin(theta)
+        # Ellipse in standard position (row, col offsets)
+        # Minor axis along row direction, major axis along col direction
+        row_offset = (minor_axis / 2) * np.cos(theta)
+        col_offset = (major_axis / 2) * np.sin(theta)
 
         # Apply rotation
         cos_rot = np.cos(rotation)
         sin_rot = np.sin(rotation)
-        x_rot = x * cos_rot - y * sin_rot
-        y_rot = x * sin_rot + y * cos_rot
+        row_rot = row_offset * cos_rot - col_offset * sin_rot
+        col_rot = row_offset * sin_rot + col_offset * cos_rot
 
         # Translate to center
-        y_coords = y_rot + center[0]
-        x_coords = x_rot + center[1]
+        row_coords = row_rot + center[0]
+        col_coords = col_rot + center[1]
 
-        polygon = np.column_stack([y_coords, x_coords])
+        polygon = np.column_stack([row_coords, col_coords])
         return cls(polygon=polygon, shape=shape)
 
     def _fit_ellipse(self) -> tuple[float, float, float, float, float]:
         """Fit an ellipse to the polygon.
 
         Returns:
-            Tuple of (center_y, center_x, width, height, rotation)
+            Tuple of (center_row, center_col, width, height, rotation)
         """
         if self._cached_ellipse is not None:
             return self._cached_ellipse
 
         # Always estimate shape from polygon bounds to handle negative coordinates
-        min_y, min_x = self._polygon.min(axis=0)
-        max_y, max_x = self._polygon.max(axis=0)
+        min_row, min_col = self._polygon.min(axis=0)
+        max_row, max_col = self._polygon.max(axis=0)
 
         # Add padding
         padding = 5
-        height = int(np.ceil(max_y - min_y)) + 2 * padding
-        width = int(np.ceil(max_x - min_x)) + 2 * padding
+        height = int(np.ceil(max_row - min_row)) + 2 * padding
+        width = int(np.ceil(max_col - min_col)) + 2 * padding
         temp_shape = (height, width)
 
         # Adjust polygon coordinates to non-negative with padding
-        adjusted_polygon = self._polygon - [min_y - padding, min_x - padding]
+        adjusted_polygon = self._polygon - [min_row - padding, min_col - padding]
 
-        # Create temporary mask
+        # Create temporary mask (draw.polygon expects row, col)
         temp_mask = np.zeros(temp_shape, dtype=bool)
         rr, cc = draw.polygon(adjusted_polygon[:, 0], adjusted_polygon[:, 1],
                              shape=temp_shape)
@@ -1133,8 +1148,8 @@ class EyeEnfaceOpticDiscAnnotation(PolygonAnnotation):
 
         region = regions[0]
 
-        # Get ellipse parameters from region properties
-        y0, x0 = region.centroid
+        # Get ellipse parameters from region properties (centroid is row, col)
+        row0, col0 = region.centroid
 
         # Get orientation and axis lengths
         orientation = region.orientation
@@ -1144,100 +1159,100 @@ class EyeEnfaceOpticDiscAnnotation(PolygonAnnotation):
         major_axis_length = region.axis_major_length
 
         # Adjust center back to original coordinates
-        y0 += (min_y - padding)
-        x0 += (min_x - padding)
+        row0 += (min_row - padding)
+        col0 += (min_col - padding)
 
-        self._cached_ellipse = (y0, x0, minor_axis_length, major_axis_length, orientation)
+        self._cached_ellipse = (row0, col0, minor_axis_length, major_axis_length, orientation)
         return self._cached_ellipse
 
     @property
     def center(self) -> tuple[float, float]:
-        """Get the center (y, x) of the fitted ellipse.
+        """Get the center (row, col) of the fitted ellipse.
 
         Returns:
-            Tuple of (center_y, center_x)
+            Tuple of (center_row, center_col)
         """
-        y0, x0, _, _, _ = self._fit_ellipse()
-        return (y0, x0)
+        row0, col0, _, _, _ = self._fit_ellipse()
+        return (row0, col0)
 
     @property
     def width(self) -> float:
         """Get the horizontal extent of the optic disc polygon.
 
-        This measures the horizontal (x-direction) size by finding the
+        This measures the horizontal (column-direction) size by finding the
         horizontal line passing through the center that intersects the polygon.
 
         Returns:
             Horizontal extent (width) of the polygon through its center
         """
         center = self.center
-        center_y = center[0]
+        center_row = center[0]
 
-        # Find min and max x coordinates where the polygon exists at this y level
+        # Find min and max column coordinates where the polygon exists at this row level
         # We'll check all edges of the polygon for intersections with horizontal line
         polygon = self._polygon
-        x_coords = []
+        col_coords = []
 
         for i in range(len(polygon)):
-            y1, x1 = polygon[i]
-            y2, x2 = polygon[(i + 1) % len(polygon)]
+            row1, col1 = polygon[i]
+            row2, col2 = polygon[(i + 1) % len(polygon)]
 
-            # Check if the edge crosses the horizontal line at center_y
-            if min(y1, y2) <= center_y <= max(y1, y2):
-                if abs(y2 - y1) < 1e-10:
-                    # Horizontal edge at center_y
-                    x_coords.extend([x1, x2])
+            # Check if the edge crosses the horizontal line at center_row
+            if min(row1, row2) <= center_row <= max(row1, row2):
+                if abs(row2 - row1) < 1e-10:
+                    # Horizontal edge at center_row
+                    col_coords.extend([col1, col2])
                 else:
-                    # Interpolate to find x at center_y
-                    t = (center_y - y1) / (y2 - y1)
-                    x_intersect = x1 + t * (x2 - x1)
-                    x_coords.append(x_intersect)
+                    # Interpolate to find col at center_row
+                    t = (center_row - row1) / (row2 - row1)
+                    col_intersect = col1 + t * (col2 - col1)
+                    col_coords.append(col_intersect)
 
-        if len(x_coords) < 2:
+        if len(col_coords) < 2:
             # Fallback: use bounding box width
             return self._polygon[:, 1].max() - self._polygon[:, 1].min()
 
         # Width is the distance between leftmost and rightmost intersections
-        return max(x_coords) - min(x_coords)
+        return max(col_coords) - min(col_coords)
 
     @property
     def height(self) -> float:
         """Get the vertical extent of the optic disc polygon.
 
-        This measures the vertical (y-direction) size by finding the
+        This measures the vertical (row-direction) size by finding the
         vertical line passing through the center that intersects the polygon.
 
         Returns:
             Vertical extent (height) of the polygon through its center
         """
         center = self.center
-        center_x = center[1]
+        center_col = center[1]
 
-        # Find min and max y coordinates where the polygon exists at this x level
+        # Find min and max row coordinates where the polygon exists at this col level
         polygon = self._polygon
-        y_coords = []
+        row_coords = []
 
         for i in range(len(polygon)):
-            y1, x1 = polygon[i]
-            y2, x2 = polygon[(i + 1) % len(polygon)]
+            row1, col1 = polygon[i]
+            row2, col2 = polygon[(i + 1) % len(polygon)]
 
-            # Check if the edge crosses the vertical line at center_x
-            if min(x1, x2) <= center_x <= max(x1, x2):
-                if abs(x2 - x1) < 1e-10:
-                    # Vertical edge at center_x
-                    y_coords.extend([y1, y2])
+            # Check if the edge crosses the vertical line at center_col
+            if min(col1, col2) <= center_col <= max(col1, col2):
+                if abs(col2 - col1) < 1e-10:
+                    # Vertical edge at center_col
+                    row_coords.extend([row1, row2])
                 else:
-                    # Interpolate to find y at center_x
-                    t = (center_x - x1) / (x2 - x1)
-                    y_intersect = y1 + t * (y2 - y1)
-                    y_coords.append(y_intersect)
+                    # Interpolate to find row at center_col
+                    t = (center_col - col1) / (col2 - col1)
+                    row_intersect = row1 + t * (row2 - row1)
+                    row_coords.append(row_intersect)
 
-        if len(y_coords) < 2:
+        if len(row_coords) < 2:
             # Fallback: use bounding box height
             return self._polygon[:, 0].max() - self._polygon[:, 0].min()
 
         # Height is the distance between topmost and bottommost intersections
-        return max(y_coords) - min(y_coords)
+        return max(row_coords) - min(row_coords)
 
     def plot(self, ax: Optional[plt.Axes] = None, offset: tuple[float, float] = (0, 0),
              plot_contour: bool = True, plot_area: bool = False,
@@ -1250,7 +1265,7 @@ class EyeEnfaceOpticDiscAnnotation(PolygonAnnotation):
 
         Args:
             ax: Matplotlib axes to plot on. If None, uses current axes (plt.gca())
-            offset: (y_offset, x_offset) to apply to polygon coordinates for region plotting
+            offset: (row_offset, col_offset) to apply to polygon coordinates for region plotting
             plot_contour: If True, plot the contour outline (default: True)
             plot_area: If True, plot the filled area (default: False)
             contour_color: Color of the contour outline (default: 'red')
@@ -1279,10 +1294,10 @@ class EyeEnfaceOpticDiscAnnotation(PolygonAnnotation):
             ax = plt.gca()
 
         # Apply offset to polygon coordinates
-        y_offset, x_offset = offset
+        row_offset, col_offset = offset
         polygon = self._polygon.copy()
-        polygon[:, 0] -= y_offset
-        polygon[:, 1] -= x_offset
+        polygon[:, 0] -= row_offset
+        polygon[:, 1] -= col_offset
 
         # Determine area color if not specified
         if area_color is None:
@@ -1295,6 +1310,7 @@ class EyeEnfaceOpticDiscAnnotation(PolygonAnnotation):
             edgecolor = kwargs.pop('edgecolor', contour_color if plot_contour else 'none')
 
             # Use matplotlib's fill to create filled polygon
+            # polygon is (row, col), matplotlib expects (x, y) = (col, row)
             ax.fill(polygon[:, 1], polygon[:, 0],
                    facecolor=facecolor,
                    edgecolor=edgecolor if plot_contour else 'none',
@@ -1312,7 +1328,7 @@ class EyeEnfaceOpticDiscAnnotation(PolygonAnnotation):
                 **kwargs
             }
 
-            # Plot polygon outline (x, y order for plotting)
+            # Plot polygon outline (polygon is x, y, matplotlib expects x, y)
             ax.plot(polygon[:, 1], polygon[:, 0], **contour_kwargs)
             # Close the polygon
             ax.plot([polygon[-1, 1], polygon[0, 1]],
@@ -1332,10 +1348,10 @@ class EyeEnfaceFoveaAnnotation(PolygonAnnotation):
 
     @property
     def center(self) -> tuple[float, float]:
-        """Get the center (y, x) of the fovea.
+        """Get the center (row, col) of the fovea.
 
         Returns:
-            Tuple of (center_y, center_x) calculated as the mean of polygon vertices
+            Tuple of (center_row, center_col) calculated as the mean of polygon vertices
         """
         return tuple(self._polygon.mean(axis=0))
 
@@ -1346,7 +1362,7 @@ class EyeEnfaceFoveaAnnotation(PolygonAnnotation):
 
         Args:
             ax: Matplotlib axes to plot on. If None, uses current axes (plt.gca())
-            offset: (y_offset, x_offset) to apply to coordinates for region plotting
+            offset: (row_offset, col_offset) to apply to coordinates for region plotting
             color: Color of the fovea marker (default: 'yellow')
             marker: Marker style (default: '+')
             markersize: Size of the marker (default: 12)
@@ -1369,10 +1385,9 @@ class EyeEnfaceFoveaAnnotation(PolygonAnnotation):
         }
 
         # Apply offset to center coordinates
-        y_offset, x_offset = offset
+        row_offset, col_offset = offset
         center = self.center
-        center_y = center[0] - y_offset
-        center_x = center[1] - x_offset
+        center_row = center[0] - row_offset
+        center_col = center[1] - col_offset
 
-        # Plot center marker (x, y order for plotting)
-        ax.plot(center_x, center_y, **plot_kwargs)
+        ax.plot(center_col, center_row, **plot_kwargs)

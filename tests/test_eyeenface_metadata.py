@@ -61,7 +61,7 @@ def test_scale_anisotropic_updates_metadata(mock_enface):
 
 def test_translate_preserves_metadata(mock_enface):
     """Test that translation doesn't change scale metadata."""
-    translated = mock_enface.translate(offset_y=10, offset_x=20)
+    translated = mock_enface.translate(drow=10, dcol=20)
 
     # Translation should not affect scale
     assert translated.scale_x == pytest.approx(10.0)

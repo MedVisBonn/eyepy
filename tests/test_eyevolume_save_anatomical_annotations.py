@@ -50,8 +50,8 @@ def eyevolume_with_anatomical_annotations():
     # Create optic disc annotation (ellipse on the right side for OD)
     optic_disc = EyeEnfaceOpticDiscAnnotation.from_ellipse(
         center=(100, 140),
-        width=30,
-        height=35,
+        minor_axis=30,
+        major_axis=35,
         rotation=0.2,
         shape=(200, 200)
     )
@@ -151,7 +151,7 @@ class TestEyeVolumeSaveLoadAnatomicalAnnotations:
         localizer_meta = EyeEnfaceMeta(scale_x=0.01, scale_y=0.01, scale_unit='mm')
 
         optic_disc = EyeEnfaceOpticDiscAnnotation.from_ellipse(
-            center=(50, 60), width=20, height=25, shape=(100, 100)
+            center=(50, 60), minor_axis=20, major_axis=25, shape=(100, 100)
         )
 
         localizer = EyeEnface(
