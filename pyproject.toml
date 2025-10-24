@@ -80,6 +80,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.semantic_release]
+allow_zero_version = true
 major_on_zero = false
 version_variables = [
     "src/eyepy/__init__.py:__version__",
