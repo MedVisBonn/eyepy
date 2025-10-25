@@ -4,7 +4,12 @@ from typing import List, Union
 
 import imageio.v2 as imageio
 import numpy as np
-from oct_converter.readers import FDA
+
+try:
+    from oct_converter.readers import FDA
+    HAS_OCT_CONVERTER = True
+except ImportError:
+    HAS_OCT_CONVERTER = False
 
 from eyepy import EyeBscanMeta
 from eyepy import EyeVolume
@@ -32,11 +37,23 @@ def import_topcon_fda(path: Union[str, Path]) -> EyeVolume:
     Returns:
         Parsed data as EyeVolume object
 
+    Raises:
+        ImportError: If oct-converter is not installed
+
     Notes
     -----
     B-scan position and scaling data is computed assuming that B-scans
     were acquired in a horizontal raster pattern.
+
+    This function requires the optional `oct-converter` dependency.
+    Install it with: `pip install eyepy[fda]`
     """
+    if not HAS_OCT_CONVERTER:
+        raise ImportError(
+            'oct-converter is required to read FDA files. '
+            'Install it with: pip install eyepy[fda]'
+        )
+
     reader = FDA(path, printing=False)
 
     try:

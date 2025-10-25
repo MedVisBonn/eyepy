@@ -14,11 +14,11 @@ ev = ep.import_heyex_e2e("path/to/file.e2e")
 ev = ep.import_heyex_xml("path/to/folder")
 # Import HEYEX VOL export
 ev = ep.import_heyex_vol("path/to/file.vol")
-# Import Topcon FDA export
+# Import Topcon FDA export (requires: pip install eyepy[fda])
 ev = ep.import_topcon_fda("path/to/file.fda")
 # Import volume from Duke public dataset
 ev = ep.import_duke_mat("path/to/file.mat")
-# Import volume form RETOUCH challenge
+# Import volume form RETOUCH challenge (requires: pip install eyepy[itk])
 ev = ep.import_retouch("path/to/volume_folder")
 ```
 

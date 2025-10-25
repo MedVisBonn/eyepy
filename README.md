@@ -28,6 +28,11 @@ A powerful Python package for importing, analyzing, and visualizing retinal imag
 
 To install the latest version of eyepy run `pip install -U eyepy`. (It is `eyepie` for versions < 0.12.0)
 
+#### Optional Dependencies
+Some file formats require additional dependencies:
+- **Topcon FDA files**: `pip install eyepy[fda]` (requires `oct-converter`)
+- **RETOUCH dataset**: `pip install eyepy[itk]` (requires `itk`)
+
 ### Getting Started
 When you don't have a supported OCT volume at hand you can check out our sample datasets to get familiar with `eyepy`.
 
