@@ -21,19 +21,18 @@ from eyepy.core.eyemeta import EyeBscanMeta
 from eyepy.core.eyemeta import EyeEnfaceMeta
 from eyepy.core.eyemeta import EyeVolumeMeta
 from eyepy.core.eyevolume import EyeVolume
-from eyepy.io.he.e2e_format import \
-    containerheader_format  # data_container_structure, container_header_structure
-from eyepy.io.he.e2e_format import datacontainer_format
-from eyepy.io.he.e2e_format import TypesEnum
 from eyepy.io.utils import _compute_localizer_oct_transform
 from eyepy.io.utils import find_float
 from eyepy.io.utils import find_int
 from eyepy.io.utils import get_bscan_spacing
 
 from .e2e_format import ContainerHeader
+from .e2e_format import containerheader_format
 from .e2e_format import DataContainer
+from .e2e_format import datacontainer_format
 from .e2e_format import e2e_format
 from .e2e_format import Type10025
+from .e2e_format import TypesEnum
 from .vol_reader import SEG_MAPPING
 
 logger = logging.getLogger(__name__)
