@@ -175,5 +175,5 @@ jobs:
               mkdocs-section-index \
               pymdown-extensions \
               mkdocs-macros-plugin \
-              eyepy
+              eyepy[e2e]
       - run: mkdocs gh-deploy --force
