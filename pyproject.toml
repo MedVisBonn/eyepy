@@ -32,10 +32,8 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "numpy>=1.22.0,<2; python_version < '3.13'",
-    "numpy>=2.0.0; python_version >= '3.13'",
-    "scikit-image>=0.22.0,<0.25; python_version < '3.13'",
-    "scikit-image>=0.25.0; python_version >= '3.13'",
+    "numpy>=1.22.0",
+    "scikit-image>=0.22.0",
     "matplotlib>=3.5.1,<4",
     "construct>=2.10.68",
     "imageio>=2.25.1,<3",
