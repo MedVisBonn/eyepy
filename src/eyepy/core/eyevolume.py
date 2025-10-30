@@ -906,12 +906,8 @@ class EyeVolume:
             line_kwargs = {}
 
         for i in bscan_positions:
-            scale = np.array([self.localizer.scale_x, self.localizer.scale_y])
-
-            start = self[i].meta['start_pos'] / scale - np.array(
-                [region[1].start, region[0].start])
-            end = self[i].meta['end_pos'] / scale - np.array(
-                [region[1].start, region[0].start])
+            start = self._pos_to_localizer_region(self[i].meta['start_pos'], region)
+            end = self._pos_to_localizer_region(self[i].meta['end_pos'], region)
 
             for pos in [start, end]:
                 # Check for both axis if pos is in region
@@ -934,6 +930,27 @@ class EyeVolume:
             )
             ax.add_patch(polygon)
 
+    def _pos_to_localizer_region(self, pos: tuple[float, float],
+                       region: tuple[slice, slice]) -> tuple[float, float]:
+
+        pos_arr = np.array([pos[0], pos[1]], dtype=float)
+        scale = np.array([self.localizer.scale_x, self.localizer.scale_y], dtype=float)
+
+        # Todo: replace with actual localizer FOV
+        if self.localizer.scale_unit == '°':
+            # 15 degree is half the standard FOV of 30 degree
+            # We need the offset since coordinates in degree have the origin in the center
+            # of the image
+            offset = np.array([15.0, 15.0], dtype=float)
+        else:
+            offset = np.array([0.0, 0.0], dtype=float)
+
+        region_offset = np.array([region[1].start, region[0].start], dtype=float)
+
+        pos_transformed = ((pos_arr + offset) / scale) - region_offset
+
+        return (float(pos_transformed[0]), float(pos_transformed[1]))
+
     def _plot_bscan_region(self,
                            region: tuple[slice, slice] = np.s_[:, :],
                            ax: Optional[plt.Axes] = None,
@@ -942,16 +959,10 @@ class EyeVolume:
         ax = plt.gca() if ax is None else ax
         line_kwargs = {} if line_kwargs is None else line_kwargs
 
-        scale = np.array([self.localizer.scale_x, self.localizer.scale_y])
-
-        upper_left = np.array(self[-1].meta['start_pos']) / scale - np.array(
-            [region[1].start, region[0].start])
-        lower_left = np.array(self[0].meta['start_pos']) / scale - np.array(
-            [region[1].start, region[0].start])
-        lower_right = np.array(self[0].meta['end_pos']) / scale - np.array(
-            [region[1].start, region[0].start])
-        upper_right = np.array(self[-1].meta['end_pos']) / scale - np.array(
-            [region[1].start, region[0].start])
+        upper_left = self._pos_to_localizer_region(self[-1].meta['start_pos'], region)
+        lower_left = self._pos_to_localizer_region(self[0].meta['start_pos'], region)
+        lower_right = self._pos_to_localizer_region(self[0].meta['end_pos'], region)
+        upper_right = self._pos_to_localizer_region(self[-1].meta['end_pos'], region)
 
         for pos in [upper_left, lower_left, lower_right, upper_right]:
             # Check for both axis if pos is in region
