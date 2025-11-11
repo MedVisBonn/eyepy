@@ -42,7 +42,7 @@ class BscanAdapter(cs.Adapter):
         mantissa_sum = 1 + int(mantissa, 2) / pow(2, 10)
         exponent_sum = int(exponent, 2) - 63
         decimal_value = mantissa_sum * np.float_power(2, exponent_sum)
-        return decimal_value
+        return decimal_value.astype(np.float32)
 
     def _make_LUT(self):
         LUT = []

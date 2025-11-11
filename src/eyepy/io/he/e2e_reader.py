@@ -487,7 +487,7 @@ class E2ESeriesStructure(E2EStructureMixin):
         size_x = volume_meta['bscan_meta'][0]['size_x']
         size_y = volume_meta['bscan_meta'][0]['size_y']
 
-        data = np.zeros((self.n_bscans, size_y, size_x))
+        data = np.zeros((self.n_bscans, size_y, size_x), dtype=np.float32)
         for ind, sl in self.slices.items():
             bscan = sl.get_bscan()
             i = ind // 2 if len(
