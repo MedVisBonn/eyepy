@@ -142,11 +142,137 @@ def test_delete_voxel_annotation(eyevolume):
 
 
 def test_save_load(eyevolume, tmp_path):
+    """Test that save and load preserve all data exactly.
+
+    Verifies:
+    - Raw volume data
+    - Metadata (scale, laterality, bscan_meta)
+    - Layer annotations
+    - Volume (voxel) annotations
+    - Slab annotations
+    - Area (localizer pixel) annotations
+    - Localizer image
+    - Localizer metadata
+    - Localizer transform
+    """
+
+
     # Save
-    eyevolume.save(tmp_path / 'test.eye')
+    eyevolume.save(tmp_path / 'test.eye', compress=True)
     # Load
     eyevolume2 = ep.EyeVolume.load(tmp_path / 'test.eye')
-    # Test whether loaded eyevolume is the same as the original
-    assert eyevolume.meta == eyevolume2.meta
-    assert len(eyevolume.layers) == len(eyevolume2.layers)
-    assert len(eyevolume.volume_maps) == len(eyevolume2.volume_maps)
+
+    # 1. Verify raw volume data is identical
+    np.testing.assert_array_equal(
+        eyevolume._raw_data,
+        eyevolume2._raw_data,
+        err_msg='Raw volume data does not match'
+    )
+
+    # 2. Verify metadata
+    assert eyevolume.meta == eyevolume2.meta, 'Metadata does not match'
+    assert eyevolume.scale == eyevolume2.scale, 'Scale does not match'
+    assert eyevolume.laterality == eyevolume2.laterality, 'Laterality does not match'
+    assert eyevolume.scale_unit == eyevolume2.scale_unit, 'Scale unit does not match'
+
+    # 3. Verify layer annotations
+    assert len(eyevolume.layers) == len(eyevolume2.layers), \
+        f'Number of layers mismatch: {len(eyevolume.layers)} vs {len(eyevolume2.layers)}'
+
+    for layer_name in eyevolume.layers:
+        assert layer_name in eyevolume2.layers, \
+            f"Layer '{layer_name}' not found in loaded volume"
+        original_layer = eyevolume.layers[layer_name]
+        loaded_layer = eyevolume2.layers[layer_name]
+
+        np.testing.assert_array_equal(
+            original_layer.data,
+            loaded_layer.data,
+            err_msg=f"Layer '{layer_name}' data does not match"
+        )
+        assert original_layer.meta == loaded_layer.meta, \
+            f"Layer '{layer_name}' metadata does not match"
+
+    # 4. Verify volume (voxel) annotations / volume maps
+    assert len(eyevolume.volume_maps) == len(eyevolume2.volume_maps), \
+        f'Number of volume maps mismatch: {len(eyevolume.volume_maps)} vs {len(eyevolume2.volume_maps)}'
+
+    for vmap_name in eyevolume.volume_maps:
+        assert vmap_name in eyevolume2.volume_maps, \
+            f"Volume map '{vmap_name}' not found in loaded volume"
+        original_vmap = eyevolume.volume_maps[vmap_name]
+        loaded_vmap = eyevolume2.volume_maps[vmap_name]
+
+        np.testing.assert_array_equal(
+            original_vmap.data,
+            loaded_vmap.data,
+            err_msg=f"Volume map '{vmap_name}' data does not match"
+        )
+        # Note: JSON serialization converts tuples to lists, so we normalize for comparison
+        assert set(original_vmap.meta.keys()) == set(loaded_vmap.meta.keys()), \
+            f"Volume map '{vmap_name}' metadata keys do not match"
+        for key in original_vmap.meta:
+            orig_val = original_vmap.meta[key]
+            loaded_val = loaded_vmap.meta[key]
+            # Normalize: convert both to lists for comparison (JSON converts tuples->lists)
+            if isinstance(orig_val, (tuple, list)):
+                orig_val = list(orig_val)
+            if isinstance(loaded_val, (tuple, list)):
+                loaded_val = list(loaded_val)
+            assert orig_val == loaded_val, \
+                f"Volume map '{vmap_name}' metadata['{key}'] does not match: {original_vmap.meta[key]} != {loaded_vmap.meta[key]}"
+
+    # 5. Verify slab annotations
+    assert len(eyevolume.slabs) == len(eyevolume2.slabs), \
+        f'Number of slabs mismatch: {len(eyevolume.slabs)} vs {len(eyevolume2.slabs)}'
+
+    for slab_name in eyevolume.slabs:
+        assert slab_name in eyevolume2.slabs, \
+            f"Slab '{slab_name}' not found in loaded volume"
+        original_slab = eyevolume.slabs[slab_name]
+        loaded_slab = eyevolume2.slabs[slab_name]
+        assert original_slab.meta == loaded_slab.meta, \
+            f"Slab '{slab_name}' metadata does not match"
+
+    # 6. Verify area (localizer pixel) annotations
+    original_area_maps = eyevolume.localizer._area_maps
+    loaded_area_maps = eyevolume2.localizer._area_maps
+
+    assert len(original_area_maps) == len(loaded_area_maps), \
+        f'Number of area maps mismatch: {len(original_area_maps)} vs {len(loaded_area_maps)}'
+
+    for i, (orig_amap, loaded_amap) in enumerate(zip(original_area_maps, loaded_area_maps)):
+        np.testing.assert_array_equal(
+            orig_amap.data,
+            loaded_amap.data,
+            err_msg=f'Area map {i} data does not match'
+        )
+        assert orig_amap.meta == loaded_amap.meta, \
+            f'Area map {i} metadata does not match'
+
+    # 7. Verify localizer image data
+    np.testing.assert_array_equal(
+        eyevolume.localizer.data,
+        eyevolume2.localizer.data,
+        err_msg='Localizer image data does not match'
+    )
+
+    # 8. Verify localizer metadata
+    assert eyevolume.localizer.meta == eyevolume2.localizer.meta, \
+        'Localizer metadata does not match'
+    assert eyevolume.localizer.scale_x == eyevolume2.localizer.scale_x, \
+        'Localizer scale_x does not match'
+    assert eyevolume.localizer.scale_y == eyevolume2.localizer.scale_y, \
+        'Localizer scale_y does not match'
+    assert eyevolume.localizer.laterality == eyevolume2.localizer.laterality, \
+        'Localizer laterality does not match'
+
+    # 9. Verify localizer transform parameters
+    if eyevolume.localizer_transform is not None:
+        assert eyevolume2.localizer_transform is not None, \
+            'Localizer transform was not loaded'
+        np.testing.assert_array_almost_equal(
+            eyevolume.localizer_transform.params,
+            eyevolume2.localizer_transform.params,
+            err_msg='Localizer transform parameters do not match'
+        )
