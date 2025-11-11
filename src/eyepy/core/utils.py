@@ -9,6 +9,7 @@ from eyepy.core.filter import filter_by_height_enface
 
 from .annotations import EyeVolumeLayerAnnotation
 
+NDArrayFloat32 = npt.NDArray[np.float32]
 NDArrayFloat = npt.NDArray[np.float64]
 NDArrayBool = npt.NDArray[np.bool_]
 NDArrayInt = npt.NDArray[np.int64]
@@ -73,7 +74,7 @@ def from_vol_intensity(data: NDArrayFloat) -> NDArrayUByte:
     data = np.clip(data, 0, 1)
     return img_as_ubyte(data).astype(np.ubyte)
 
-def from_e2e_intensity(data: NDArrayFloat) -> NDArrayUByte:
+def from_e2e_intensity(data: NDArrayFloat32) -> NDArrayUByte:
     selection_0 = data == np.logical_or(data == np.finfo(np.float32).max,
                                         data > 1.99) # empty regions in e2e exports
     selection_data = data <= 1
