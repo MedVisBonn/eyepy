@@ -12,6 +12,7 @@ from .annotations import EyeVolumeLayerAnnotation
 NDArrayFloat = npt.NDArray[np.float64]
 NDArrayBool = npt.NDArray[np.bool_]
 NDArrayInt = npt.NDArray[np.int64]
+NDArrayUByte = npt.NDArray[np.ubyte]
 
 
 class DynamicDefaultDict(dict):
@@ -46,7 +47,7 @@ def from_angio_intensity(data: NDArrayFloat) -> NDArrayInt:
     return np.where((data < 0) | (data > 1), 0, data)
 
 
-def vol_intensity_transform(data: NDArrayFloat) -> NDArrayInt:
+def vol_intensity_transform(data: NDArrayFloat) -> NDArrayUByte:
     """Wrapper around from_vol_intensity.
 
     Transform intensities from Heyex VOL exports to achieve a constrast similar to the one used in Heyex.
@@ -60,7 +61,7 @@ def vol_intensity_transform(data: NDArrayFloat) -> NDArrayInt:
     return from_vol_intensity(data)
 
 
-def from_vol_intensity(data: NDArrayFloat) -> NDArrayInt:
+def from_vol_intensity(data: NDArrayFloat) -> NDArrayUByte:
     selection_0 = data == np.finfo(np.float32).max
     selection_data = data <= 1
 
@@ -70,7 +71,20 @@ def from_vol_intensity(data: NDArrayFloat) -> NDArrayInt:
     data[selection_data] = new
     data[selection_0] = 0
     data = np.clip(data, 0, 1)
-    return img_as_ubyte(data)
+    return img_as_ubyte(data).astype(np.ubyte)
+
+def from_e2e_intensity(data: NDArrayFloat) -> NDArrayUByte:
+    selection_0 = data == np.logical_or(data == np.finfo(np.float32).max,
+                                        data > 1.99) # empty regions in e2e exports
+    selection_data = data <= 1
+
+    new = np.log(data[selection_data] + 2.44e-04)
+    new = (new + 8.3) / 8.285
+
+    data[selection_data] = new
+    data[selection_0] = 0
+    data = np.clip(data, 0, 1)
+    return img_as_ubyte(data).astype(np.ubyte)
 
 
 # Function expects numpy array of uint8 type hint
@@ -98,6 +112,7 @@ def default_intensity_transform(data: np.ndarray) -> np.ndarray:
 intensity_transforms = {
     'default': default_intensity_transform,
     'vol': vol_intensity_transform,
+    'e2e': from_e2e_intensity,
     'angio': angio_intensity_transform,
 }
 

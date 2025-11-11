@@ -168,7 +168,7 @@ class Type10004(DataclassMixin, TypeMixin):
     imgSizeWidth: int = csfield(
         cs.Int32ul,
         doc=
-        'This might differ from size_x, the actual meaning of this value is unclear, maybe you can compute the x-axis scale from this value.'
+        'Might differ from size_x, and is probably the number of filled A-scans in the Bscan. Bscans sometimes have empty A-scans at the ends.'
     )
     n_bscans: int = csfield(cs.Int32ul,
                             doc='Number of Bscans in the respective volume')
