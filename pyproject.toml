@@ -43,13 +43,13 @@ dependencies = [
 itk = ["itk>=5.3.0,<6"]
 pandas = ["pandas>1.5.3"]
 fda = ["oct-converter>=0.6.1,<0.7"]
-e2e = ["construct-typing>=0.6.2"]
+e2e = ["construct-typing>=0.7.0"]
 build = ["uv ~= 0.9.5"]
 all = [
     "itk>=5.3.0,<6",
     "pandas>1.5.3",
     "oct-converter>=0.6.1,<0.7",
-    "construct-typing>=0.6.2",
+    "construct-typing>=0.7.0",
 ]
 
 [project.urls]
