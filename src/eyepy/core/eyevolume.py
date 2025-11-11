@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Callable
+import io
 import json
 import logging
 from pathlib import Path
@@ -84,144 +85,152 @@ class EyeVolume:
         else:
             self.localizer = localizer
 
-    def save(self, path: Union[str, Path]) -> None:
-        """
+    def save(self, path: Union[str, Path], compress: bool = False) -> None:
+        """Save the EyeVolume to a zip file.
 
         Args:
-            path:
+            path: Path where the file will be saved
+            compress: Whether to compress the file. Compression reduces file size by ~38% but takes ~30x longer.
+                     Default is False for fast saves. Set to True to reduce file size. (default: False)
 
         Returns:
-
+            None
         """
-        # Create temporary folder
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            tmpdirname = Path(tmpdirname)
+        path = Path(path)
 
+        compression_type = zipfile.ZIP_DEFLATED if compress else zipfile.ZIP_STORED
+        compress_level = 6 if compress else None
+
+        with zipfile.ZipFile(path, 'w', compression_type, compresslevel=compress_level) as zipf:
             # Save OCT volume as npy and meta as json
-            np.save(tmpdirname / 'raw_volume.npy', self._raw_data)
-            with open(tmpdirname / 'meta.json', 'w') as meta_file:
-                if self.meta['intensity_transform'] == 'custom':
-                    warnings.warn(
-                        'Custom intensity transforms can not be saved.')
-                    self.meta['intensity_transform'] = 'default'
-                json.dump(self.meta.as_dict(), meta_file)
+            volume_bytes = io.BytesIO()
+            np.save(volume_bytes, self._raw_data)
+            zipf.writestr('raw_volume.npy', volume_bytes.getvalue())
 
-            if not len(self._volume_maps) == 0:
-                # Save Volume Annotations
-                voxels_path = tmpdirname / 'annotations' / 'voxels'
-                voxels_path.mkdir(exist_ok=True, parents=True)
+            meta_dict = self.meta.as_dict()
+            if meta_dict['intensity_transform'] == 'custom':
+                warnings.warn(
+                    'Custom intensity transforms can not be saved.')
+                meta_dict['intensity_transform'] = 'default'
+            zipf.writestr('meta.json', json.dumps(meta_dict))
+
+            # Save Volume Annotations
+            if len(self._volume_maps) > 0:
+                voxel_data_bytes = io.BytesIO()
                 np.save(
-                    voxels_path / 'voxel_maps.npy',
+                    voxel_data_bytes,
                     np.stack([v.data for v in self._volume_maps]),
                 )
-                with open(voxels_path / 'meta.json', 'w') as meta_file:
-                    json.dump([v.meta for v in self._volume_maps], meta_file)
+                zipf.writestr('annotations/voxels/voxel_maps.npy', voxel_data_bytes.getvalue())
+                zipf.writestr(
+                    'annotations/voxels/meta.json',
+                    json.dumps([v.meta for v in self._volume_maps])
+                )
 
-            if not len(self._layers) == 0:
-                # Save layer annotations
-                layers_path = tmpdirname / 'annotations' / 'layers'
-                layers_path.mkdir(exist_ok=True, parents=True)
+            # Save layer annotations
+            if len(self._layers) > 0:
+                layer_data_bytes = io.BytesIO()
                 np.save(
-                    layers_path / 'layer_heights.npy',
+                    layer_data_bytes,
                     np.stack([l.data for l in self._layers]),
                 )
-                with open(layers_path / 'meta.json', 'w') as meta_file:
-                    json.dump([l.meta for l in self._layers], meta_file)
+                zipf.writestr('annotations/layers/layer_heights.npy', layer_data_bytes.getvalue())
+                zipf.writestr(
+                    'annotations/layers/meta.json',
+                    json.dumps([l.meta for l in self._layers])
+                )
 
-            if not len(self._slabs) == 0:
-                # Save slab annotations
-                slabs_path = tmpdirname / 'annotations' / 'slabs'
-                slabs_path.mkdir(exist_ok=True, parents=True)
-                with open(slabs_path / 'meta.json', 'w') as meta_file:
-                    json.dump([s.meta for s in self._slabs], meta_file)
+            # Save slab annotations
+            if len(self._slabs) > 0:
+                zipf.writestr(
+                    'annotations/slabs/meta.json',
+                    json.dumps([s.meta for s in self._slabs])
+                )
 
             # Save Localizer
-            localizer_path = tmpdirname / 'localizer'
-            localizer_path.mkdir(exist_ok=True, parents=True)
-            np.save(localizer_path / 'localizer.npy', self.localizer.data)
-            with open(localizer_path / 'meta.json', 'w') as meta_file:
-                json.dump(self.localizer.meta.as_dict(), meta_file)
+            localizer_bytes = io.BytesIO()
+            np.save(localizer_bytes, self.localizer.data)
+            zipf.writestr('localizer/localizer.npy', localizer_bytes.getvalue())
+            zipf.writestr('localizer/meta.json', json.dumps(self.localizer.meta.as_dict()))
 
             # Save localizer transform
             if self.localizer_transform is not None:
-                np.save(localizer_path / 'transform_params.npy',
-                       self.localizer_transform.params)
+                transform_bytes = io.BytesIO()
+                np.save(transform_bytes, self.localizer_transform.params)
+                zipf.writestr('localizer/transform_params.npy', transform_bytes.getvalue())
 
             # Save Localizer Annotations
-            if not len(self.localizer._area_maps) == 0:
-                pixels_path = localizer_path / 'annotations' / 'pixel'
-                pixels_path.mkdir(exist_ok=True, parents=True)
+            if len(self.localizer._area_maps) > 0:
+                pixels_data_bytes = io.BytesIO()
                 np.save(
-                    pixels_path / 'pixel_maps.npy',
+                    pixels_data_bytes,
                     np.stack([p.data for p in self.localizer._area_maps]),
                 )
-                with open(pixels_path / 'meta.json', 'w') as meta_file:
-                    json.dump([p.meta for p in self.localizer._area_maps],
-                              meta_file)
+                zipf.writestr('localizer/annotations/pixel/pixel_maps.npy', pixels_data_bytes.getvalue())
+                zipf.writestr(
+                    'localizer/annotations/pixel/meta.json',
+                    json.dumps([p.meta for p in self.localizer._area_maps])
+                )
 
             # Save Optic Disc annotation
             if self.localizer.optic_disc is not None:
-                optic_disc_path = localizer_path / 'annotations' / 'optic_disc'
-                optic_disc_path.mkdir(exist_ok=True, parents=True)
-                np.save(optic_disc_path / 'polygon.npy', self.localizer.optic_disc.polygon)
-                # Save shape if available
+                polygon_bytes = io.BytesIO()
+                np.save(polygon_bytes, self.localizer.optic_disc.polygon)
+                zipf.writestr('localizer/annotations/optic_disc/polygon.npy', polygon_bytes.getvalue())
+
                 if self.localizer.optic_disc.shape is not None:
-                    with open(optic_disc_path / 'shape.json', 'w') as f:
-                        json.dump(self.localizer.optic_disc.shape, f)
+                    zipf.writestr(
+                        'localizer/annotations/optic_disc/shape.json',
+                        json.dumps(self.localizer.optic_disc.shape)
+                    )
 
             # Save Fovea annotation
             if self.localizer.fovea is not None:
-                fovea_path = localizer_path / 'annotations' / 'fovea'
-                fovea_path.mkdir(exist_ok=True, parents=True)
-                np.save(fovea_path / 'polygon.npy', self.localizer.fovea.polygon)
-                # Save shape if available
-                if self.localizer.fovea.shape is not None:
-                    with open(fovea_path / 'shape.json', 'w') as f:
-                        json.dump(self.localizer.fovea.shape, f)
+                fovea_polygon_bytes = io.BytesIO()
+                np.save(fovea_polygon_bytes, self.localizer.fovea.polygon)
+                zipf.writestr('localizer/annotations/fovea/polygon.npy', fovea_polygon_bytes.getvalue())
 
-            # Zip and copy to location
-            name = shutil.make_archive(str(path),
-                                       'zip',
-                                       root_dir=str(tmpdirname))
-            # Remove zip extension
-            shutil.move(name, path)
+                if self.localizer.fovea.shape is not None:
+                    zipf.writestr(
+                        'localizer/annotations/fovea/shape.json',
+                        json.dumps(self.localizer.fovea.shape)
+                    )
 
     @classmethod
     def load(cls, path: Union[str, Path]) -> 'EyeVolume':
-        """
+        """Load an EyeVolume from a zip file.
 
         Args:
-            path:
+            path: Path to the zip file to load
 
         Returns:
-
+            EyeVolume: The loaded EyeVolume object
         """
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            tmpdirname = Path(tmpdirname)
-            with zipfile.ZipFile(path, 'r') as zip_ref:
-                zip_ref.extractall(tmpdirname)
+        path = Path(path)
 
+        with zipfile.ZipFile(path, 'r') as zipf:
             # Load raw volume and meta
-            data = np.load(tmpdirname / 'raw_volume.npy')
-            with open(tmpdirname / 'meta.json', 'r') as meta_file:
-                volume_meta = EyeVolumeMeta.from_dict(json.load(meta_file))
+            with zipf.open('raw_volume.npy') as f:
+                data = np.load(io.BytesIO(f.read()))
+            with zipf.open('meta.json') as f:
+                volume_meta = EyeVolumeMeta.from_dict(json.load(f))
 
             # Load Volume Annotations
-            voxels_path = tmpdirname / 'annotations' / 'voxels'
-            if voxels_path.exists():
-                voxel_annotations = np.load(voxels_path / 'voxel_maps.npy')
-                with open(voxels_path / 'meta.json', 'r') as meta_file:
-                    voxels_meta = json.load(meta_file)
-            else:
+            try:
+                with zipf.open('annotations/voxels/voxel_maps.npy') as f:
+                    voxel_annotations = np.load(io.BytesIO(f.read()))
+                with zipf.open('annotations/voxels/meta.json') as f:
+                    voxels_meta = json.load(f)
+            except KeyError:
                 voxel_annotations = []
                 voxels_meta = []
 
             # Load layers
-            layers_path = tmpdirname / 'annotations' / 'layers'
-            if layers_path.exists():
-                layer_annotations = np.load(layers_path / 'layer_heights.npy')
-                with open(layers_path / 'meta.json', 'r') as meta_file:
-                    layers_meta = json.load(meta_file)
+            try:
+                with zipf.open('annotations/layers/layer_heights.npy') as f:
+                    layer_annotations = np.load(io.BytesIO(f.read()))
+                with zipf.open('annotations/layers/meta.json') as f:
+                    layers_meta = json.load(f)
 
                 # Clean knots
                 for i, layer_meta in enumerate(layers_meta):
@@ -229,70 +238,77 @@ class EyeVolume:
                         knots = layer_meta['knots']
                         knots = {int(i): knots[i] for i in knots}
                         layer_meta['knots'] = knots
-            else:
+            except KeyError:
                 layer_annotations = []
                 layers_meta = []
 
             # Load slabs
-            slabs_path = tmpdirname / 'annotations' / 'slabs'
-            if slabs_path.exists():
-                with open(slabs_path / 'meta.json', 'r') as meta_file:
-                    slabs_meta = json.load(meta_file)
-            else:
+            try:
+                with zipf.open('annotations/slabs/meta.json') as f:
+                    slabs_meta = json.load(f)
+            except KeyError:
                 slabs_meta = []
 
             # Load Localizer and meta
-            localizer_path = tmpdirname / 'localizer'
-            localizer_data = np.load(localizer_path / 'localizer.npy')
-            with open(localizer_path / 'meta.json', 'r') as meta_file:
-                localizer_meta = EyeEnfaceMeta.from_dict(json.load(meta_file))
+            with zipf.open('localizer/localizer.npy') as f:
+                localizer_data = np.load(io.BytesIO(f.read()))
+            with zipf.open('localizer/meta.json') as f:
+                localizer_meta = EyeEnfaceMeta.from_dict(json.load(f))
 
             # Load Optic Disc annotation if it exists
             optic_disc = None
-            optic_disc_path = localizer_path / 'annotations' / 'optic_disc'
-            if optic_disc_path.exists():
+            try:
                 from eyepy.core.annotations import EyeEnfaceOpticDiscAnnotation
-                polygon = np.load(optic_disc_path / 'polygon.npy')
+                with zipf.open('localizer/annotations/optic_disc/polygon.npy') as f:
+                    polygon = np.load(io.BytesIO(f.read()))
                 shape = None
-                shape_file = optic_disc_path / 'shape.json'
-                if shape_file.exists():
-                    with open(shape_file, 'r') as f:
+                try:
+                    with zipf.open('localizer/annotations/optic_disc/shape.json') as f:
                         shape = tuple(json.load(f))
+                except KeyError:
+                    pass
                 optic_disc = EyeEnfaceOpticDiscAnnotation(polygon=polygon, shape=shape)
+            except KeyError:
+                pass
 
             # Load Fovea annotation if it exists
             fovea = None
-            fovea_path = localizer_path / 'annotations' / 'fovea'
-            if fovea_path.exists():
+            try:
                 from eyepy.core.annotations import EyeEnfaceFoveaAnnotation
-                polygon = np.load(fovea_path / 'polygon.npy')
+                with zipf.open('localizer/annotations/fovea/polygon.npy') as f:
+                    polygon = np.load(io.BytesIO(f.read()))
                 shape = None
-                shape_file = fovea_path / 'shape.json'
-                if shape_file.exists():
-                    with open(shape_file, 'r') as f:
+                try:
+                    with zipf.open('localizer/annotations/fovea/shape.json') as f:
                         shape = tuple(json.load(f))
+                except KeyError:
+                    pass
                 fovea = EyeEnfaceFoveaAnnotation(polygon=polygon, shape=shape)
+            except KeyError:
+                pass
 
             localizer = EyeEnface(data=localizer_data, meta=localizer_meta,
                                  optic_disc=optic_disc, fovea=fovea)
 
             # Load Localizer Annotations
-            pixels_path = localizer_path / 'annotations' / 'pixel'
-            if pixels_path.exists():
-                pixel_annotations = np.load(pixels_path / 'pixel_maps.npy')
-                with open(pixels_path / 'meta.json', 'r') as meta_file:
-                    pixels_meta = json.load(meta_file)
+            try:
+                with zipf.open('localizer/annotations/pixel/pixel_maps.npy') as f:
+                    pixel_annotations = np.load(io.BytesIO(f.read()))
+                with zipf.open('localizer/annotations/pixel/meta.json') as f:
+                    pixels_meta = json.load(f)
 
                 for i, pixel_meta in enumerate(pixels_meta):
                     localizer.add_area_annotation(pixel_annotations[i],
                                                   pixel_meta)
+            except KeyError:
+                pass
 
             # Load localizer transform if it exists, otherwise compute it
-            transform_params_path = localizer_path / 'transform_params.npy'
-            if transform_params_path.exists():
-                transform_params = np.load(transform_params_path)
+            try:
+                with zipf.open('localizer/transform_params.npy') as f:
+                    transform_params = np.load(io.BytesIO(f.read()))
                 transformation = transform.AffineTransform(matrix=transform_params)
-            else:
+            except KeyError:
                 # Backward compatibility: compute transform if not saved
                 from eyepy.io.utils import _compute_localizer_oct_transform
                 transformation = _compute_localizer_oct_transform(
