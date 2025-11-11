@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 import xml.etree.ElementTree as ElementTree
 
-import imageio.v2 as imageio
+import imageio.v3 as imageio
 import numpy as np
 from skimage.util import img_as_ubyte
 

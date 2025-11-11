@@ -121,11 +121,16 @@ def _compute_localizer_oct_transform(
 
     # Respective points in enface space as x/y coordinates
     scale = np.array([enface_meta['scale_x'], enface_meta['scale_y']])
+    if enface_meta['scale_unit'] == '°':
+        offset = np.array([15, 15])  # Assuming 30° FOV
+    else:
+        offset = np.array([0, 0])
+
     dst = np.array([
-        bscan_meta[-1]['start_pos'] / scale,  # Top left
-        bscan_meta[-1]['end_pos'] / scale,  # Top right
-        bscan_meta[0]['start_pos'] / scale,  # Bottom left
-        bscan_meta[0]['end_pos'] / scale,  # Bottom right
+        (bscan_meta[-1]['start_pos'] + offset) / scale,  # Top left
+        (bscan_meta[-1]['end_pos'] + offset) / scale,  # Top right
+        (bscan_meta[0]['start_pos'] + offset) / scale,  # Bottom left
+        (bscan_meta[0]['end_pos'] + offset) / scale,  # Bottom right
     ])
 
     # Switch from row/column indices to x/y coordinates by flipping last axis of src

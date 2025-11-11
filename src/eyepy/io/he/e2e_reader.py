@@ -322,13 +322,16 @@ class E2ESliceStructure(E2EStructureMixin):
             logger.warning(
                 'There is more than one bscanmeta object. This is not expected.'
             )
+
+
         meta = self.folders[TypesEnum.bscanmeta][0].data
+
         return EyeBscanMeta(  #quality=meta.quality,
-            start_pos=((meta['start_x'] + 14.86 * 0.29),
-                       (meta['start_y'] + 15.02) * 0.29),
-            end_pos=((meta['end_x'] + 14.86 * 0.29),
-                     (meta['end_y'] + 15.02) * 0.29),
-            pos_unit='mm',
+            start_pos=((meta['start_x']),
+                       (meta['start_y'])),
+            end_pos=((meta['end_x']),
+                     (meta['end_y'])),
+            pos_unit='°',
             **dataclasses.asdict(meta))
 
     def get_bscan(self) -> np.ndarray:
@@ -546,13 +549,13 @@ class E2ESeriesStructure(E2EStructureMixin):
             )
         return folders[0].data
 
-    def localizer_meta(self) -> EyeEnfaceMeta:
+    def localizer_meta(self, height, width) -> EyeEnfaceMeta:
         """Return EyeEnfaceMeta object for the localizer image."""
         if self._localizer_meta is None:
             self._localizer_meta = EyeEnfaceMeta(
-                scale_x=1,  #0.0114,  # Todo: Where is this in E2E?
-                scale_y=1,  #0.0114,  # Todo: Where is this in E2E?
-                scale_unit='px',
+                scale_x=30 / width,  # Give scale in degrees per pixel
+                scale_y=30 / height,
+                scale_unit='°',
                 modality=self.enface_modality(),
                 laterality=self.laterality(),
                 field_size=None,
@@ -583,7 +586,9 @@ class E2ESeriesStructure(E2EStructureMixin):
             #                             AffineTransform(transform),
             #                             order=1,
             #                             preserve_range=True)
-            return EyeEnface(folders[0].data.data, self.localizer_meta())
+            return EyeEnface(folders[0].data.data,
+                             self.localizer_meta(height=folders[0].data.height,
+                                                 width=folders[0].data.width))
         except KeyError:
             if self.n_bscans == 1:
                 slice_struct = self.slices[2]
@@ -615,7 +620,7 @@ class E2ESeriesStructure(E2EStructureMixin):
                 visit_date=None,
                 exam_time=None,
                 bscan_meta=bscan_meta,
-                intensity_transform='vol',
+                intensity_transform='e2e',
             )
         return self._meta
 
