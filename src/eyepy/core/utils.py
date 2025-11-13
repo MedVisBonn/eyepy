@@ -75,8 +75,7 @@ def from_vol_intensity(data: NDArrayFloat) -> NDArrayUByte:
     return img_as_ubyte(data).astype(np.ubyte)
 
 def from_e2e_intensity(data: NDArrayFloat32) -> NDArrayUByte:
-    selection_0 = data == np.logical_or(data == np.finfo(np.float32).max,
-                                        data > 1.99) # empty regions in e2e exports
+    selection_0 = data > 1.99 # empty regions in e2e exports
     selection_data = data <= 1
 
     new = np.log(data[selection_data] + 2.44e-04)
