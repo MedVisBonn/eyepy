@@ -6,8 +6,6 @@ import io
 import json
 import logging
 from pathlib import Path
-import shutil
-import tempfile
 from typing import Optional, overload, SupportsIndex, Union
 import warnings
 import zipfile
@@ -28,6 +26,9 @@ from eyepy.core.eyeenface import EyeEnface
 from eyepy.core.eyemeta import EyeBscanMeta
 from eyepy.core.eyemeta import EyeEnfaceMeta
 from eyepy.core.eyemeta import EyeVolumeMeta
+from eyepy.core.mask_compression import compress_boolean_mask
+from eyepy.core.mask_compression import decompress_boolean_mask
+from eyepy.core.mask_compression import is_boolean_array
 from eyepy.core.utils import intensity_transforms
 from eyepy.core.utils import par_algorithms
 
@@ -90,8 +91,8 @@ class EyeVolume:
 
         Args:
             path: Path where the file will be saved
-            compress: Whether to compress the file. Compression reduces file size by ~38% but takes ~30x longer.
-                     Default is False for fast saves. Set to True to reduce file size. (default: False)
+            compress: Whether to compress the file. Compression reduces file size by 35-45% but takes at least 10x longer.
+                     Default is False for fast saves. Set to True to reduce file size with zip compress level 1. (default: False)
 
         Returns:
             None
@@ -99,7 +100,7 @@ class EyeVolume:
         path = Path(path)
 
         compression_type = zipfile.ZIP_DEFLATED if compress else zipfile.ZIP_STORED
-        compress_level = 6 if compress else None
+        compress_level = 1 if compress else None
 
         with zipfile.ZipFile(path, 'w', compression_type, compresslevel=compress_level) as zipf:
             # Save OCT volume as npy and meta as json
@@ -114,18 +115,29 @@ class EyeVolume:
                 meta_dict['intensity_transform'] = 'default'
             zipf.writestr('meta.json', json.dumps(meta_dict))
 
-            # Save Volume Annotations
+            # Save Volume Annotations (individually to preserve data types)
             if len(self._volume_maps) > 0:
-                voxel_data_bytes = io.BytesIO()
-                np.save(
-                    voxel_data_bytes,
-                    np.stack([v.data for v in self._volume_maps]),
-                )
-                zipf.writestr('annotations/voxels/voxel_maps.npy', voxel_data_bytes.getvalue())
-                zipf.writestr(
-                    'annotations/voxels/meta.json',
-                    json.dumps([v.meta for v in self._volume_maps])
-                )
+                for i, v in enumerate(self._volume_maps):
+                    # For boolean arrays, use compressed packbits format
+                    if is_boolean_array(v.data):
+                        compressed_data, compression_meta = compress_boolean_mask(v.data)
+                        zipf.writestr(f'annotations/voxels/voxel_map_{i}.bin', compressed_data)
+                        zipf.writestr(
+                            f'annotations/voxels/voxel_map_{i}_meta.json',
+                            json.dumps({
+                                'annotation_meta': v.meta,
+                                'compression_meta': compression_meta,
+                            })
+                        )
+                    else:
+                        # For non-boolean arrays, save as npy
+                        voxel_bytes = io.BytesIO()
+                        np.save(voxel_bytes, v.data)
+                        zipf.writestr(f'annotations/voxels/voxel_map_{i}.npy', voxel_bytes.getvalue())
+                        zipf.writestr(
+                            f'annotations/voxels/voxel_map_{i}_meta.json',
+                            json.dumps(v.meta)
+                        )
 
             # Save layer annotations
             if len(self._layers) > 0:
@@ -161,16 +173,27 @@ class EyeVolume:
 
             # Save Localizer Annotations
             if len(self.localizer._area_maps) > 0:
-                pixels_data_bytes = io.BytesIO()
-                np.save(
-                    pixels_data_bytes,
-                    np.stack([p.data for p in self.localizer._area_maps]),
-                )
-                zipf.writestr('localizer/annotations/pixel/pixel_maps.npy', pixels_data_bytes.getvalue())
-                zipf.writestr(
-                    'localizer/annotations/pixel/meta.json',
-                    json.dumps([p.meta for p in self.localizer._area_maps])
-                )
+                for i, p in enumerate(self.localizer._area_maps):
+                    # For boolean arrays, use compressed packbits format
+                    if is_boolean_array(p.data):
+                        compressed_data, compression_meta = compress_boolean_mask(p.data)
+                        zipf.writestr(f'localizer/annotations/pixel/pixel_map_{i}.bin', compressed_data)
+                        zipf.writestr(
+                            f'localizer/annotations/pixel/pixel_map_{i}_meta.json',
+                            json.dumps({
+                                'annotation_meta': p.meta,
+                                'compression_meta': compression_meta,
+                            })
+                        )
+                    else:
+                        # For non-boolean arrays, save as npy
+                        pixel_bytes = io.BytesIO()
+                        np.save(pixel_bytes, p.data)
+                        zipf.writestr(f'localizer/annotations/pixel/pixel_map_{i}.npy', pixel_bytes.getvalue())
+                        zipf.writestr(
+                            f'localizer/annotations/pixel/pixel_map_{i}_meta.json',
+                            json.dumps(p.meta)
+                        )
 
             # Save Optic Disc annotation
             if self.localizer.optic_disc is not None:
@@ -216,11 +239,54 @@ class EyeVolume:
                 volume_meta = EyeVolumeMeta.from_dict(json.load(f))
 
             # Load Volume Annotations
+            voxel_annotations = []
+            voxels_meta = []
             try:
-                with zipf.open('annotations/voxels/voxel_maps.npy') as f:
-                    voxel_annotations = np.load(io.BytesIO(f.read()))
-                with zipf.open('annotations/voxels/meta.json') as f:
-                    voxels_meta = json.load(f)
+                # Try loading new individual format first
+                # Count how many individual maps we have
+                i = 0
+                while True:
+                    try:
+                        # Try compressed format
+                        with zipf.open(f'annotations/voxels/voxel_map_{i}.bin') as f:
+                            compressed_data = f.read()
+                        with zipf.open(f'annotations/voxels/voxel_map_{i}_meta.json') as f:
+                            meta_dict = json.load(f)
+                        if isinstance(meta_dict, dict) and 'compression_meta' in meta_dict:
+                            # New format with compression metadata
+                            mask = decompress_boolean_mask(compressed_data, meta_dict['compression_meta'])
+                            voxel_annotations.append(mask)
+                            voxels_meta.append(meta_dict['annotation_meta'])
+                        else:
+                            # Shouldn't happen, but fallback
+                            voxel_annotations.append(decompress_boolean_mask(compressed_data, meta_dict))
+                            voxels_meta.append(meta_dict)
+                        i += 1
+                    except KeyError:
+                        # Try npy format
+                        try:
+                            with zipf.open(f'annotations/voxels/voxel_map_{i}.npy') as f:
+                                mask = np.load(io.BytesIO(f.read()))
+                            with zipf.open(f'annotations/voxels/voxel_map_{i}_meta.json') as f:
+                                voxels_meta.append(json.load(f))
+                            voxel_annotations.append(mask)
+                            i += 1
+                        except KeyError:
+                            # No more individual maps
+                            break
+
+                # If no individual maps found, try old stacked format
+                if len(voxel_annotations) == 0:
+                    try:
+                        with zipf.open('annotations/voxels/voxel_maps.npy') as f:
+                            voxel_stack = np.load(io.BytesIO(f.read()))
+                        with zipf.open('annotations/voxels/meta.json') as f:
+                            voxels_meta = json.load(f)
+                        # Convert stacked array to individual annotations
+                        voxel_annotations = [voxel_stack[i] for i in range(voxel_stack.shape[0])]
+                    except KeyError:
+                        voxel_annotations = []
+                        voxels_meta = []
             except KeyError:
                 voxel_annotations = []
                 voxels_meta = []
@@ -291,11 +357,54 @@ class EyeVolume:
                                  optic_disc=optic_disc, fovea=fovea)
 
             # Load Localizer Annotations
+            pixel_annotations = []
+            pixels_meta = []
             try:
-                with zipf.open('localizer/annotations/pixel/pixel_maps.npy') as f:
-                    pixel_annotations = np.load(io.BytesIO(f.read()))
-                with zipf.open('localizer/annotations/pixel/meta.json') as f:
-                    pixels_meta = json.load(f)
+                # Try loading new individual format first
+                # Count how many individual maps we have
+                i = 0
+                while True:
+                    try:
+                        # Try compressed format
+                        with zipf.open(f'localizer/annotations/pixel/pixel_map_{i}.bin') as f:
+                            compressed_data = f.read()
+                        with zipf.open(f'localizer/annotations/pixel/pixel_map_{i}_meta.json') as f:
+                            meta_dict = json.load(f)
+                        if isinstance(meta_dict, dict) and 'compression_meta' in meta_dict:
+                            # New format with compression metadata
+                            mask = decompress_boolean_mask(compressed_data, meta_dict['compression_meta'])
+                            pixel_annotations.append(mask)
+                            pixels_meta.append(meta_dict['annotation_meta'])
+                        else:
+                            # Shouldn't happen, but fallback
+                            pixel_annotations.append(decompress_boolean_mask(compressed_data, meta_dict))
+                            pixels_meta.append(meta_dict)
+                        i += 1
+                    except KeyError:
+                        # Try npy format
+                        try:
+                            with zipf.open(f'localizer/annotations/pixel/pixel_map_{i}.npy') as f:
+                                mask = np.load(io.BytesIO(f.read()))
+                            with zipf.open(f'localizer/annotations/pixel/pixel_map_{i}_meta.json') as f:
+                                pixels_meta.append(json.load(f))
+                            pixel_annotations.append(mask)
+                            i += 1
+                        except KeyError:
+                            # No more individual maps
+                            break
+
+                # If no individual maps found, try old stacked format
+                if len(pixel_annotations) == 0:
+                    try:
+                        with zipf.open('localizer/annotations/pixel/pixel_maps.npy') as f:
+                            pixel_stack = np.load(io.BytesIO(f.read()))
+                        with zipf.open('localizer/annotations/pixel/meta.json') as f:
+                            pixels_meta = json.load(f)
+                        # Convert stacked array to individual annotations
+                        pixel_annotations = [pixel_stack[i] for i in range(pixel_stack.shape[0])]
+                    except KeyError:
+                        pixel_annotations = []
+                        pixels_meta = []
 
                 for i, pixel_meta in enumerate(pixels_meta):
                     localizer.add_area_annotation(pixel_annotations[i],
