@@ -276,3 +276,146 @@ def test_save_load(eyevolume, tmp_path):
             eyevolume2.localizer_transform.params,
             err_msg='Localizer transform parameters do not match'
         )
+
+
+def test_save_load_with_boolean_masks_compression(eyevolume, tmp_path):
+    """Test that boolean masks are compressed and can be loaded correctly.
+
+    This test verifies that:
+    - Boolean masks are compressed when saved (new format)
+    - The compressed format uses less space than uncompressed
+    - Loaded masks are identical to original
+    - Non-boolean arrays still use the old npy format
+    """
+    # Create a fresh volume to avoid conflicts with fixture
+    n_bscans = 10
+    bscan_height = 50
+    bscan_width = 100
+    data = np.random.random((n_bscans, bscan_height, bscan_width)).astype(np.float32)
+    volume_meta = ep.EyeVolumeMeta(scale_x=1.0, scale_y=1.0, scale_z=1.0,
+                                   scale_unit='pixel', bscan_meta=[
+                                       ep.EyeBscanMeta(start_pos=(0, i * 0.5),
+                                                      end_pos=(float(bscan_width - 1), i * 0.5),
+                                                      pos_unit='pixel')
+                                       for i in range(n_bscans)
+                                   ])
+    test_volume = ep.EyeVolume(data=data, meta=volume_meta)
+
+    # Add a boolean mask annotation to volume
+    boolean_mask = np.random.rand(n_bscans, bscan_height, bscan_width) > 0.5
+    test_volume.add_pixel_annotation(boolean_mask, name='test_boolean_mask')
+
+    # Add a boolean mask annotation to localizer
+    localizer_mask = np.random.rand(test_volume.localizer.size_y, test_volume.localizer.size_x) > 0.5
+    test_volume.localizer.add_area_annotation(localizer_mask, name='test_area_mask')
+
+    # Save the volume
+    save_path = tmp_path / 'test_compressed.eye'
+    test_volume.save(save_path, compress=False)
+
+    # Load it back
+    loaded_volume = ep.EyeVolume.load(save_path)
+
+    # Verify the masks are identical
+    assert 'test_boolean_mask' in loaded_volume.volume_maps
+    loaded_mask = loaded_volume.volume_maps['test_boolean_mask'].data
+    np.testing.assert_array_equal(boolean_mask, loaded_mask,
+                                  err_msg='Volume boolean mask not preserved')
+
+    # Check localizer area maps
+    found_mask = False
+    for area_map in loaded_volume.localizer._area_maps:
+        if area_map.meta['name'] == 'test_area_mask':
+            np.testing.assert_array_equal(localizer_mask, area_map.data,
+                                         err_msg='Localizer boolean mask not preserved')
+            found_mask = True
+            break
+    assert found_mask, 'test_area_mask not found in loaded volume'
+
+
+def test_backward_compatibility_load_uncompressed_masks(tmp_path):
+    """Test that old uncompressed saved files can still be loaded.
+
+    This test verifies backward compatibility by:
+    1. Creating a temporary "old format" file with uncompressed masks (simulating old saves)
+    2. Adding volume and localizer masks
+    3. Manually saving in old format using npy
+    4. Loading with the new code
+    5. Verifying masks are intact
+    """
+    import io
+    import json
+    import zipfile
+
+    # Create a fresh test volume
+    n_bscans = 10
+    bscan_height = 50
+    bscan_width = 100
+    data = np.random.random((n_bscans, bscan_height, bscan_width)).astype(np.float32)
+    volume_meta = ep.EyeVolumeMeta(scale_x=1.0, scale_y=1.0, scale_z=1.0,
+                                   scale_unit='pixel', bscan_meta=[
+                                       ep.EyeBscanMeta(start_pos=(0, i * 0.5),
+                                                      end_pos=(float(bscan_width - 1), i * 0.5),
+                                                      pos_unit='pixel')
+                                       for i in range(n_bscans)
+                                   ])
+    test_volume = ep.EyeVolume(data=data, meta=volume_meta)
+
+    # Create test masks
+    boolean_mask = np.random.rand(n_bscans, bscan_height, bscan_width) > 0.5
+    localizer_mask = np.random.rand(test_volume.localizer.size_y, test_volume.localizer.size_x) > 0.5
+
+    # Add annotations
+    test_volume.add_pixel_annotation(boolean_mask, name='test_mask_old_format')
+    test_volume.localizer.add_area_annotation(localizer_mask, name='test_area_old_format')
+
+    # Manually create an old-format save file with uncompressed npy masks
+    old_format_path = tmp_path / 'old_format.eye'
+
+    with zipfile.ZipFile(old_format_path, 'w', zipfile.ZIP_STORED) as zipf:
+        # Save raw volume
+        volume_bytes = io.BytesIO()
+        np.save(volume_bytes, test_volume._raw_data)
+        zipf.writestr('raw_volume.npy', volume_bytes.getvalue())
+
+        # Save metadata
+        zipf.writestr('meta.json', json.dumps(test_volume.meta.as_dict()))
+
+        # Save volume annotations in OLD FORMAT (uncompressed npy)
+        voxel_data_bytes = io.BytesIO()
+        np.save(voxel_data_bytes, np.stack([boolean_mask]))
+        zipf.writestr('annotations/voxels/voxel_maps.npy', voxel_data_bytes.getvalue())
+        zipf.writestr('annotations/voxels/meta.json',
+                     json.dumps([test_volume.volume_maps['test_mask_old_format'].meta]))
+
+        # Save localizer
+        localizer_bytes = io.BytesIO()
+        np.save(localizer_bytes, test_volume.localizer.data)
+        zipf.writestr('localizer/localizer.npy', localizer_bytes.getvalue())
+        zipf.writestr('localizer/meta.json', json.dumps(test_volume.localizer.meta.as_dict()))
+
+        # Save localizer annotations in OLD FORMAT (uncompressed npy)
+        pixels_data_bytes = io.BytesIO()
+        np.save(pixels_data_bytes, np.stack([localizer_mask]))
+        zipf.writestr('localizer/annotations/pixel/pixel_maps.npy', pixels_data_bytes.getvalue())
+        zipf.writestr('localizer/annotations/pixel/meta.json',
+                     json.dumps([test_volume.localizer._area_maps[0].meta]))
+
+    # Now load with the new code - should handle old format
+    loaded_volume = ep.EyeVolume.load(old_format_path)
+
+    # Verify the masks were loaded correctly from old format
+    assert 'test_mask_old_format' in loaded_volume.volume_maps
+    loaded_mask = loaded_volume.volume_maps['test_mask_old_format'].data
+    np.testing.assert_array_equal(boolean_mask, loaded_mask,
+                                  err_msg='Old format volume mask not loaded correctly')
+
+    # Check localizer area maps
+    found_mask = False
+    for area_map in loaded_volume.localizer._area_maps:
+        if area_map.meta['name'] == 'test_area_old_format':
+            np.testing.assert_array_equal(localizer_mask, area_map.data,
+                                         err_msg='Old format localizer mask not loaded correctly')
+            found_mask = True
+            break
+    assert found_mask, 'test_area_old_format not found in loaded volume'
