@@ -13,7 +13,6 @@ import warnings
 import construct as cs
 import numpy as np
 import skimage
-from skimage import transform
 
 from eyepy import __version__
 from eyepy import EyeBscanMeta
