@@ -493,7 +493,12 @@ class E2ESeriesStructure(E2EStructureMixin):
             i = ind // 2 if len(
                 self.get_bscan_meta()
             ) != 1 else 0  # Slice id for single B-scan Volumes is 2 and not 0 in the e2e file.
+
+            # In E2E files the first image is at the top of the localizer,
+            # but EyeVolume expects the first B-scan to be at the bottom.
+            i = self.n_bscans - 1 - i
             data[i] = bscan
+
         return data
 
     def get_layers(self) -> dict[int, np.ndarray]:
@@ -517,7 +522,10 @@ class E2ESeriesStructure(E2EStructureMixin):
 
             else:
                 for sl in range(self.n_bscans):
-                    layer[sl, :] = slice_layers[sl][i]
+                    try:
+                        layer[sl, :] = slice_layers[sl][i]
+                    except KeyError:
+                        pass
 
             layer[layer >= 3.0e+38] = np.nan
             layers[i] = layer
@@ -604,6 +612,9 @@ class E2ESeriesStructure(E2EStructureMixin):
             self._bscan_meta = sorted(
                 [sl.get_meta() for sl in self.slices.values()],
                 key=lambda x: x['aktImage'])
+            # In E2E files the first image is at the top of the localizer,
+            # but EyeVolume expects the first B-scan to be at the bottom.
+            self._bscan_meta.reverse()
         return self._bscan_meta
 
     def get_meta(self) -> EyeVolumeMeta:
