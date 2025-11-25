@@ -1,0 +1,6381 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://example.com/changelog/">
+      
+      
+        <link rel="prev" href="../reference/src/eyepy/quant/spatial/">
+      
+      
+        <link rel="next" href="../contributing/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Changelog - eyepy</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#changelog" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="eyepy" class="md-header__button md-logo" aria-label="eyepy" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            eyepy
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Changelog
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/MedVisBonn/eyepy" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cookbook/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Cookbook
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../formats/he_e2e/" class="md-tabs__link">
+          
+  
+  
+  File formats
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../reference/src/eyepy/" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="eyepy" class="md-nav__button md-logo" aria-label="eyepy" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    eyepy
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/MedVisBonn/eyepy" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cookbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    File formats
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    File formats
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../formats/he_e2e/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Heidelberg E2E
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Heidelberg E2E
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../formats/he_e2e_structures/he_e2e_structure_doc/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E2E File Structures
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_1_1" id="__nav_3_1_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    E2E File Structures
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_structures/Chunk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chunk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_structures/ContainerHeader/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ContainerHeader
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_structures/DataContainer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DataContainer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_structures/E2EFormat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E2EFormat
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_structures/FolderHeader/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FolderHeader
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_structures/Header/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Header
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_structures/Version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_1_2" id="__nav_3_1_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E2E Types
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    E2E Types
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type5
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type7/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type7
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type11/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type11
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type17/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type17
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type59/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type59
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type9000/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type9000
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type9001/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type9001
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type9005/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type9005
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type9006/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type9006
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type9007/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type9007
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type9008/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type9008
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type10004/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type10004
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type10010/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type10010
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type10012/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type10012
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type10013/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type10013
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type10019/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type10019
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type10025/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type10025
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_types/Type1073741824/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type1073741824
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_1_3" id="__nav_3_1_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E2E Hierarchy
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    E2E Hierarchy
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_hierarchy/E2EFileStructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E2EFileStructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_hierarchy/E2EPatientStructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E2EPatientStructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_hierarchy/E2EStudyStructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E2EStudyStructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_hierarchy/E2ESeriesStructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E2ESeriesStructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_e2e_hierarchy/E2ESliceStructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E2ESliceStructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_vol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Heidelberg VOL
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/he_xml/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Heidelberg XML
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../reference/src/eyepy/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    eyepy
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    eyepy
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../reference/src/eyepy/core/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    core
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_1_1" id="__nav_4_1_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_1_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    core
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/core/annotations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    annotations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/core/eyebscan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    eyebscan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/core/eyeenface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    eyeenface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/core/eyemeta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    eyemeta
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/core/eyevolume/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    eyevolume
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/core/filter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    filter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/core/grids/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    grids
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/core/mask_compression/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mask_compression
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/core/plotting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    plotting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/core/utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    utils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../reference/src/eyepy/io/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    io
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_1_3" id="__nav_4_1_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_1_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    io
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_3_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../reference/src/eyepy/io/he/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    he
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_1_3_1" id="__nav_4_1_3_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_1_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    he
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/io/he/e2e_format/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    e2e_format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/io/he/e2e_reader/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    e2e_reader
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/io/he/vol_reader/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    vol_reader
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/io/he/xml_reader/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    xml_reader
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/io/import_functions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    import_functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/io/utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    utils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../reference/src/eyepy/quant/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    quant
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_1_4" id="__nav_4_1_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_1_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    quant
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/quant/metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/quant/regions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    regions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/src/eyepy/quant/spatial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    spatial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#v0122-2023-11-15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.12.2 (2023-11-15)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.12.2 (2023-11-15)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refactor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v0121-2023-09-26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.12.1 (2023-09-26)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.12.1 (2023-09-26)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ci" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ci
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v0120-2023-05-31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.12.0 (2023-05-31)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.12.0 (2023-05-31)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#breaking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Breaking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ci_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ci
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v0113-2023-04-04" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.11.3 (2023-04-04)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.11.3 (2023-04-04)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v0112-2023-04-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.11.2 (2023-04-02)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.11.2 (2023-04-02)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v0111-2023-03-31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.11.1 (2023-03-31)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.11.1 (2023-03-31)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v0110-2023-03-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.11.0 (2023-03-30)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.11.0 (2023-03-30)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#feature" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v0100-2023-03-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.10.0 (2023-03-30)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.10.0 (2023-03-30)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ci_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ci
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#feature_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#style" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Style
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v092-2023-03-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.9.2 (2023-03-17)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.9.2 (2023-03-17)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v091-2023-03-15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.9.1 (2023-03-15)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.9.1 (2023-03-15)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ci_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ci
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v090-2023-03-09" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.9.0 (2023-03-09)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.9.0 (2023-03-09)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#breaking_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Breaking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#feature_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v081-2023-02-22" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.8.1 (2023-02-22)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.8.1 (2023-02-22)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v080-2023-02-13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.8.0 (2023-02-13)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.8.0 (2023-02-13)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#build_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#feature_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#style_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Style
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v070-2023-02-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.7.0 (2023-02-10)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.7.0 (2023-02-10)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#breaking_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Breaking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ci_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ci
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#feature_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refactor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v068-2022-09-15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6.8 (2022-09-15)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.6.8 (2022-09-15)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refactor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v067-2022-06-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6.7 (2022-06-03)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.6.7 (2022-06-03)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v066-2022-06-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6.6 (2022-06-03)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.6.6 (2022-06-03)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v065-2022-04-21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6.5 (2022-04-21)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.6.5 (2022-04-21)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v064-2022-04-21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6.4 (2022-04-21)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.6.4 (2022-04-21)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v063-2022-03-31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6.3 (2022-03-31)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.6.3 (2022-03-31)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unknown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v062-2022-03-31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6.2 (2022-03-31)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.6.2 (2022-03-31)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v061-2022-03-26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6.1 (2022-03-26)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.6.1 (2022-03-26)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_19" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v060-2022-03-25" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6.0 (2022-03-25)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.6.0 (2022-03-25)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#feature_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v041-2022-02-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.4.1 (2022-02-17)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.4.1 (2022-02-17)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unknown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v040-2022-02-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.4.0 (2022-02-17)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.4.0 (2022-02-17)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#breaking_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Breaking
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v037-2022-01-31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.7 (2022-01-31)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.3.7 (2022-01-31)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unknown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v036-2021-10-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.6 (2021-10-14)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.3.6 (2021-10-14)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_22" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v035-2021-08-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.5 (2021-08-16)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.3.5 (2021-08-16)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unknown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v034-2021-08-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.4 (2021-08-16)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.3.4 (2021-08-16)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_24" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v033-2021-08-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.3 (2021-08-16)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.3.3 (2021-08-16)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_25" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unknown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v032-2021-08-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.2 (2021-08-16)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.3.2 (2021-08-16)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unknown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v031-2021-05-18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.1 (2021-05-18)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.3.1 (2021-05-18)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_27" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unknown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#v0122-2023-11-15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.12.2 (2023-11-15)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.12.2 (2023-11-15)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refactor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v0121-2023-09-26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.12.1 (2023-09-26)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.12.1 (2023-09-26)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ci" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ci
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v0120-2023-05-31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.12.0 (2023-05-31)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.12.0 (2023-05-31)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#breaking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Breaking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ci_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ci
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v0113-2023-04-04" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.11.3 (2023-04-04)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.11.3 (2023-04-04)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v0112-2023-04-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.11.2 (2023-04-02)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.11.2 (2023-04-02)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v0111-2023-03-31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.11.1 (2023-03-31)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.11.1 (2023-03-31)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v0110-2023-03-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.11.0 (2023-03-30)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.11.0 (2023-03-30)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#feature" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v0100-2023-03-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.10.0 (2023-03-30)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.10.0 (2023-03-30)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ci_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ci
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#feature_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#style" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Style
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v092-2023-03-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.9.2 (2023-03-17)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.9.2 (2023-03-17)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v091-2023-03-15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.9.1 (2023-03-15)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.9.1 (2023-03-15)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ci_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ci
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v090-2023-03-09" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.9.0 (2023-03-09)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.9.0 (2023-03-09)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#breaking_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Breaking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#feature_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v081-2023-02-22" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.8.1 (2023-02-22)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.8.1 (2023-02-22)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v080-2023-02-13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.8.0 (2023-02-13)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.8.0 (2023-02-13)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#build_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#feature_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#style_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Style
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v070-2023-02-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.7.0 (2023-02-10)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.7.0 (2023-02-10)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#breaking_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Breaking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ci_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ci
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#feature_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refactor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v068-2022-09-15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6.8 (2022-09-15)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.6.8 (2022-09-15)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refactor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v067-2022-06-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6.7 (2022-06-03)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.6.7 (2022-06-03)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v066-2022-06-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6.6 (2022-06-03)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.6.6 (2022-06-03)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v065-2022-04-21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6.5 (2022-04-21)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.6.5 (2022-04-21)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v064-2022-04-21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6.4 (2022-04-21)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.6.4 (2022-04-21)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v063-2022-03-31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6.3 (2022-03-31)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.6.3 (2022-03-31)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unknown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v062-2022-03-31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6.2 (2022-03-31)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.6.2 (2022-03-31)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v061-2022-03-26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6.1 (2022-03-26)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.6.1 (2022-03-26)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_19" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v060-2022-03-25" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6.0 (2022-03-25)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.6.0 (2022-03-25)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#feature_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v041-2022-02-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.4.1 (2022-02-17)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.4.1 (2022-02-17)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unknown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v040-2022-02-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.4.0 (2022-02-17)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.4.0 (2022-02-17)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#breaking_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Breaking
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v037-2022-01-31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.7 (2022-01-31)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.3.7 (2022-01-31)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unknown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v036-2021-10-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.6 (2021-10-14)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.3.6 (2021-10-14)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_22" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v035-2021-08-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.5 (2021-08-16)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.3.5 (2021-08-16)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unknown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v034-2021-08-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.4 (2021-08-16)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.3.4 (2021-08-16)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_24" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v033-2021-08-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.3 (2021-08-16)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.3.3 (2021-08-16)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_25" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unknown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v032-2021-08-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.2 (2021-08-16)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.3.2 (2021-08-16)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unknown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v031-2021-05-18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.1 (2021-05-18)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v0.3.1 (2021-05-18)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix_27" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unknown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="changelog">CHANGELOG</h1>
+<h2 id="v0122-2023-11-15">v0.12.2 (2023-11-15)</h2>
+<h3 id="build">Build</h3>
+<ul>
+<li>
+<p>build(_quality.yaml): removes caching of poetry (<a href="https://github.com/MedVisBonn/eyepy/commit/a7c20e14c46b1c17ec4b6a644d897852903c21f6"><code>a7c20e1</code></a>)</p>
+</li>
+<li>
+<p>build(eyepy): updates versions (<a href="https://github.com/MedVisBonn/eyepy/commit/23fec5472f5e0dbfd5e9699660acdc2c2e80d9df"><code>23fec54</code></a>)</p>
+</li>
+<li>
+<p>build(eyepy): removes python 3.8 from testing matrix (<a href="https://github.com/MedVisBonn/eyepy/commit/b2bcf7bd85814b08affbd5964fed26f43d0b03eb"><code>b2bcf7b</code></a>)</p>
+</li>
+<li>
+<p>build(eyepy): upgrades dependencies (<a href="https://github.com/MedVisBonn/eyepy/commit/e66fd8b6fa96f4bfc22881a04e8b6c323f350e35"><code>e66fd8b</code></a>)</p>
+</li>
+</ul>
+<h3 id="fix">Fix</h3>
+<ul>
+<li>
+<p>fix(_release.yaml): corrects python-semantic-release version (<a href="https://github.com/MedVisBonn/eyepy/commit/f7171bac689273660c8535b7498613f6c7a1afe8"><code>f7171ba</code></a>)</p>
+</li>
+<li>
+<p>fix(eyemeta.py): convert dates to string for saving as json (<a href="https://github.com/MedVisBonn/eyepy/commit/5d715cd4295acb3a1c291f815e958cb3fc2a30e1"><code>5d715cd</code></a>)</p>
+</li>
+</ul>
+<h3 id="refactor">Refactor</h3>
+<ul>
+<li>
+<p>refactor(eyevolume.py): changes skimage import of GeometricTransform (<a href="https://github.com/MedVisBonn/eyepy/commit/31ce76776920ce7c91efc4f227b0e582d4f09cb9"><code>31ce767</code></a>)</p>
+</li>
+<li>
+<p>refactor(EyeVolume): rename method from remove_pixel_annotations to remove_pixel_annotation (<a href="https://github.com/MedVisBonn/eyepy/commit/6727a60aed792e8f3fd36978a5279789e52b0bc6"><code>6727a60</code></a>)</p>
+</li>
+</ul>
+<h2 id="v0121-2023-09-26">v0.12.1 (2023-09-26)</h2>
+<h3 id="ci">Ci</h3>
+<ul>
+<li>ci(PythonSemanticRelease): update python semantic release to v8; minor change to README; added support for py3.11; updated dependencies (<a href="https://github.com/MedVisBonn/eyepy/commit/d4e65a88a608b3a867951d071801f26b50d663c0"><code>d4e65a8</code></a>)</li>
+</ul>
+<h3 id="fix_1">Fix</h3>
+<ul>
+<li>fix(vol_reader.py): get number of read layers from file context instead of assuming 17 layers. (<a href="https://github.com/MedVisBonn/eyepy/commit/2b53a336633771373a5f142f63a29c81372af668"><code>2b53a33</code></a>)</li>
+</ul>
+<h2 id="v0120-2023-05-31">v0.12.0 (2023-05-31)</h2>
+<h3 id="breaking">Breaking</h3>
+<ul>
+<li>build(eyepy): switch from eyepie to eyepy as a package name on PyPI</li>
+</ul>
+<p>Thanks to @dillongwozdz for transfering the eyepy name to us.</p>
+<p>BREAKING CHANGE: (<a href="https://github.com/MedVisBonn/eyepy/commit/8d07a176aae030e5dd343f4c125f18b8395d7cc4"><code>8d07a17</code></a>)</p>
+<h3 id="ci_1">Ci</h3>
+<ul>
+<li>ci(github/workflows): update github actions (setup-python to v4, checkout to v3, cache to v3) (<a href="https://github.com/MedVisBonn/eyepy/commit/1727f5171907328ae867a72026e8fc7136b66f15"><code>1727f51</code></a>)</li>
+</ul>
+<h2 id="v0113-2023-04-04">v0.11.3 (2023-04-04)</h2>
+<h3 id="documentation">Documentation</h3>
+<ul>
+<li>docs(README.md;-cookbook.md): Add examples for importing data from different sources (<a href="https://github.com/MedVisBonn/eyepy/commit/2a71e111c75a31dc396ac4464ef627b84dcfa0d5"><code>2a71e11</code></a>)</li>
+</ul>
+<h3 id="fix_2">Fix</h3>
+<ul>
+<li>fix(eyepy.io): fixes duke layer heights import (<a href="https://github.com/MedVisBonn/eyepy/commit/eb18f2aa10a7da8ab6f53c49053a80cfab764e68"><code>eb18f2a</code></a>)</li>
+</ul>
+<h2 id="v0112-2023-04-02">v0.11.2 (2023-04-02)</h2>
+<h3 id="fix_3">Fix</h3>
+<ul>
+<li>
+<p>fix(EyeVolume): fix saving, old method sometimes tried to recursively add the archive to the archive (<a href="https://github.com/MedVisBonn/eyepy/commit/e6064cc26bb00865a1d9f42fd63ca950239fd55f"><code>e6064cc</code></a>)</p>
+</li>
+<li>
+<p>fix(import_duke_mat): fixes age parsing from duke data (<a href="https://github.com/MedVisBonn/eyepy/commit/ecbcbc21349414d12746a9d46353b0494b79ef83"><code>ecbcbc2</code></a>)</p>
+</li>
+</ul>
+<h2 id="v0111-2023-03-31">v0.11.1 (2023-03-31)</h2>
+<h3 id="fix_4">Fix</h3>
+<ul>
+<li>fix(EyeVolumeMeta): fixes saving issue by storing all dates as string in isoformat to avoid problems with dumping to json and loading (<a href="https://github.com/MedVisBonn/eyepy/commit/3fc742485667b03505fd17d3bf25b8d2f20516de"><code>3fc7424</code></a>)</li>
+</ul>
+<h2 id="v0110-2023-03-30">v0.11.0 (2023-03-30)</h2>
+<h3 id="feature">Feature</h3>
+<ul>
+<li>
+<p>feat(io.<strong>init</strong>.py): adds support for topcon fda files (#12)</p>
+</li>
+<li>
+<p>NF: add basic support for fda files</p>
+</li>
+<li>
+<p>refactor(main-and-io-module-<strong>init</strong>-files): specify topcon as vendor in fda import function</p>
+</li>
+<li>
+<p>feat(io.<strong>init</strong>.py): add bscan metadata to returned eye volume</p>
+</li>
+</ul>
+<p>before the fda reader only parsed bscans and segmentation. These changes incorporate scaling and bscan position in fundus images.</p>
+<ul>
+<li>feat(io.<strong>init</strong>.py): add fundus image to eyevolume</li>
+</ul>
+<p>the changes allow to create a full EyeVolume with fundus image and metadata</p>
+<ul>
+<li>style(io.<strong>init</strong>.py): remove double quotes</li>
+</ul>
+<hr />
+<p>Co-authored-by: Olivier Morelle &lt;<a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#79;&#108;&#105;&#52;&#64;&#117;&#115;&#101;&#114;&#115;&#46;&#110;&#111;&#114;&#101;&#112;&#108;&#121;&#46;&#103;&#105;&#116;&#104;&#117;&#98;&#46;&#99;&#111;&#109;">&#79;&#108;&#105;&#52;&#64;&#117;&#115;&#101;&#114;&#115;&#46;&#110;&#111;&#114;&#101;&#112;&#108;&#121;&#46;&#103;&#105;&#116;&#104;&#117;&#98;&#46;&#99;&#111;&#109;</a>&gt; (<a href="https://github.com/MedVisBonn/eyepy/commit/53f2908f95556c2be7a3259bfd5653208188ff71"><code>53f2908</code></a>)</p>
+<h2 id="v0100-2023-03-30">v0.10.0 (2023-03-30)</h2>
+<h3 id="ci_2">Ci</h3>
+<ul>
+<li>ci(.github): add pre-commit checking to quality workflow and call quality workflow for pull requests (<a href="https://github.com/MedVisBonn/eyepy/commit/9e47a09248a29f36525aa7e406bb478ef8bcdf09"><code>9e47a09</code></a>)</li>
+</ul>
+<h3 id="documentation_1">Documentation</h3>
+<ul>
+<li>docs(core.annotations): adds docstrings (<a href="https://github.com/MedVisBonn/eyepy/commit/236c074e8e28eb4ccb5a1e0538237fcec5dff415"><code>236c074</code></a>)</li>
+</ul>
+<h3 id="feature_1">Feature</h3>
+<ul>
+<li>feat(core.plotting): adds a scale bar and a watermark to Bscan and Fundus visualizations (<a href="https://github.com/MedVisBonn/eyepy/commit/0e3eaa0be4420c0d8ba4cbc53381fc36da2cdc81"><code>0e3eaa0</code></a>)</li>
+</ul>
+<h3 id="fix_5">Fix</h3>
+<ul>
+<li>fix(eyepy.core): fixes bscan_region and bscan_position plotting when plotting only a part of the fundus</li>
+</ul>
+<p>also adds new header_gif to the README (<a href="https://github.com/MedVisBonn/eyepy/commit/2c880743b6329cf24e74f7019035ad455800e89a"><code>2c88074</code></a>)</p>
+<ul>
+<li>fix(core.grids.py): fixes error related to python 3.8 not supporting new type annotation Dict-dict List-list (<a href="https://github.com/MedVisBonn/eyepy/commit/3c6ba41133215bc64efb48f432cb0be78b627b2c"><code>3c6ba41</code></a>)</li>
+</ul>
+<h3 id="style">Style</h3>
+<ul>
+<li>style(eyepy): applys improved pre-commit style guides</li>
+</ul>
+<p>adds dostrings formatting via docformatter \n unifies single/double quotes \n upgrades type hints to be pep585 compliant (<a href="https://github.com/MedVisBonn/eyepy/commit/28b1b4c4767c686541eca7b069c6238d11191dd5"><code>28b1b4c</code></a>)</p>
+<h2 id="v092-2023-03-17">v0.9.2 (2023-03-17)</h2>
+<h3 id="documentation_2">Documentation</h3>
+<ul>
+<li>
+<p>docs(eyepy.core): adds type annotations to all objects in the core subpackage (<a href="https://github.com/MedVisBonn/eyepy/commit/ea1cb4c415604a97d1e7ef64998b1743e7c5fe75"><code>ea1cb4c</code></a>)</p>
+</li>
+<li>
+<p>docs(annotations.py): adds type annotations to all objects in this module (<a href="https://github.com/MedVisBonn/eyepy/commit/986f9bc6347227311725d31726ea38741e582d75"><code>986f9bc</code></a>)</p>
+</li>
+</ul>
+<h3 id="fix_6">Fix</h3>
+<ul>
+<li>fix(e2e_reader.py): makes exception formatting compatible with python &lt; 3.10 (<a href="https://github.com/MedVisBonn/eyepy/commit/2c4cbb0c2a91c47d951945aa75145dd1e34e5c4e"><code>2c4cbb0</code></a>)</li>
+</ul>
+<h2 id="v091-2023-03-15">v0.9.1 (2023-03-15)</h2>
+<h3 id="ci_3">Ci</h3>
+<ul>
+<li>ci(ci.yaml): set python version to 3.10 for building and deploying documentation (<a href="https://github.com/MedVisBonn/eyepy/commit/b6feb0d63dc47b732a354ac8b4b58fcc9809a203"><code>b6feb0d</code></a>)</li>
+</ul>
+<h3 id="documentation_3">Documentation</h3>
+<ul>
+<li>docs(README.md): clarify that the localizer is a fundus image (<a href="https://github.com/MedVisBonn/eyepy/commit/4e41acd3660f3a07abed11464bdcacba81bda984"><code>4e41acd</code></a>)</li>
+</ul>
+<h3 id="fix_7">Fix</h3>
+<ul>
+<li>
+<p>fix(e2e_reader.py): extract number of Bscans more reliably by using the number of slice substructures; Skip localizer affine transformation for now, because slodata is not always available; support reading single B-scan data (<a href="https://github.com/MedVisBonn/eyepy/commit/1287a24d40907085d33e867b35f458078faa6b75"><code>1287a24</code></a>)</p>
+</li>
+<li>
+<p>fix(e2e_format.py): change the name of E2EFile to E2EFormat to avoid confustion with E2EFileStructure in e2e_reader.py (<a href="https://github.com/MedVisBonn/eyepy/commit/01be6a0a6ce4e80491871800a970b7f75eb8c86d"><code>01be6a0</code></a>)</p>
+</li>
+</ul>
+<h2 id="v090-2023-03-09">v0.9.0 (2023-03-09)</h2>
+<h3 id="breaking_1">Breaking</h3>
+<ul>
+<li>feat(HeE2EReader): switch to construct_typed for describing structures; create file hierarchy when parsing the E2E file; add search functions to the HeE2eReader</li>
+</ul>
+<p>BREAKING CHANGE: (<a href="https://github.com/MedVisBonn/eyepy/commit/45578a5a9949a2722a03c1fe4bdef228c3a980c0"><code>45578a5</code></a>)</p>
+<h3 id="documentation_4">Documentation</h3>
+<ul>
+<li>docs(documentation): improve documentation; rename Voxel/Area Annotation to PixelAnnotation for consistency (<a href="https://github.com/MedVisBonn/eyepy/commit/ab388378522f4be7f1fc55725a101a6483c1893b"><code>ab38837</code></a>)</li>
+</ul>
+<h3 id="feature_2">Feature</h3>
+<ul>
+<li>feat(eyepy.io.utils.py): add functions to search for integer/float values in binary data; set relative tolerance for Bscan distance to 4% (fixes sample data warning) (<a href="https://github.com/MedVisBonn/eyepy/commit/96fd58bf1146b6f9b60d63cdb8abbbc8704f6bde"><code>96fd58b</code></a>)</li>
+</ul>
+<h3 id="fix_8">Fix</h3>
+<ul>
+<li>
+<p>fix(HeE2eReader): fix issues with inspect after renaming classes (<a href="https://github.com/MedVisBonn/eyepy/commit/891c79ceb2f0417c5b1b003fa1332ce1d4572b1b"><code>891c79c</code></a>)</p>
+</li>
+<li>
+<p>fix(<strong>init</strong>.py): exclude <strong>init</strong>.py from isort to prevent circular import (<a href="https://github.com/MedVisBonn/eyepy/commit/92542318b23098323855abf410c5c294ff956466"><code>9254231</code></a>)</p>
+</li>
+<li>
+<p>fix(pyproject.toml): add imageio as dependency and umpgrade imagecodecs to latest version (<a href="https://github.com/MedVisBonn/eyepy/commit/bef44a0cca752e280f5a405a9b9c4e4d0590f292"><code>bef44a0</code></a>)</p>
+</li>
+</ul>
+<h2 id="v081-2023-02-22">v0.8.1 (2023-02-22)</h2>
+<h3 id="fix_9">Fix</h3>
+<ul>
+<li>fix(pyproject.toml): increase allowed version range for numpy (fixes #10) (<a href="https://github.com/MedVisBonn/eyepy/commit/c66f6f65909aef7b086b62f66d6ce55f0b04220e"><code>c66f6f6</code></a>)</li>
+</ul>
+<h2 id="v080-2023-02-13">v0.8.0 (2023-02-13)</h2>
+<h3 id="build_1">Build</h3>
+<ul>
+<li>build(pyproject.toml): add itk as optional dependency to read RETOUCH data and pygifsicle as dev dependency to optimize the header.gif (<a href="https://github.com/MedVisBonn/eyepy/commit/ccf0d8e941b728190c93dc23608e68a45a448533"><code>ccf0d8e</code></a>)</li>
+</ul>
+<h3 id="documentation_5">Documentation</h3>
+<ul>
+<li>
+<p>docs(README.md-/-Cookbook): Add header image to README (<a href="https://github.com/MedVisBonn/eyepy/commit/7501dde6dabc48ccf6b905985888fa06ca34d6da"><code>7501dde</code></a>)</p>
+</li>
+<li>
+<p>docs(README-and-Cookbook): fix import of load function in examples (<a href="https://github.com/MedVisBonn/eyepy/commit/e623c4bed6f586c3c11ceba0801d4727da08cff8"><code>e623c4b</code></a>)</p>
+</li>
+</ul>
+<h3 id="feature_3">Feature</h3>
+<ul>
+<li>
+<p>feat(eyepy.core): reflect plotted region in x and y axis for both localizer and B-scan; check if bscan_region bscan position indicators are in plotting region (<a href="https://github.com/MedVisBonn/eyepy/commit/284242439163a0148d144938674fe98f10413fa9"><code>2842424</code></a>)</p>
+</li>
+<li>
+<p>feat(eyepy.io): fix imagio warnings; raise ValueError for scan-pattern 2 and 5 instead of warning; set maxint to NAN when reading XML layers; fix bscan order in layer data (vol_reader) (<a href="https://github.com/MedVisBonn/eyepy/commit/c4a88e7f390f10000e190c5345a5b465d0def7d2"><code>c4a88e7</code></a>)</p>
+</li>
+</ul>
+<h3 id="fix_10">Fix</h3>
+<ul>
+<li>
+<p>fix(src/eyepy/io): convert very large layer heights indicating no valid layer to np.nan (<a href="https://github.com/MedVisBonn/eyepy/commit/352a98425dfa327d3fba7821986673bbd90802c6"><code>352a984</code></a>)</p>
+</li>
+<li>
+<p>fix(eyepy.core): make sure ticklabels match plotted image region for EyeEnfac ande EyeBscan plots (<a href="https://github.com/MedVisBonn/eyepy/commit/f389f476018db51ceb0554c23d9f9af94393a85c"><code>f389f47</code></a>)</p>
+</li>
+<li>
+<p>fix(eyepy.core.utils.py): ignore nans in layers when computing drusen from layer heights (<a href="https://github.com/MedVisBonn/eyepy/commit/3c4efcdd30bbe491cf0f323be7359257ba8ce263"><code>3c4efcd</code></a>)</p>
+</li>
+<li>
+<p>fix(eyepy.core): set axis in all layer height maps to (n_bscans, width)</p>
+</li>
+</ul>
+<p>Layer in the sample were not correctly oriented due to a different axis order in the HeXMLReader (<a href="https://github.com/MedVisBonn/eyepy/commit/3493b0e259a18435b8c537839a359cb1c03e2d66"><code>3493b0e</code></a>)</p>
+<h3 id="style_1">Style</h3>
+<ul>
+<li>style(eyepy/config.py): change default color of bscan region and bscan position indicators from green to limegreen because of better visibility (<a href="https://github.com/MedVisBonn/eyepy/commit/3658a1111243b89f3fbcddf328cf67ad89962c9c"><code>3658a11</code></a>)</li>
+</ul>
+<h3 id="test">Test</h3>
+<ul>
+<li>test(test_eyevolume.py): correct indexing of layer data</li>
+</ul>
+<p>The first axis (bscan axis) of the layer data was flipped to reflect B-scan indexing. Therefore layers have to be flipped now when computing drusen and projecting on the localizer. (<a href="https://github.com/MedVisBonn/eyepy/commit/d186317b403c254c84cb5aba014b3c018e0445fe"><code>d186317</code></a>)</p>
+<h2 id="v070-2023-02-10">v0.7.0 (2023-02-10)</h2>
+<h3 id="breaking_2">Breaking</h3>
+<ul>
+<li>refactor(eyepy): work in progress</li>
+</ul>
+<p>BREAKING CHANGE: (<a href="https://github.com/MedVisBonn/eyepy/commit/c942c6b1b65a9deef07e7e2bd6d10cc96e2b6059"><code>c942c6b</code></a>)</p>
+<h3 id="ci_4">Ci</h3>
+<ul>
+<li>
+<p>ci(pyproject.yaml): fix semantic release (<a href="https://github.com/MedVisBonn/eyepy/commit/daaea194e868f277ab8518fac8ff6dae470cfc84"><code>daaea19</code></a>)</p>
+</li>
+<li>
+<p>ci(ci.yaml): fix syntax (<a href="https://github.com/MedVisBonn/eyepy/commit/c2647c631f02d644b6b633388785847b4461d581"><code>c2647c6</code></a>)</p>
+</li>
+<li>
+<p>ci(ci.yaml): fix dependencies (<a href="https://github.com/MedVisBonn/eyepy/commit/7d4eb5feb59ff87b82b1da65360c6d43e720de53"><code>7d4eb5f</code></a>)</p>
+</li>
+<li>
+<p>ci(ci.yaml): fix mkdocs deployment dependencies (<a href="https://github.com/MedVisBonn/eyepy/commit/a70a21608e4252de014da84e2712c5d69c5c2d55"><code>a70a216</code></a>)</p>
+</li>
+<li>
+<p>ci(quality-check): upgrade poetry version (<a href="https://github.com/MedVisBonn/eyepy/commit/aedd6808f0e599dfe91c469826125b94116241ef"><code>aedd680</code></a>)</p>
+</li>
+</ul>
+<h3 id="documentation_6">Documentation</h3>
+<ul>
+<li>
+<p>docs(README-and-Cookbook): clean up (<a href="https://github.com/MedVisBonn/eyepy/commit/183b317dee559a2da8cc0aec2f0df4b237d7d605"><code>183b317</code></a>)</p>
+</li>
+<li>
+<p>docs(eyepy): add docstrings and cookbook examples (<a href="https://github.com/MedVisBonn/eyepy/commit/3b6ce5d711f79794ffc1db91e1060a3a301bff40"><code>3b6ce5d</code></a>)</p>
+</li>
+<li>
+<p>docs(formats): e2e documentation (<a href="https://github.com/MedVisBonn/eyepy/commit/059d67b0d335e3b82c1d631c2be24176c4fa2435"><code>059d67b</code></a>)</p>
+</li>
+</ul>
+<h3 id="feature_4">Feature</h3>
+<ul>
+<li>feat(HeE2eReader): read E2E volumes (<a href="https://github.com/MedVisBonn/eyepy/commit/9094890a5fd69335b741d238c1fa8661f83941c0"><code>9094890</code></a>)</li>
+</ul>
+<h3 id="fix_11">Fix</h3>
+<ul>
+<li>
+<p>fix(eyepy): do not use list and tuple for type annotations python 3.8 only supports List / Tuple (<a href="https://github.com/MedVisBonn/eyepy/commit/cc6dfee1098f6e962c2d5c09e33d5c82883000bf"><code>cc6dfee</code></a>)</p>
+</li>
+<li>
+<p>fix(region-plotting): remove EllipsisType from allowed types for the region parameter since its not supported in python 3.8 (<a href="https://github.com/MedVisBonn/eyepy/commit/fac78498c233f765eb06d5bc71b3d71a125626ae"><code>fac7849</code></a>)</p>
+</li>
+</ul>
+<h3 id="refactor_1">Refactor</h3>
+<ul>
+<li>refactor(eyepy): Use isort with google style for imports and yapf for code formating (<a href="https://github.com/MedVisBonn/eyepy/commit/47f9330483b5c2ecc6f3ee2830fa1091cb863861"><code>47f9330</code></a>)</li>
+</ul>
+<h3 id="test_1">Test</h3>
+<ul>
+<li>
+<p>test(eyevolume): skip save load test for now (<a href="https://github.com/MedVisBonn/eyepy/commit/bd582745fd3d09ea7767e27d25b21309e14e1e40"><code>bd58274</code></a>)</p>
+</li>
+<li>
+<p>test(test_eyevolume): change delete to remove in function names (<a href="https://github.com/MedVisBonn/eyepy/commit/4804dc9c8e1ebc660843bf69dd2f2a20976452fe"><code>4804dc9</code></a>)</p>
+</li>
+<li>
+<p>test(eyevolume): skip Vol writing for now (<a href="https://github.com/MedVisBonn/eyepy/commit/cbdc97eabc4e86efd2a97fe87ee5dec249aab7ba"><code>cbdc97e</code></a>)</p>
+</li>
+</ul>
+<h2 id="v068-2022-09-15">v0.6.8 (2022-09-15)</h2>
+<h3 id="fix_12">Fix</h3>
+<ul>
+<li>fix(eyepy): update pre-commit; remove itk from dependencies</li>
+</ul>
+<p>itk was used to read the RETOUCH dataset and might be added as an extra dependency (<a href="https://github.com/MedVisBonn/eyepy/commit/0339fb6f08aefd63027fb8213fc5da526a6890a7"><code>0339fb6</code></a>)</p>
+<h3 id="refactor_2">Refactor</h3>
+<ul>
+<li>refactor(EyeVolumeVoxelAnnotation): simplify code for plotting (<a href="https://github.com/MedVisBonn/eyepy/commit/355e7f67fbd082abb54b4b76c30eae7040a66ffa"><code>355e7f6</code></a>)</li>
+</ul>
+<h2 id="v067-2022-06-03">v0.6.7 (2022-06-03)</h2>
+<h3 id="fix_13">Fix</h3>
+<ul>
+<li>fix(eyevolume.py): remove reformating of knot data in load - eyelab now does it if needed (<a href="https://github.com/MedVisBonn/eyepy/commit/35060ab079fd52a415cbe61f833622a73d4a4736"><code>35060ab</code></a>)</li>
+</ul>
+<h2 id="v066-2022-06-03">v0.6.6 (2022-06-03)</h2>
+<h3 id="fix_14">Fix</h3>
+<ul>
+<li>fix(eyevolume): auto convert old layer curves (<a href="https://github.com/MedVisBonn/eyepy/commit/78421205c3cd4ddf4f9ff9700bf36dd9515bc4ab"><code>7842120</code></a>)</li>
+</ul>
+<h2 id="v065-2022-04-21">v0.6.5 (2022-04-21)</h2>
+<h3 id="fix_15">Fix</h3>
+<ul>
+<li>fix(io/utils.py): check for parallel and equal distance B-scans (<a href="https://github.com/MedVisBonn/eyepy/commit/c5d68d23370a314714e4d0a798336ccb6a60f032"><code>c5d68d2</code></a>)</li>
+</ul>
+<h2 id="v064-2022-04-21">v0.6.4 (2022-04-21)</h2>
+<h3 id="fix_16">Fix</h3>
+<ul>
+<li>
+<p>fix(lazy.py): fix shape of lazy volume (<a href="https://github.com/MedVisBonn/eyepy/commit/34b944fa02538be753352e32d4e2b046cd940b81"><code>34b944f</code></a>)</p>
+</li>
+<li>
+<p>fix(eyevolume.py): enable import of B-scans with varying distances by replacing the raised Error by a warning; support deleteion of annotations (<a href="https://github.com/MedVisBonn/eyepy/commit/d8b4bb870aa6a29439db0b46372610d2685b3995"><code>d8b4bb8</code></a>)</p>
+</li>
+</ul>
+<h3 id="test_2">Test</h3>
+<ul>
+<li>test(test_grid.py): add tests for ETDRS grid creation (<a href="https://github.com/MedVisBonn/eyepy/commit/c9c13d16e8ecbcc616bc6f215008812a7f37dd47"><code>c9c13d1</code></a>)</li>
+</ul>
+<h2 id="v063-2022-03-31">v0.6.3 (2022-03-31)</h2>
+<h3 id="fix_17">Fix</h3>
+<ul>
+<li>fix(eyevolume.py): set default intensity transform if none is given (<a href="https://github.com/MedVisBonn/eyepy/commit/16b44bc19f4839c9cbd5c382273c13942ecd2a10"><code>16b44bc</code></a>)</li>
+</ul>
+<h3 id="unknown">Unknown</h3>
+<ul>
+<li>Merge branch &#39;master&#39; of github.com:MedVisBonn/eyepy (<a href="https://github.com/MedVisBonn/eyepy/commit/e57a91ead0516665540da67048aeeaa892b23fb3"><code>e57a91e</code></a>)</li>
+</ul>
+<h2 id="v062-2022-03-31">v0.6.2 (2022-03-31)</h2>
+<h3 id="fix_18">Fix</h3>
+<ul>
+<li>fix(eyevolume.py): add intensity_transform to the saved meta data</li>
+</ul>
+<p>this is required to correctly restore saved data with non-default intensity_transform. Custom intensity transform functions can not be saved currently. (<a href="https://github.com/MedVisBonn/eyepy/commit/c6a2c68e5f6c05dc86eba88db582473d41b2909a"><code>c6a2c68</code></a>)</p>
+<ul>
+<li>fix(import_retouch): transform intensities correctly</li>
+</ul>
+<p>Topcon and Cirrus data is stored as UCHAR while spectralis is stored as USHORT (<a href="https://github.com/MedVisBonn/eyepy/commit/112d1cc178c3ab3bdb8b1f1130b95805eb5d729c"><code>112d1cc</code></a>)</p>
+<h2 id="v061-2022-03-26">v0.6.1 (2022-03-26)</h2>
+<h3 id="documentation_7">Documentation</h3>
+<ul>
+<li>docs(README.md): add DOI badge (<a href="https://github.com/MedVisBonn/eyepy/commit/c4d046bb96a0c7b60cce5a6c4745e512e3f431ad"><code>c4d046b</code></a>)</li>
+</ul>
+<h3 id="fix_19">Fix</h3>
+<ul>
+<li>fix(pyproject.toml): set minimum python version to 3.7 for compatibility with pyinstaller docker container (<a href="https://github.com/MedVisBonn/eyepy/commit/75c008cade9fda68f967590cbfe7cb68251de9c8"><code>75c008c</code></a>)</li>
+</ul>
+<h2 id="v060-2022-03-25">v0.6.0 (2022-03-25)</h2>
+<h3 id="documentation_8">Documentation</h3>
+<ul>
+<li>docs(README.md): add Related Projects section with reference to OCT-Converter (<a href="https://github.com/MedVisBonn/eyepy/commit/c273e448f177712cc67de8215b7afe448b005a4a"><code>c273e44</code></a>)</li>
+</ul>
+<h3 id="feature_5">Feature</h3>
+<ul>
+<li>
+<p>feat(eyevolume): enable use of EyeVolume in eyelab (<a href="https://github.com/MedVisBonn/eyepy/commit/84796285a2eebb65497ac3cd438bdc212aa41e34"><code>8479628</code></a>)</p>
+</li>
+<li>
+<p>feat(eyevolume.py): enable custom intensity transformation for OCT data (<a href="https://github.com/MedVisBonn/eyepy/commit/761dd5a4a360ca46d79ff2074b2644b4c2fd8ca4"><code>761dd5a</code></a>)</p>
+</li>
+</ul>
+<h2 id="v041-2022-02-17">v0.4.1 (2022-02-17)</h2>
+<h3 id="fix_20">Fix</h3>
+<ul>
+<li>fix(EyeVolume): fix B-scan iteration; enable setting layer heights from EyeBscan (<a href="https://github.com/MedVisBonn/eyepy/commit/f982d687a7834922866377b70a755e253c785880"><code>f982d68</code></a>)</li>
+</ul>
+<h3 id="unknown_1">Unknown</h3>
+<ul>
+<li>Merge branch &#39;master&#39; of github.com:MedVisBonn/eyepy (<a href="https://github.com/MedVisBonn/eyepy/commit/a63cdd8b0430ff45cbb757995c44bd02ec3a21a5"><code>a63cdd8</code></a>)</li>
+</ul>
+<h2 id="v040-2022-02-17">v0.4.0 (2022-02-17)</h2>
+<h3 id="breaking_3">Breaking</h3>
+<ul>
+<li>refactor(everything): Refactor for easier to maintain code</li>
+</ul>
+<p>CI based on Github workflows, EyeVolume class as a standard way for handling OCT volumes, support for HEXEX VOL/XML, Bscans from folder, DUKE and RETOUCH data</p>
+<p>BREAKING CHANGE: (<a href="https://github.com/MedVisBonn/eyepy/commit/117ef89ec5874b366abb0da2b544011799a4e4f5"><code>117ef89</code></a>)</p>
+<h2 id="v037-2022-01-31">v0.3.7 (2022-01-31)</h2>
+<h3 id="fix_21">Fix</h3>
+<ul>
+<li>fix(base): fix error when plotting volumes without drusen; fix visibility of drusen projection (<a href="https://github.com/MedVisBonn/eyepy/commit/9c08c7206809da406917a9c05a808a12de594660"><code>9c08c72</code></a>)</li>
+</ul>
+<h3 id="unknown_2">Unknown</h3>
+<ul>
+<li>
+<p>Merge branch &#39;master&#39; of github.com:MedVisBonn/eyepy (<a href="https://github.com/MedVisBonn/eyepy/commit/ed503da470ff7f467ff5ab3a69b5a50044d7e133"><code>ed503da</code></a>)</p>
+</li>
+<li>
+<p>minor change (<a href="https://github.com/MedVisBonn/eyepy/commit/eb337bda7b6721bb83364ec43875ad8d06f42cab"><code>eb337bd</code></a>)</p>
+</li>
+</ul>
+<h2 id="v036-2021-10-14">v0.3.6 (2021-10-14)</h2>
+<h3 id="fix_22">Fix</h3>
+<ul>
+<li>fix(drusen.py): fix the drusen height filtering (<a href="https://github.com/MedVisBonn/eyepy/commit/4d1b375561a5dbd1df634ba09c4aff20243f52df"><code>4d1b375</code></a>)</li>
+</ul>
+<h2 id="v035-2021-08-16">v0.3.5 (2021-08-16)</h2>
+<h3 id="fix_23">Fix</h3>
+<ul>
+<li>fix(DefaultEyeQuantifier): enable radii change for default quantifier (<a href="https://github.com/MedVisBonn/eyepy/commit/ca8aff334a6ba26d187cd5e73178002b101e7d29"><code>ca8aff3</code></a>)</li>
+</ul>
+<h3 id="unknown_3">Unknown</h3>
+<ul>
+<li>Merge branch &#39;master&#39; of github.com:MedVisBonn/eyepy (<a href="https://github.com/MedVisBonn/eyepy/commit/de0aba39c87251781b2753c9e6c6c38e0b6dc2dc"><code>de0aba3</code></a>)</li>
+</ul>
+<h2 id="v034-2021-08-16">v0.3.4 (2021-08-16)</h2>
+<h3 id="fix_24">Fix</h3>
+<ul>
+<li>fix: fix the reference (<a href="https://github.com/MedVisBonn/eyepy/commit/eadf10098635d8e18eb2dea264b44c7535669ac5"><code>eadf100</code></a>)</li>
+</ul>
+<h2 id="v033-2021-08-16">v0.3.3 (2021-08-16)</h2>
+<h3 id="fix_25">Fix</h3>
+<ul>
+<li>fix(io/heyex/xml_export): initalize empty LayerAnnotation if no annotation is provided (<a href="https://github.com/MedVisBonn/eyepy/commit/662646702bcf41ec3f98b4e891f3566ce613ba54"><code>6626467</code></a>)</li>
+</ul>
+<h3 id="unknown_4">Unknown</h3>
+<ul>
+<li>Merge branch &#39;master&#39; of github.com:MedVisBonn/eyepy (<a href="https://github.com/MedVisBonn/eyepy/commit/d4dc7441f7b9a9713f731a2b200da5b9a063c15a"><code>d4dc744</code></a>)</li>
+</ul>
+<h2 id="v032-2021-08-16">v0.3.2 (2021-08-16)</h2>
+<h3 id="fix_26">Fix</h3>
+<ul>
+<li>fix(eyepy/io/heyex): allow unknown heyex xml versions</li>
+</ul>
+<p>show a warning and use the base XML specification for HEYEX XML exports (<a href="https://github.com/MedVisBonn/eyepy/commit/5c51b4656d0dcc28d4b7c2ff0e8112e176746e28"><code>5c51b46</code></a>)</p>
+<h3 id="unknown_5">Unknown</h3>
+<ul>
+<li>Merge branch &#39;master&#39; of github.com:MedVisBonn/eyepy (<a href="https://github.com/MedVisBonn/eyepy/commit/54e0a6c94dd21f942590ed12b002e93f50f08d8c"><code>54e0a6c</code></a>)</li>
+</ul>
+<h2 id="v031-2021-05-18">v0.3.1 (2021-05-18)</h2>
+<h3 id="fix_27">Fix</h3>
+<ul>
+<li>fix(base.py): fix layer mapping in case LayerAnnotation does not contain all layers (<a href="https://github.com/MedVisBonn/eyepy/commit/5e8621ea50722281d1d4d56c12aa9ea574d5ef3a"><code>5e8621e</code></a>)</li>
+</ul>
+<h3 id="unknown_6">Unknown</h3>
+<ul>
+<li>Merge remote-tracking branch &#39;origin/master&#39;</li>
+</ul>
+<h1 id="conflicts">Conflicts:</h1>
+<h1 id="eyepycoredrusenpy-569a9ed">eyepy/core/drusen.py (<a href="https://github.com/MedVisBonn/eyepy/commit/569a9ede6d08050e647407bbe8e119835040583e"><code>569a9ed</code></a>)</h1>
+<h2 id="v030-2021-03-19">v0.3.0 (2021-03-19)</h2>
+<h3 id="feature_6">Feature</h3>
+<ul>
+<li>feat(drusen.py): added new histogram based DrusenFinder and made it the new default</li>
+</ul>
+<p>The old default is renamed to DrusenFinderPolyFit. The new method estimates a single iRPE distance to the BM for the complete volume. We found that the iRPE found like this has a similar distance to the BM as the RPE in healthy regions hasto the BM. The iRPE computed by the old method has a larger difference to the BM. (<a href="https://github.com/MedVisBonn/eyepy/commit/9a3e667ba721c2f16085b4f62225d1ee9ded078d"><code>9a3e667</code></a>)</p>
+<h2 id="v026-2021-03-12">v0.2.6 (2021-03-12)</h2>
+<h3 id="fix_28">Fix</h3>
+<ul>
+<li>fix(base.py): fixed bugs for oat (<a href="https://github.com/MedVisBonn/eyepy/commit/7e10ab30e4ac9f7499ed16c00fe09c9567a83765"><code>7e10ab3</code></a>)</li>
+</ul>
+<h3 id="unknown_7">Unknown</h3>
+<ul>
+<li>
+<p>Merge branch &#39;master&#39; of github.com:MedVisBonn/eyepy (<a href="https://github.com/MedVisBonn/eyepy/commit/64e6f46f2c8661f4f4d56fa1f48ceb48123c0154"><code>64e6f46</code></a>)</p>
+</li>
+<li>
+<p>Layer annotation works with DB sync (<a href="https://github.com/MedVisBonn/eyepy/commit/e676eec4b902ecf9252cce154a1cb7c480f9af98"><code>e676eec</code></a>)</p>
+</li>
+<li>
+<p>Upload and show line annotations (<a href="https://github.com/MedVisBonn/eyepy/commit/7386893c4729755ff5f454e33baf8283d5e1b3be"><code>7386893</code></a>)</p>
+</li>
+<li>
+<p>Lines and Areas Groups; Import of vol, xml and bscan folder; bug fixes; annotation view active image indicator; (<a href="https://github.com/MedVisBonn/eyepy/commit/d858a6f33630a98e3ef997ebb4d68b7e6a36b324"><code>d858a6f</code></a>)</p>
+</li>
+</ul>
+<h2 id="v025-2021-02-11">v0.2.5 (2021-02-11)</h2>
+<h3 id="fix_29">Fix</h3>
+<ul>
+<li>fix(docs): add requirements.txt for docs</li>
+</ul>
+<p>readthedocs nee to know the dependencies for building the documentation (<a href="https://github.com/MedVisBonn/eyepy/commit/8008c634bad246559c4b7d5b60b18749af5bfb30"><code>8008c63</code></a>)</p>
+<h2 id="v024-2021-02-11">v0.2.4 (2021-02-11)</h2>
+<h3 id="fix_30">Fix</h3>
+<ul>
+<li>
+<p>fix(travis.yml): removed --user option (<a href="https://github.com/MedVisBonn/eyepy/commit/f68df9ed6c7889923ea50573ad10e47140d9f80d"><code>f68df9e</code></a>)</p>
+</li>
+<li>
+<p>fix(travis.yml): switch to new pip version to properly resolve twine dependencies (<a href="https://github.com/MedVisBonn/eyepy/commit/7215226c4ca2a78da8cbbfd73ef36a5322c7bb22"><code>7215226</code></a>)</p>
+</li>
+</ul>
+<h3 id="unknown_8">Unknown</h3>
+<ul>
+<li>Merge branch &#39;master&#39; of github.com:MedVisBonn/eyepy (<a href="https://github.com/MedVisBonn/eyepy/commit/d14ef6868b37e5a98f479a4b8398016fc7f1d549"><code>d14ef68</code></a>)</li>
+</ul>
+<h2 id="v023-2021-02-11">v0.2.3 (2021-02-11)</h2>
+<h3 id="fix_31">Fix</h3>
+<ul>
+<li>fix(docs): remove eyepy as requirement for building docs (<a href="https://github.com/MedVisBonn/eyepy/commit/05d6293382368f6cce42286193e6618f2518c5a6"><code>05d6293</code></a>)</li>
+</ul>
+<h2 id="v022-2021-02-11">v0.2.2 (2021-02-11)</h2>
+<h3 id="fix_32">Fix</h3>
+<ul>
+<li>fix(setup.py-eyepy/<strong>init</strong>.py): make sure the version numbers match (<a href="https://github.com/MedVisBonn/eyepy/commit/7357f11ad7f3af4466ccd03d8fe0f7f846c8915e"><code>7357f11</code></a>)</li>
+</ul>
+<h3 id="style_2">Style</h3>
+<ul>
+<li>style(project): run pre-commit hooks and cleaned documentation (<a href="https://github.com/MedVisBonn/eyepy/commit/a882ad496bc6477ddeeb63934572143b05a09429"><code>a882ad4</code></a>)</li>
+</ul>
+<h3 id="unknown_9">Unknown</h3>
+<ul>
+<li>Merge branch &#39;master&#39; of github.com:MedVisBonn/eyepy (<a href="https://github.com/MedVisBonn/eyepy/commit/edd53a0a557f0b91d1518b4969fb22d687971cd6"><code>edd53a0</code></a>)</li>
+</ul>
+<h2 id="v021-2021-02-11">v0.2.1 (2021-02-11)</h2>
+<h3 id="fix_33">Fix</h3>
+<ul>
+<li>fix(core.drusen.py): use logging module instead of prints in this package (<a href="https://github.com/MedVisBonn/eyepy/commit/978fa11079cff23d7d8ffb423f3767858dfd6f2e"><code>978fa11</code></a>)</li>
+</ul>
+<h2 id="v020-2021-02-11">v0.2.0 (2021-02-11)</h2>
+<h3 id="breaking_4">Breaking</h3>
+<ul>
+<li>fix: changed enface to localizer in OCT object</li>
+</ul>
+<p>BREAKING CHANGE: (<a href="https://github.com/MedVisBonn/eyepy/commit/bf6ecd2d7e10bfbadf0e46c9115d0b908014b639"><code>bf6ecd2</code></a>)</p>
+<ul>
+<li>refactor(eyepy/core/base.py): rename enface to localizer in Oct object for more consistency</li>
+</ul>
+<p>BREAKING CHANGE: (<a href="https://github.com/MedVisBonn/eyepy/commit/09f8746538ef18cda473fdd0644c96a0094a9f68"><code>09f8746</code></a>)</p>
+<h3 id="unknown_10">Unknown</h3>
+<ul>
+<li>Merge branch &#39;master&#39; of github.com:MedVisBonn/eyepy (<a href="https://github.com/MedVisBonn/eyepy/commit/710d6d8a51a2ec607f2acb09099269b636ff4878"><code>710d6d8</code></a>)</li>
+</ul>
+<h2 id="v016-2021-02-10">v0.1.6 (2021-02-10)</h2>
+<h3 id="ci_5">Ci</h3>
+<ul>
+<li>
+<p>ci(Travis-CI): changed supported versions and location of version string (<a href="https://github.com/MedVisBonn/eyepy/commit/397decabbe64e6ab812de9aa8adc1450d17ae1e7"><code>397deca</code></a>)</p>
+</li>
+<li>
+<p>ci: add changed files before commiting (<a href="https://github.com/MedVisBonn/eyepy/commit/8e1cb24a6bc59f0cf1f986da39d36e90c98e11b0"><code>8e1cb24</code></a>)</p>
+</li>
+</ul>
+<h3 id="documentation_9">Documentation</h3>
+<ul>
+<li>docs(readme): added eyepy logo to readme.rst and removed readme.md (<a href="https://github.com/MedVisBonn/eyepy/commit/bc3e19d3120fa9a5329a6ad67ec9632a735d1d6e"><code>bc3e19d</code></a>)</li>
+</ul>
+<h3 id="fix_34">Fix</h3>
+<ul>
+<li>
+<p>fix(.travis.yml): another fix (<a href="https://github.com/MedVisBonn/eyepy/commit/79e33325605f87205a1797cb232328ef8698c21d"><code>79e3332</code></a>)</p>
+</li>
+<li>
+<p>fix(.travis.yml): fixed yaml problem (<a href="https://github.com/MedVisBonn/eyepy/commit/28eac5e62684ce749cd45845465bc0fa6e443d2c"><code>28eac5e</code></a>)</p>
+</li>
+<li>
+<p>fix(ci-testing): test whether a fix triggers the travic ci build</p>
+</li>
+</ul>
+<p>no significant changes (<a href="https://github.com/MedVisBonn/eyepy/commit/718e9ee612e3345c51e57036f9b51c15c5e1a9b4"><code>718e9ee</code></a>)</p>
+<h3 id="refactor_3">Refactor</h3>
+<ul>
+<li>
+<p>refactor(registration): Added rigid registration of multimodal images based on mean phase images and HOG features. Also added an examplary notebook (<a href="https://github.com/MedVisBonn/eyepy/commit/7ce9ebdd1717ed3b171f132b13d9e452b43a6cb8"><code>7ce9ebd</code></a>)</p>
+</li>
+<li>
+<p>refactor(project): added 2D rigid registration (<a href="https://github.com/MedVisBonn/eyepy/commit/67f59085b8fad04c9601a045ce9c327e4658fc22"><code>67f5908</code></a>)</p>
+</li>
+</ul>
+<h3 id="style_3">Style</h3>
+<ul>
+<li>style: removed index.html files (<a href="https://github.com/MedVisBonn/eyepy/commit/81bf883de614a7488aeec843d657f8c3c70faab7"><code>81bf883</code></a>)</li>
+</ul>
+<h3 id="unknown_11">Unknown</h3>
+<ul>
+<li>
+<p>Another try (<a href="https://github.com/MedVisBonn/eyepy/commit/a450ec61db05a9faf0b1bea5bf17cba0858596e2"><code>a450ec6</code></a>)</p>
+</li>
+<li>
+<p>Changed project name from eyepy to eyepie for PyPi (<a href="https://github.com/MedVisBonn/eyepy/commit/64313c4429bc8383deb2461369498998f62201ec"><code>64313c4</code></a>)</p>
+</li>
+<li>
+<p>Setting up pypi upload (<a href="https://github.com/MedVisBonn/eyepy/commit/88a6a3365e684aa8da93487a7ad1b097de80b2e4"><code>88a6a33</code></a>)</p>
+</li>
+<li>
+<p>work in progress (<a href="https://github.com/MedVisBonn/eyepy/commit/b6833a1d04eed7cf5208a1f0abfcd6ac40845843"><code>b6833a1</code></a>)</p>
+</li>
+<li>
+<p>Added annotation comparison (<a href="https://github.com/MedVisBonn/eyepy/commit/1bb8f3388ef376335169d1bcd388cd1898ec1fbb"><code>1bb8f33</code></a>)</p>
+</li>
+<li>
+<p>small changes (<a href="https://github.com/MedVisBonn/eyepy/commit/ae3b4644fd91fa6c4fc6db0ca639513f16f137e7"><code>ae3b464</code></a>)</p>
+</li>
+<li>
+<p>unknown (<a href="https://github.com/MedVisBonn/eyepy/commit/b518e0ce1047b0c18f7c5e4f4e92f0d5fdc966c1"><code>b518e0c</code></a>)</p>
+</li>
+<li>
+<p>Fixed drusen filters (<a href="https://github.com/MedVisBonn/eyepy/commit/c265d6cafb1ffbad37471f3a3e902ce789e0486a"><code>c265d6c</code></a>)</p>
+</li>
+<li>
+<p>Severall small fixes and improvements (<a href="https://github.com/MedVisBonn/eyepy/commit/161ecb45f0660465cbfea41a89bda3c57be32fe1"><code>161ecb4</code></a>)</p>
+</li>
+<li>
+<p>many small improvements; drusen computation now in 4s instead of 90s (<a href="https://github.com/MedVisBonn/eyepy/commit/cbae8db2ebf17eaad9828cbe82ba354365a8b73e"><code>cbae8db</code></a>)</p>
+</li>
+<li>
+<p>layer ploting with region works (<a href="https://github.com/MedVisBonn/eyepy/commit/fb67ede4a94fd4914fdacda99f53bd01d49310ba"><code>fb67ede</code></a>)</p>
+</li>
+<li>
+<p>minor change (<a href="https://github.com/MedVisBonn/eyepy/commit/a1fa0bb0fca5f19c55b825ef9b47ac5c0d0f2460"><code>a1fa0bb</code></a>)</p>
+</li>
+<li>
+<p>default Annotation for B-Scan (<a href="https://github.com/MedVisBonn/eyepy/commit/758d23fdf82e7e6d7f48f9e2451cd6b171c79351"><code>758d23f</code></a>)</p>
+</li>
+<li>
+<p>some changes (<a href="https://github.com/MedVisBonn/eyepy/commit/8935ab4719b21974e2eaf662b3eddd1dbcb1d9a9"><code>8935ab4</code></a>)</p>
+</li>
+<li>
+<p>Default empty LayerAnnotation works (<a href="https://github.com/MedVisBonn/eyepy/commit/72a6a43322c087eadb308cd64fedb1ffc4da62ce"><code>72a6a43</code></a>)</p>
+</li>
+<li>
+<p>fix the layer annotation fix :/ (<a href="https://github.com/MedVisBonn/eyepy/commit/fa5ee81cd690ff35e08b3cb15a999c3bea4daa9e"><code>fa5ee81</code></a>)</p>
+</li>
+<li>
+<p>Added default empty layer annotation and fixed Oct.layer (<a href="https://github.com/MedVisBonn/eyepy/commit/5c8a3957f2fc1b60cb49e115cc0cff1845124dd5"><code>5c8a395</code></a>)</p>
+</li>
+<li>
+<p>Assume square area for OCT if no enface and or no layer positions are given; Enabled changing the layer annotations (<a href="https://github.com/MedVisBonn/eyepy/commit/5e244f096b48eb0191d048272fa299200be002f5"><code>5e244f0</code></a>)</p>
+</li>
+<li>
+<p>Added name to Bscan. If B-Scans are save as individual files, this is the respective filename, else it becomes a string version of the B-Scan index (<a href="https://github.com/MedVisBonn/eyepy/commit/0b09ebe5deb1d8f366b788eb96bea3ac244b1ec8"><code>0b09ebe</code></a>)</p>
+</li>
+<li>
+<p>Merge remote-tracking branch &#39;public/master&#39; (<a href="https://github.com/MedVisBonn/eyepy/commit/dd352c65e855cbab2b75e7c2a1d14e732560a9cf"><code>dd352c6</code></a>)</p>
+</li>
+<li>
+<p>added layer_indices property to Bscan (<a href="https://github.com/MedVisBonn/eyepy/commit/bd4f6691b3431bbdc2dd158c9c11934492240167"><code>bd4f669</code></a>)</p>
+</li>
+<li>
+<p>Merge remote-tracking branch &#39;public/master&#39; (<a href="https://github.com/MedVisBonn/eyepy/commit/64db8764c99ee13c4caa7c583f0496c36a990cd6"><code>64db876</code></a>)</p>
+</li>
+<li>
+<p>Imports fixed (<a href="https://github.com/MedVisBonn/eyepy/commit/cb2759a1e432f2c492846a561049b7302a811251"><code>cb2759a</code></a>)</p>
+</li>
+<li>
+<p>Merge remote-tracking branch &#39;public/master&#39;</p>
+</li>
+</ul>
+<h1 id="conflicts_1">Conflicts:</h1>
+<h1 id="eyepycorebasepy-1b4de44">eyepy/core/base.py (<a href="https://github.com/MedVisBonn/eyepy/commit/1b4de44c6dd9734d99ad811071a17da5bcd97904"><code>1b4de44</code></a>)</h1>
+<ul>
+<li>
+<p>Rewrite Heyex vol and xml readers. Clean up (<a href="https://github.com/MedVisBonn/eyepy/commit/f97da6ea8509b4c21484e53c956683f63aba098a"><code>f97da6e</code></a>)</p>
+</li>
+<li>
+<p>Merge remote-tracking branch &#39;public/master&#39;</p>
+</li>
+</ul>
+<h1 id="conflicts_2">Conflicts:</h1>
+<h1 id="eyepycoreoctbasepy">eyepy/core/octbase.py</h1>
+<h1 id="eyepyioheyexhe_xmlpy-965bc45">eyepy/io/heyex/he_xml.py (<a href="https://github.com/MedVisBonn/eyepy/commit/965bc456b5f5a53365874486f14e62f98b01e6c9"><code>965bc45</code></a>)</h1>
+<ul>
+<li>
+<p>minor fix (<a href="https://github.com/MedVisBonn/eyepy/commit/b1b97f3429a08635d54b6acc82704848ed7a7cbc"><code>b1b97f3</code></a>)</p>
+</li>
+<li>
+<p>minor fix (<a href="https://github.com/MedVisBonn/eyepy/commit/266f837ce5aa508f3e6ab51e106b766e42e915f3"><code>266f837</code></a>)</p>
+</li>
+<li>
+<p>added drusen depth filter (<a href="https://github.com/MedVisBonn/eyepy/commit/8acd82757a0482785194e81f6d458f76dca9de08"><code>8acd827</code></a>)</p>
+</li>
+<li>
+<p>bumbed version (<a href="https://github.com/MedVisBonn/eyepy/commit/5a1000a462d8484409c20384fa01436c25edff87"><code>5a1000a</code></a>)</p>
+</li>
+<li>
+<p>Added drusen saving in data_path/.eyepy folder. Added function to recompute drusen if needed with a custom drusenfinder (<a href="https://github.com/MedVisBonn/eyepy/commit/40ed65d946db3e630294a3a99165aea89da506ef"><code>40ed65d</code></a>)</p>
+</li>
+<li>
+<p>Merge remote-tracking branch &#39;origin/master&#39; into dev</p>
+</li>
+</ul>
+<h1 id="conflicts_3">Conflicts:</h1>
+<h1 id="eyepycoredrusenpy-69a6f71">eyepy/core/drusen.py (<a href="https://github.com/MedVisBonn/eyepy/commit/69a6f712a71a1690ce3ea6b55584bcb877151ac1"><code>69a6f71</code></a>)</h1>
+<ul>
+<li>
+<p>Drusen depth filter added (<a href="https://github.com/MedVisBonn/eyepy/commit/d33f0d66a4d6810ce5d33a73fc8de02936ad3ad3"><code>d33f0d6</code></a>)</p>
+</li>
+<li>
+<p>layer_indices and enface filename (<a href="https://github.com/MedVisBonn/eyepy/commit/2ee6f41470ad75be07e420d81e4d4c62dd5e1a06"><code>2ee6f41</code></a>)</p>
+</li>
+<li>
+<p>Work in progress, adding reading functionallity for bscan only folders (<a href="https://github.com/MedVisBonn/eyepy/commit/8d859c0b433c10a81ae80ad6e1b31828c54f276b"><code>8d859c0</code></a>)</p>
+</li>
+<li>
+<p>Changed Repository (<a href="https://github.com/MedVisBonn/eyepy/commit/5e0aa327684a93da006fb24242a33867eda3d8b5"><code>5e0aa32</code></a>)</p>
+</li>
+<li>
+<p>Merge branch &#39;dev&#39;</p>
+</li>
+</ul>
+<h1 id="conflicts_4">Conflicts:</h1>
+<h1 id="eyepypreprocessloggaborpy-1368604">eyepy/preprocess/loggabor.py (<a href="https://github.com/MedVisBonn/eyepy/commit/13686042b3d0579963c45a6f3e739a5d529f6025"><code>1368604</code></a>)</h1>
+<ul>
+<li>
+<p>Added DefaultEyeQuantifier and improved plotting (<a href="https://github.com/MedVisBonn/eyepy/commit/a00b25a6602771b060661ca6e9d4e12c056cf8b7"><code>a00b25a</code></a>)</p>
+</li>
+<li>
+<p>Minor fixes and clean up (<a href="https://github.com/MedVisBonn/eyepy/commit/2ce4962a7f1b01d88b6f07e418fd454aba503b90"><code>2ce4962</code></a>)</p>
+</li>
+<li>
+<p>Removed code duplication (<a href="https://github.com/MedVisBonn/eyepy/commit/c02d2dd8729ea89dd7fb7a698a6149c560a8ee41"><code>c02d2dd</code></a>)</p>
+</li>
+<li>
+<p>Added EyeQuantifier and DefaultEyeQuantifier for standard drusen quantification (<a href="https://github.com/MedVisBonn/eyepy/commit/6b33b6fd4a034af55705baeae41fce2103976470"><code>6b33b6f</code></a>)</p>
+</li>
+<li>
+<p>Added loader for sample data (<a href="https://github.com/MedVisBonn/eyepy/commit/451586daa68b2bebe607f0f064013c73575c9f73"><code>451586d</code></a>)</p>
+</li>
+<li>
+<p>Added DrusenFinder to octbase (<a href="https://github.com/MedVisBonn/eyepy/commit/46ec78c54778143b23003a0c583e43239f307edd"><code>46ec78c</code></a>)</p>
+</li>
+<li>
+<p>Work in progress on the DrusenFinder (<a href="https://github.com/MedVisBonn/eyepy/commit/bb69833bc2735c960c19a16fe966637486a8a40f"><code>bb69833</code></a>)</p>
+</li>
+<li>
+<p>When loading B-Scans assume image has 2 dimensions. In case it as 3 dimensions (last dimension for RGB) keep only the R array (<a href="https://github.com/MedVisBonn/eyepy/commit/0290a7b11d2ebcb0de11f8c46958bec923316783"><code>0290a7b</code></a>)</p>
+</li>
+<li>
+<p>minor fix (<a href="https://github.com/MedVisBonn/eyepy/commit/04f8d6b461096d70c818e17e4bdf5755d8b6f71e"><code>04f8d6b</code></a>)</p>
+</li>
+<li>
+<p>Merge branch &#39;master&#39; into merge_to_public</p>
+</li>
+</ul>
+<h1 id="conflicts_5">Conflicts:</h1>
+<h1 id="setuppy-b300bd6">setup.py (<a href="https://github.com/MedVisBonn/eyepy/commit/b300bd6d18bd60a01e1f4341cceae2d7e63b4be0"><code>b300bd6</code></a>)</h1>
+<ul>
+<li>
+<p>added drusen metrics and fixed drusen computation (<a href="https://github.com/MedVisBonn/eyepy/commit/1e38f65f456b9e799003c079f314e376fb73850c"><code>1e38f65</code></a>)</p>
+</li>
+<li>
+<p>Drusen code is clean, tests missing (<a href="https://github.com/MedVisBonn/eyepy/commit/c28de743ca1a943cab8ff18f1af2a444b58edc47"><code>c28de74</code></a>)</p>
+</li>
+<li>
+<p>Started to add drusen computation from layer segmentation. (<a href="https://github.com/MedVisBonn/eyepy/commit/5e8d511352cebb6a2916d621b34d0a7ac7fcdd0a"><code>5e8d511</code></a>)</p>
+</li>
+<li>
+<p>Store only one channel of the loaded bscan (<a href="https://github.com/MedVisBonn/eyepy/commit/b7d0827895a532380812f750cbdd6024ca1a77b8"><code>b7d0827</code></a>)</p>
+</li>
+<li>
+<p>Added seaborn dependcy (<a href="https://github.com/MedVisBonn/eyepy/commit/9e413569524eed787b1b87d9a14a172d13c98ccb"><code>9e41356</code></a>)</p>
+</li>
+<li>
+<p>relaxed dependencies for now (<a href="https://github.com/MedVisBonn/eyepy/commit/c2a3ed8b23fc8c23a6a7b159528e065340dc32f2"><code>c2a3ed8</code></a>)</p>
+</li>
+<li>
+<p>initial commit (<a href="https://github.com/MedVisBonn/eyepy/commit/c0cb0cad26c2615c48acd5312fd712ac057b18c0"><code>c0cb0ca</code></a>)</p>
+</li>
+<li>
+<p>minor plotting changes (<a href="https://github.com/MedVisBonn/eyepy/commit/ceb5fed3380451a3d1c3970d437ddb0b2816e407"><code>ceb5fed</code></a>)</p>
+</li>
+<li>
+<p>fixed specification for vol files (<a href="https://github.com/MedVisBonn/eyepy/commit/0afb7ee3136171826a4dce47ea1bda4d697f7b63"><code>0afb7ee</code></a>)</p>
+</li>
+<li>
+<p>bug fixes and reorganization (<a href="https://github.com/MedVisBonn/eyepy/commit/2a1dde1ad4dd804c150559053e49c4ed719322a9"><code>2a1dde1</code></a>)</p>
+</li>
+<li>
+<p>latest changes (<a href="https://github.com/MedVisBonn/eyepy/commit/39ccccd45cd86076068854c5e0132afc00e5655b"><code>39ccccd</code></a>)</p>
+</li>
+<li>
+<p>old changes (<a href="https://github.com/MedVisBonn/eyepy/commit/2ca90dc852bb8d798078fa97bb86ebe603db7a1f"><code>2ca90dc</code></a>)</p>
+</li>
+<li>
+<p>Added base classes for Oct and Bscan objects which define the interface and deliver basic plotting functionality (<a href="https://github.com/MedVisBonn/eyepy/commit/a5f82df29db52d1335fcd2d0063cae62b38f4514"><code>a5f82df</code></a>)</p>
+</li>
+<li>
+<p>Fixed parsing B-Scans for the Heyex XML export (<a href="https://github.com/MedVisBonn/eyepy/commit/70b101cb06d586873c0c75f76bc04b55fabadb2e"><code>70b101c</code></a>)</p>
+</li>
+<li>
+<p>read Heyex XML exports with the same class as the Heyex VOL export. This makes both exports accessible using the same interface (<a href="https://github.com/MedVisBonn/eyepy/commit/b05b3a0672ade242968e0670c2b2249c11f78056"><code>b05b3a0</code></a>)</p>
+</li>
+<li>
+<p>memory mapped file for reading .vol (<a href="https://github.com/MedVisBonn/eyepy/commit/37b31d5fbb151145a619f6ca74a1f5b21e1fd394"><code>37b31d5</code></a>)</p>
+</li>
+<li>
+<p>fixed comma (<a href="https://github.com/MedVisBonn/eyepy/commit/efb4dc7d69528796753bd19586cb0a1e7a15b586"><code>efb4dc7</code></a>)</p>
+</li>
+<li>
+<p>Added support for reading segmentations from .vol (<a href="https://github.com/MedVisBonn/eyepy/commit/5cebe5ebfd5abd14004f4bd8954ed5c49ea5786e"><code>5cebe5e</code></a>)</p>
+</li>
+<li>
+<p>Merge remote-tracking branch &#39;origin/master&#39;</p>
+</li>
+</ul>
+<h1 id="conflicts_6">Conflicts:</h1>
+<h1 id="docsconfpy">docs/conf.py</h1>
+<h1 id="eyepyioinitpy">eyepy/io/<strong>init</strong>.py</h1>
+<h1 id="eyepyiobasepy">eyepy/io/base.py</h1>
+<h1 id="eyepyiohe_volpy-95eb730">eyepy/io/he_vol.py (<a href="https://github.com/MedVisBonn/eyepy/commit/95eb73041d750d0b5ffe295b89ba5b2f67bb8076"><code>95eb730</code></a>)</h1>
+<ul>
+<li>
+<p>HeyexOct docstring (<a href="https://github.com/MedVisBonn/eyepy/commit/f539013293872040d5930b88da29339b3f58efb0"><code>f539013</code></a>)</p>
+</li>
+<li>
+<p>Added sphinx extensions for numpy style docstrings (napoleon) and typehints (sphinx_autodoc_typehints) (<a href="https://github.com/MedVisBonn/eyepy/commit/8faa2d7b87c081efd875f59ed50af958c0858815"><code>8faa2d7</code></a>)</p>
+</li>
+<li>
+<p>Documentation and clean up in progress (<a href="https://github.com/MedVisBonn/eyepy/commit/877064904c5ba8b8551aa7bdc5056a773fb5da2e"><code>8770649</code></a>)</p>
+</li>
+<li>
+<p>Rewrite vol import (<a href="https://github.com/MedVisBonn/eyepy/commit/d9b138eab1630fc540b006111a6902c6fa848b5f"><code>d9b138e</code></a>)</p>
+</li>
+<li>
+<p>changes to the filtergrid to use it more flexible (<a href="https://github.com/MedVisBonn/eyepy/commit/5c3c0a7bc9c5d2d98c7e8fa4a2a1cbefd6a2e6e7"><code>5c3c0a7</code></a>)</p>
+</li>
+<li>
+<p>Another commit (<a href="https://github.com/MedVisBonn/eyepy/commit/64e1d1bf1d689636950e27d0ed60f0e2ae8deda9"><code>64e1d1b</code></a>)</p>
+</li>
+<li>
+<p>new approach (<a href="https://github.com/MedVisBonn/eyepy/commit/9d883afacb95b541c677fb9d3ec307f596043269"><code>9d883af</code></a>)</p>
+</li>
+<li>
+<p>registartion progress (<a href="https://github.com/MedVisBonn/eyepy/commit/5705254950fbac17c52d7e12b965edbfa3c82e33"><code>5705254</code></a>)</p>
+</li>
+<li>
+<p>log gabor completeted (<a href="https://github.com/MedVisBonn/eyepy/commit/7f42ea6e812cfe81c64b01ecdaac021c9d31eba7"><code>7f42ea6</code></a>)</p>
+</li>
+<li>
+<p>... (<a href="https://github.com/MedVisBonn/eyepy/commit/f5b451acaf9d9960f2bcdec059e8d10aa99671fd"><code>f5b451a</code></a>)</p>
+</li>
+<li>
+<p>progress on registration (<a href="https://github.com/MedVisBonn/eyepy/commit/8fb475538ab6cb290dc3b7dda0562cf77ecf6347"><code>8fb4755</code></a>)</p>
+</li>
+<li>
+<p>progress on log gabor (<a href="https://github.com/MedVisBonn/eyepy/commit/51e5205aa42992e752da56812f6f63436493d6b5"><code>51e5205</code></a>)</p>
+</li>
+<li>
+<p>work in progress register nir/cfp (<a href="https://github.com/MedVisBonn/eyepy/commit/b09762dbc5af344e92967215989297fb06b24c02"><code>b09762d</code></a>)</p>
+</li>
+<li>
+<p>Project init (<a href="https://github.com/MedVisBonn/eyepy/commit/ad3473284d8c5edf26283a16f86c966d49d51647"><code>ad34732</code></a>)</p>
+</li>
+<li>
+<p>Initial commit (<a href="https://github.com/MedVisBonn/eyepy/commit/d1b9af22e3b60145ed43307b785832b480731dad"><code>d1b9af2</code></a>)</p>
+</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../reference/src/eyepy/quant/spatial/" class="md-footer__link md-footer__link--prev" aria-label="Previous: spatial">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                spatial
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../contributing/" class="md-footer__link md-footer__link--next" aria-label="Next: Contributing">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Contributing
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2019 - 2025 Olivier Morelle
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.footer", "toc.follow", "navigation.top", "content.code.copy", "content.code.annotate", "header.autohide"], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>
