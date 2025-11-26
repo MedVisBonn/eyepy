@@ -485,16 +485,16 @@ class EyeVolume:
             [0, 0],  # Top left
             [0, self.size_x - 1],  # Top right
             [self.size_z - 1, 0],  # Bottom left
-            [self.size_z - 1, self.size_x - 1],
-        ])  # Bottom right
+            [self.size_z - 1, self.size_x - 1], # Bottom right
+        ])
 
         # Respective points in enface space
         dst = np.array([
             (0, 0),  # Top left
             (0, self.size_x - 1),  # Top right
             (self.size_x - 1, 0),  # Bottom left
-            (self.size_x - 1, self.size_x - 1),
-        ])  # Bottom right
+            (self.size_x - 1, self.size_x - 1), # Bottom right
+        ])
 
         # Switch from x/y coordinates to row/column coordinates for src and dst
         src = np.flip(src, axis=1)

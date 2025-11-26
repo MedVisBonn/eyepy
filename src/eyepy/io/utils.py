@@ -12,7 +12,7 @@ from typing import Optional, Union
 import construct as cs
 import numpy as np
 from skimage import transform
-from skimage.transform._geometric import _GeometricTransform
+from skimage.transform import AffineTransform
 
 from eyepy.core.eyemeta import EyeBscanMeta
 
@@ -108,7 +108,7 @@ def _compute_localizer_oct_transform(
     volume_meta: MutableMapping,
     enface_meta: MutableMapping,
     volume_shape: tuple[int, int, int],
-) -> GeometricTransform:
+) -> AffineTransform:
     bscan_meta = volume_meta['bscan_meta']
     size_z, size_y, size_x = volume_shape
     # Points in oct space as row/column indices
@@ -122,6 +122,7 @@ def _compute_localizer_oct_transform(
     # Respective points in enface space as x/y coordinates
     scale = np.array([enface_meta['scale_x'], enface_meta['scale_y']])
     if enface_meta['scale_unit'] == '°':
+        # If given in degrees the origin is in the center of the image
         offset = np.array([15, 15])  # Assuming 30° FOV
     else:
         offset = np.array([0, 0])
