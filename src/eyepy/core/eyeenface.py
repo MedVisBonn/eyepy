@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+import logging
 from typing import Any, Optional, TYPE_CHECKING, Union
 
 import matplotlib.colors as mcolors
@@ -16,9 +18,12 @@ from eyepy.core.annotations import EyeEnfacePixelAnnotation
 from eyepy.core.eyemeta import EyeEnfaceMeta
 from eyepy.core.plotting import plot_scalebar
 from eyepy.core.plotting import plot_watermark
+from eyepy.core.utils import intensity_transforms
 
 if TYPE_CHECKING:
     pass
+
+logger = logging.getLogger('eyepy.core.eyeenface')
 
 
 class EyeEnface:
@@ -49,15 +54,77 @@ class EyeEnface:
             optic_disc: Optional EyeEnfaceOpticDiscAnnotation
             fovea: Optional EyeEnfaceFoveaAnnotation
         """
-        self.data = data
+        self._raw_data = data
+        self._data = None
         self._area_maps = []
         self.meta = meta
         self._optic_disc = optic_disc
         self._fovea = fovea
 
+        # Set up intensity transform
+        if 'intensity_transform' not in self.meta:
+            self.meta['intensity_transform'] = 'default'
+        self.set_intensity_transform(self.meta['intensity_transform'])
+
         # Validate and set laterality if both optic disc and fovea are provided
         if optic_disc is not None and fovea is not None:
             self._infer_and_validate_laterality()
+
+    def set_intensity_transform(self, func: Union[str, Callable]) -> None:
+        """Set the intensity transform function for enface data.
+
+        Args:
+            func: Either a string specifying a transform from eyepy.core.utils.intensity_transforms or a function
+        """
+        if isinstance(func, str):
+            if func in intensity_transforms:
+                self.meta['intensity_transform'] = func
+                self.intensity_transform = intensity_transforms[func]
+                self._data = None
+            elif func == 'custom':
+                logger.warning(
+                    'Custom intensity transforms can not be loaded currently')
+            else:
+                logger.warning(
+                    f"Provided intensity transform name {func} is not known. Valid names are 'vol' or 'default'. You can also pass your own function."
+                )
+        elif isinstance(func, Callable):
+            self.meta['intensity_transform'] = 'custom'
+            self.intensity_transform = func
+            self._data = None
+
+    @property
+    def raw_data(self) -> np.ndarray:
+        """Returns a copy of the raw (untransformed) enface data.
+
+        Returns:
+            Copy of raw enface data as numpy array
+        """
+        return np.copy(self._raw_data)
+
+    @property
+    def data(self) -> np.ndarray:
+        """Returns the enface data with intensity transform applied.
+
+        The intensity transform is computed lazily and cached.
+
+        Returns:
+            Enface data as numpy array
+        """
+        if self._data is None:
+            self._data = self.intensity_transform(np.copy(self._raw_data))
+        return self._data
+
+    @property
+    def shape(self) -> tuple[int, int]:
+        """Shape of the enface data.
+
+        Uses _raw_data to avoid computing intensity transform.
+
+        Returns:
+            Shape tuple (height, width)
+        """
+        return self._raw_data.shape
 
     @property
     def optic_disc(self) -> Optional[EyeEnfaceOpticDiscAnnotation]:
@@ -305,15 +372,6 @@ class EyeEnface:
 
         """
         return self.meta['laterality']
-
-    @property
-    def shape(self) -> tuple[int, int]:
-        """
-
-        Returns:
-
-        """
-        return self.data.shape
 
     def plot(
         self,
@@ -727,14 +785,14 @@ class EyeEnface:
 
         # Transform the image data
         transformed_data = transform.warp(
-            self.data,
+            self._raw_data,
             tform.inverse,
             output_shape=output_shape,
             order=order,
             mode=mode,
             cval=cval,
             preserve_range=True
-        ).astype(self.data.dtype)
+        ).astype(self._raw_data.dtype)
 
         # Transform annotations
         transformed_optic_disc = self._optic_disc.transform(annotation_matrix) if self._optic_disc is not None else None
