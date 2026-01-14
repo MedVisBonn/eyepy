@@ -161,7 +161,7 @@ class EyeVolume:
 
             # Save Localizer
             localizer_bytes = io.BytesIO()
-            np.save(localizer_bytes, self.localizer.data)
+            np.save(localizer_bytes, self.localizer._raw_data)
             zipf.writestr('localizer/localizer.npy', localizer_bytes.getvalue())
             zipf.writestr('localizer/meta.json', json.dumps(self.localizer.meta.as_dict()))
 
@@ -597,6 +597,15 @@ class EyeVolume:
             self.meta['par_algorithm'] = 'custom'
             self.par_algorithm = func
             self._data_par = None
+
+    @property
+    def raw_data(self) -> np.ndarray:
+        """Returns a copy of the raw (untransformed) volume data.
+
+        Returns:
+            Copy of raw volume data as numpy array
+        """
+        return np.copy(self._raw_data)
 
     @property
     def data(self) -> np.ndarray:
