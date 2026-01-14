@@ -54,10 +54,26 @@ class EyeBscan:
     def data(self) -> np.ndarray:
         """Returns the B-scan data as a numpy array.
 
+        The intensity transform is applied only to this single B-scan slice,
+        avoiding the computation of the transform for the entire volume.
+
         Returns:
             B-scan data as numpy array
         """
-        return self.volume.data[self.index]
+        return self.volume.intensity_transform(np.copy(self.volume._raw_data[self.index]))
+
+    @property
+    def raw_data(self) -> np.ndarray:
+        """Returns a copy of the raw (untransformed) B-scan data.
+
+        This provides fast access to the original data without applying
+        any intensity transform. Returns a copy to prevent accidental
+        modification of the underlying volume data.
+
+        Returns:
+            Copy of raw B-scan data as numpy array
+        """
+        return np.copy(self.volume._raw_data[self.index])
 
     #@property
     #def ascan_maps(self):
@@ -73,10 +89,12 @@ class EyeBscan:
     def shape(self) -> tuple[int, int]:
         """Shape of the B-scan data.
 
+        Shape of raw data to avoid computation of intensity transform.
+
         Returns:
             Shape tuple (B-scan height, B-scan width)
         """
-        return self.data.shape
+        return self.raw_data.shape
 
     def plot(
         self,
