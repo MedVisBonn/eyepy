@@ -1,26 +1,18 @@
 """Tests for EyeEnface transformation methods."""
 
-from unittest.mock import Mock
-
 import numpy as np
 import pytest
 
 from eyepy.core.annotations import EyeEnfaceFoveaAnnotation
 from eyepy.core.annotations import EyeEnfaceOpticDiscAnnotation
 from eyepy.core.eyeenface import EyeEnface
+from eyepy.core.eyemeta import EyeEnfaceMeta
 
 
 @pytest.fixture
 def mock_meta():
-    """Create a mock EyeEnfaceMeta object."""
-    meta = Mock()
-    meta.__getitem__ = Mock(side_effect=lambda key: {
-        'scale_x': 1.0,
-        'scale_y': 1.0,
-        'scale_unit': 'mm',
-        'laterality': 'OD'
-    }.get(key))
-    return meta
+    """Create an EyeEnfaceMeta object."""
+    return EyeEnfaceMeta(scale_x=1.0, scale_y=1.0, scale_unit='mm', laterality='OS')
 
 
 @pytest.fixture

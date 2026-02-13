@@ -4,20 +4,14 @@ from collections import defaultdict
 from collections.abc import Callable
 import io
 import json
-import logging
 from pathlib import Path
-from typing import Optional, overload, SupportsIndex, Union
+from typing import Optional, overload, SupportsIndex, TYPE_CHECKING, Union
 import warnings
-import zipfile
 
-from matplotlib import patches
-import matplotlib.pyplot as plt
 from numpy import typing as npt
 import numpy as np
-from skimage import transform
-from skimage.transform._geometric import _GeometricTransform
 
-from eyepy import config
+import eyepy.config as epconfig
 from eyepy.core.annotations import EyeVolumeLayerAnnotation
 from eyepy.core.annotations import EyeVolumePixelAnnotation
 from eyepy.core.annotations import EyeVolumeSlabAnnotation
@@ -26,11 +20,14 @@ from eyepy.core.eyeenface import EyeEnface
 from eyepy.core.eyemeta import EyeBscanMeta
 from eyepy.core.eyemeta import EyeEnfaceMeta
 from eyepy.core.eyemeta import EyeVolumeMeta
-from eyepy.core.mask_compression import compress_boolean_mask
-from eyepy.core.mask_compression import decompress_boolean_mask
-from eyepy.core.mask_compression import is_boolean_array
-from eyepy.core.utils import intensity_transforms
-from eyepy.core.utils import par_algorithms
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
+    from matplotlib import patches
+    from skimage.transform._geometric import _GeometricTransform
+    from skimage import transform
+
+import logging
 
 logger = logging.getLogger('eyepy.core.eyevolume')
 
@@ -98,8 +95,12 @@ class EyeVolume:
             None
         """
         path = Path(path)
+        import zipfile
+
+        from eyepy.core.mask_compression import compress_boolean_mask
 
         compression_type = zipfile.ZIP_DEFLATED if compress else zipfile.ZIP_STORED
+
         compress_level = 1 if compress else None
 
         with zipfile.ZipFile(path, 'w', compression_type, compresslevel=compress_level) as zipf:
@@ -119,7 +120,7 @@ class EyeVolume:
             if len(self._volume_maps) > 0:
                 for i, v in enumerate(self._volume_maps):
                     # For boolean arrays, use compressed packbits format
-                    if is_boolean_array(v.data):
+                    if v.data.dtype == np.bool_:
                         compressed_data, compression_meta = compress_boolean_mask(v.data)
                         zipf.writestr(f'annotations/voxels/voxel_map_{i}.bin', compressed_data)
                         zipf.writestr(
@@ -175,7 +176,7 @@ class EyeVolume:
             if len(self.localizer._area_maps) > 0:
                 for i, p in enumerate(self.localizer._area_maps):
                     # For boolean arrays, use compressed packbits format
-                    if is_boolean_array(p.data):
+                    if p.data.dtype == np.bool_:
                         compressed_data, compression_meta = compress_boolean_mask(p.data)
                         zipf.writestr(f'localizer/annotations/pixel/pixel_map_{i}.bin', compressed_data)
                         zipf.writestr(
@@ -220,7 +221,7 @@ class EyeVolume:
                     )
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> 'EyeVolume':
+    def load(cls, path: Union[str, Path]) -> EyeVolume:
         """Load an EyeVolume from a zip file.
 
         Args:
@@ -230,8 +231,12 @@ class EyeVolume:
             EyeVolume: The loaded EyeVolume object
         """
         path = Path(path)
+        import zipfile
+
+        from eyepy.core.mask_compression import decompress_boolean_mask
 
         with zipfile.ZipFile(path, 'r') as zipf:
+
             # Load raw volume and meta
             with zipf.open('raw_volume.npy') as f:
                 data = np.load(io.BytesIO(f.read()))
@@ -416,6 +421,9 @@ class EyeVolume:
             try:
                 with zipf.open('localizer/transform_params.npy') as f:
                     transform_params = np.load(io.BytesIO(f.read()))
+
+                from skimage import transform
+
                 transformation = transform.AffineTransform(matrix=transform_params)
             except KeyError:
                 # Backward compatibility: compute transform if not saved
@@ -458,6 +466,8 @@ class EyeVolume:
         return meta
 
     def _default_localizer(self, data: npt.NDArray[np.float64]) -> EyeEnface:
+        from skimage import transform
+
         projection = np.flip(np.nanmean(data, axis=1), axis=0)
         image = transform.warp(
             projection,
@@ -479,6 +489,8 @@ class EyeVolume:
         return localizer
 
     def _estimate_transform(self) -> transform.AffineTransform:
+        from skimage import transform
+
         # Compute a transform to map a 2D projection of the volume to a square
         # Points in oct space
         src = np.array([
@@ -555,6 +567,8 @@ class EyeVolume:
         Returns:
 
         """
+        from eyepy.core.utils import intensity_transforms
+
         if isinstance(func, str):
             if func in intensity_transforms:
                 self.meta['intensity_transform'] = func
@@ -581,6 +595,8 @@ class EyeVolume:
         Returns:
 
         """
+        from eyepy.core.utils import par_algorithms
+
         if isinstance(func, str):
             if func in par_algorithms:
                 self.meta['par_algorithm'] = func
@@ -963,6 +979,9 @@ class EyeVolume:
 
         region = np.s_[y_start:y_stop, x_start:x_stop]
 
+        from eyepy.core._compat import require_matplotlib
+        plt = require_matplotlib('pyplot')
+
         if ax is None:
             ax = plt.gca()
 
@@ -1003,9 +1022,9 @@ class EyeVolume:
                                   **slab_kwargs[name])
 
         if line_kwargs is None:
-            line_kwargs = config.line_kwargs
+            line_kwargs = epconfig.line_kwargs
         else:
-            line_kwargs = {**config.line_kwargs, **line_kwargs}
+            line_kwargs = {**epconfig.line_kwargs, **line_kwargs}
 
         if bscan_positions:
             self._plot_bscan_positions(
@@ -1034,6 +1053,10 @@ class EyeVolume:
             bscan_positions = []
         elif bscan_positions is True:
             bscan_positions = list(range(0, len(self)))
+
+        from eyepy.core._compat import require_matplotlib
+        patches = require_matplotlib('patches')
+        plt = require_matplotlib('pyplot')
 
         ax = plt.gca() if ax is None else ax
         if line_kwargs is None:
@@ -1089,6 +1112,10 @@ class EyeVolume:
                            region: tuple[slice, slice] = np.s_[:, :],
                            ax: Optional[plt.Axes] = None,
                            line_kwargs: Optional[dict] = None):
+
+        from eyepy.core._compat import require_matplotlib
+        patches = require_matplotlib('patches')
+        plt = require_matplotlib('pyplot')
 
         ax = plt.gca() if ax is None else ax
         line_kwargs = {} if line_kwargs is None else line_kwargs

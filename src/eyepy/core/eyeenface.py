@@ -1,27 +1,22 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-import logging
 from typing import Any, Optional, TYPE_CHECKING, Union
 
-import matplotlib.colors as mcolors
-import matplotlib.patches as mpatches
-import matplotlib.pyplot as plt
 from numpy import typing as npt
 import numpy as np
-from scipy import ndimage
-from skimage import transform
 
 from eyepy.core.annotations import EyeEnfaceFoveaAnnotation
 from eyepy.core.annotations import EyeEnfaceOpticDiscAnnotation
 from eyepy.core.annotations import EyeEnfacePixelAnnotation
 from eyepy.core.eyemeta import EyeEnfaceMeta
-from eyepy.core.plotting import plot_scalebar
-from eyepy.core.plotting import plot_watermark
 from eyepy.core.utils import intensity_transforms
 
 if TYPE_CHECKING:
-    pass
+    from matplotlib.axes import Axes
+    from skimage import transform as transform
+
+import logging
 
 logger = logging.getLogger('eyepy.core.eyeenface')
 
@@ -375,7 +370,7 @@ class EyeEnface:
 
     def plot(
         self,
-        ax: Optional[plt.Axes] = None,
+        ax: Optional[Axes] = None,
         region: tuple[slice, slice] = np.s_[:, :],
         scalebar: Union[bool, str] = 'botleft',
         scalebar_kwargs: Optional[dict[str, Any]] = None,
@@ -405,6 +400,11 @@ class EyeEnface:
             None
 
         """
+        from eyepy.core._compat import require_matplotlib
+        mcolors = require_matplotlib('colors')
+        mpatches = require_matplotlib('patches')
+        plt = require_matplotlib('pyplot')
+
         ax = plt.gca() if ax is None else ax
         vmin = np.min(self.data)
         vmax = np.max(self.data)
@@ -466,9 +466,11 @@ class EyeEnface:
                     scalebar_kwargs['flip_x'] = True
                     scalebar_kwargs['flip_y'] = True
 
+            from eyepy.core.plotting import plot_scalebar
             plot_scalebar(ax=ax, **scalebar_kwargs)
 
         if watermark:
+            from eyepy.core.plotting import plot_watermark
             plot_watermark(ax)
 
         # Handle areas parameter
@@ -537,7 +539,7 @@ class EyeEnface:
             self.fovea.plot(ax=ax, offset=(x_start, y_start), **fovea_kwargs)
 
     def scale(self, scale_y: float, scale_x: float,
-              order: int = 1, mode: str = 'constant', cval: float = 0.0) -> 'EyeEnface':
+              order: int = 1, mode: str = 'constant', cval: float = 0.0) -> EyeEnface:
         """Scale the enface image and all annotations.
 
         Returns a new EyeEnface instance with scaled image data and transformed annotations.
@@ -566,7 +568,7 @@ class EyeEnface:
         return self.transform(matrix, output_shape=output_shape, order=order, mode=mode, cval=cval)
 
     def translate(self, drow: float, dcol: float,
-                  order: int = 1, mode: str = 'constant', cval: float = 0.0) -> 'EyeEnface':
+                  order: int = 1, mode: str = 'constant', cval: float = 0.0) -> EyeEnface:
         """Translate the enface image and all annotations.
 
         Returns a new EyeEnface instance with translated image data and transformed annotations.
@@ -593,7 +595,7 @@ class EyeEnface:
         return self.transform(matrix, order=order, mode=mode, cval=cval)
 
     def rotate(self, angle: float, center: Optional[tuple[float, float]] = None,
-               order: int = 1, mode: str = 'constant', cval: float = 0.0) -> 'EyeEnface':
+               order: int = 1, mode: str = 'constant', cval: float = 0.0) -> EyeEnface:
         """Rotate the enface image and all annotations.
 
         Returns a new EyeEnface instance with rotated image data and transformed annotations.
@@ -632,7 +634,7 @@ class EyeEnface:
 
         return self.transform(matrix_rowcol, order=order, mode=mode, cval=cval)
 
-    def standard_rotation(self, order: int = 1, mode: str = 'constant', cval: float = 0.0) -> 'EyeEnface':
+    def standard_rotation(self, order: int = 1, mode: str = 'constant', cval: float = 0.0) -> EyeEnface:
         """Rotate the enface to align optic disc and fovea centers horizontally.
 
         This method rotates the image so that the optic disc and fovea centers lie on the
@@ -712,7 +714,7 @@ class EyeEnface:
 
     def transform(self, matrix: npt.NDArray[np.float64],
                   output_shape: Optional[tuple[int, int]] = None,
-                  order: int = 1, mode: str = 'constant', cval: float = 0.0) -> 'EyeEnface':
+                  order: int = 1, mode: str = 'constant', cval: float = 0.0) -> EyeEnface:
         """Apply an affine transformation to the enface image and all annotations.
 
         Returns a new EyeEnface instance with transformed image data and annotations.
@@ -781,6 +783,8 @@ class EyeEnface:
 
         # Create AffineTransform from matrix
         # Note: scikit-image uses inverse matrix convention
+        from skimage import transform
+
         tform = transform.AffineTransform(matrix=skimage_matrix)
 
         # Transform the image data

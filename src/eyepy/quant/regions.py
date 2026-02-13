@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 
@@ -65,7 +66,7 @@ class RegionQuantification:
 
     def plot(
         self,
-        ax: Optional['Axes'] = None,
+        ax: Optional[Axes] = None,
         show_origin: bool = True,
         show_extent_lines: bool = True,
         directions: Optional[list[str]] = None,
@@ -75,7 +76,7 @@ class RegionQuantification:
         line_color: str = 'yellow',
         line_width: float = 2,
         font_size: int = 10,
-    ) -> 'Axes':
+    ) -> Axes:
         """Plot the region with directional extent measurements.
 
         Visualizes the quantification by showing:
@@ -103,6 +104,9 @@ class RegionQuantification:
         Raises:
             ValueError: If origin is not available when needed
         """
+        from eyepy.core._compat import require_matplotlib
+        plt = require_matplotlib('pyplot')
+
         if ax is None:
             fig, ax = plt.subplots(figsize=(10, 10))
         ax.set_aspect('equal')
@@ -362,7 +366,7 @@ class RegionQuantification:
     @classmethod
     def from_EyeEnface(
         cls,
-        enface: 'EyeEnface',
+        enface: EyeEnface,
         area_map_name: str,
         origin_mode: OriginModeType = OriginMode.HYBRID,
         custom_origin: Optional[AnatomicalOrigin] = None,

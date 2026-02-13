@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 from typing import Union
 
-import imageio.v2 as imageio
 import numpy as np
 
 from eyepy import EyeBscanMeta
@@ -212,8 +213,9 @@ def import_bscan_folder(path: Union[str, Path]) -> EyeVolume:
     ]
 
     images = []
+    import imageio.v3 as iio
     for p in img_paths:
-        image = imageio.imread(p)
+        image = iio.imread(p)
         if len(image.shape) == 3:
             image = image[..., 0]
         images.append(image)

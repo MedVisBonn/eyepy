@@ -5,7 +5,6 @@ import logging
 from pathlib import Path
 import xml.etree.ElementTree as ElementTree
 
-import imageio.v3 as imageio
 import numpy as np
 from skimage.util import img_as_ubyte
 
@@ -277,7 +276,8 @@ class HeXmlReader:
         localizer_pattern = ".//ImageType[Type='LOCALIZER']../ImageData/ExamURL"
         localizer_name = self.xml_root[0].find(localizer_pattern).text.split(
             '\\')[-1]
-        localizer = imageio.imread(self.path.parent / localizer_name)
+        import imageio.v3 as iio
+        localizer = iio.imread(self.path.parent / localizer_name)
         if localizer.ndim == 3:
             localizer = img_as_ubyte(localizer[..., 0])
         else:
@@ -301,7 +301,8 @@ class HeXmlReader:
                 self.xml_root[0].findall(".//ImageType[Type='OCT']..")):
             scan_name = bscan_root.find('./ImageData/ExamURL').text.split(
                 '\\')[-1]
-            img = imageio.imread(self.path.parent / scan_name)
+            import imageio.v3 as iio
+            img = iio.imread(self.path.parent / scan_name)
             if img.ndim == 3:
                 img = img_as_ubyte(img[..., 0])
             else:

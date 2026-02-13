@@ -852,8 +852,8 @@ dependencies = [
     { name = "construct" },
     { name = "construct-typing" },
     { name = "imageio" },
-    { name = "matplotlib" },
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
     { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "scikit-image" },
 ]
@@ -861,6 +861,8 @@ dependencies = [
 [package.optional-dependencies]
 all = [
     { name = "itk" },
+    { name = "matplotlib", version = "3.9.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "matplotlib", version = "3.10.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "oct-converter" },
     { name = "pandas" },
 ]
@@ -875,6 +877,10 @@ itk = [
 ]
 pandas = [
     { name = "pandas" },
+]
+plot = [
+    { name = "matplotlib", version = "3.9.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "matplotlib", version = "3.10.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
 ]
 
 [package.dev-dependencies]
@@ -949,7 +955,8 @@ requires-dist = [
     { name = "imageio", specifier = ">=2.25.1,<3" },
     { name = "itk", marker = "extra == 'all'", specifier = ">=5.3.0,<6" },
     { name = "itk", marker = "extra == 'itk'", specifier = ">=5.3.0,<6" },
-    { name = "matplotlib", specifier = ">=3.9.4" },
+    { name = "matplotlib", marker = "extra == 'all'", specifier = ">=3.9.4" },
+    { name = "matplotlib", marker = "extra == 'plot'", specifier = ">=3.9.4" },
     { name = "numpy", specifier = ">=1.22.0" },
     { name = "oct-converter", marker = "extra == 'all'", specifier = ">=0.6.1,<0.7" },
     { name = "oct-converter", marker = "extra == 'fda'", specifier = ">=0.6.1,<0.7" },
@@ -958,7 +965,7 @@ requires-dist = [
     { name = "scikit-image", specifier = ">=0.22.0" },
     { name = "uv", marker = "extra == 'build'", specifier = "~=0.9.5" },
 ]
-provides-extras = ["itk", "pandas", "fda", "build", "all"]
+provides-extras = ["itk", "pandas", "fda", "build", "plot", "all"]
 
 [package.metadata.requires-dev]
 dev = [

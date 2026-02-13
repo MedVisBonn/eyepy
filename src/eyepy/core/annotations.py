@@ -5,24 +5,17 @@ from collections.abc import Iterable
 import logging
 from typing import Any, Literal, Optional, TYPE_CHECKING, Union
 
-from matplotlib import cm
-from matplotlib import colors
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 import numpy.typing as npt
-from skimage import draw
-from skimage import measure
-from skimage import transform
 
-from eyepy import config
-import eyepy as ep
+import eyepy.config as epconfig
 
 if TYPE_CHECKING:
-    import matplotlib as mpl
+    import matplotlib.colors as mcolors
+    import matplotlib.pyplot as plt
 
-    from eyepy import EyeEnface
-    from eyepy import EyeVolume
+    from eyepy.core.eyeenface import EyeEnface
+    from eyepy.core.eyevolume import EyeVolume
 
 logger = logging.getLogger('eyepy.core.annotations')
 
@@ -68,7 +61,7 @@ class PolygonAnnotation:
         self._cached_mask = None
 
     @classmethod
-    def from_mask(cls, mask: npt.NDArray[np.bool_]) -> 'PolygonAnnotation':
+    def from_mask(cls, mask: npt.NDArray[np.bool_]) -> PolygonAnnotation:
         """Create PolygonAnnotation from a semantic segmentation mask.
 
         Args:
@@ -78,6 +71,8 @@ class PolygonAnnotation:
             PolygonAnnotation instance with shape set to mask.shape
         """
         # Find contours in the mask
+        from skimage import measure
+
         contours = measure.find_contours(mask.astype(np.float64), level=0.5)
 
         if len(contours) == 0:
@@ -115,16 +110,20 @@ class PolygonAnnotation:
         if self._cached_mask is not None:
             return self._cached_mask
 
+
         # Create mask from polygon (draw.polygon expects row, col)
         mask = np.zeros(self._shape, dtype=bool)
+
+        from skimage import draw
+
         rr, cc = draw.polygon(self._polygon[:, 0], self._polygon[:, 1],
-                             shape=self._shape)
+                              shape=self._shape)
         mask[rr, cc] = True
 
         self._cached_mask = mask
         return mask
 
-    def scale(self, factor: float, center: Optional[tuple[float, float]] = None) -> 'PolygonAnnotation':
+    def scale(self, factor: float, center: Optional[tuple[float, float]] = None) -> PolygonAnnotation:
         """Return a new PolygonAnnotation with scaled polygon.
 
         Args:
@@ -146,7 +145,7 @@ class PolygonAnnotation:
 
         return self.transform(scale_matrix, center=center)
 
-    def translate(self, drow: float, dcol: float) -> 'PolygonAnnotation':
+    def translate(self, drow: float, dcol: float) -> PolygonAnnotation:
         """Return a new PolygonAnnotation with translated polygon.
 
         Args:
@@ -167,7 +166,7 @@ class PolygonAnnotation:
 
         return self.transform(translation_matrix)
 
-    def rotate(self, angle: float, center: Optional[tuple[float, float]] = None) -> 'PolygonAnnotation':
+    def rotate(self, angle: float, center: Optional[tuple[float, float]] = None) -> PolygonAnnotation:
         """Return a new PolygonAnnotation with rotated polygon.
 
         Args:
@@ -191,7 +190,7 @@ class PolygonAnnotation:
         return self.transform(rotation_matrix, center=center)
 
     def transform(self, matrix: npt.NDArray[np.float64],
-                  center: Optional[tuple[float, float]] = None) -> 'PolygonAnnotation':
+                  center: Optional[tuple[float, float]] = None) -> PolygonAnnotation:
         """Return a new PolygonAnnotation with affine-transformed polygon.
 
         Args:
@@ -251,6 +250,9 @@ class PolygonAnnotation:
         Returns:
             None
         """
+        from eyepy.core._compat import require_matplotlib
+        plt = require_matplotlib('pyplot')
+
         if ax is None:
             ax = plt.gca()
 
@@ -308,7 +310,7 @@ class EyeVolumeLayerAnnotation:
         if 'name' not in self.meta:
             self.meta['name'] = 'Layer Annotation'
 
-        self.meta['current_color'] = config.layer_colors[self.name]
+        self.meta['current_color'] = epconfig.layer_colors[self.name]
 
     @property
     def name(self) -> str:
@@ -419,7 +421,7 @@ class EyeVolumePixelAnnotation:
 
         # Set default color from config if not already specified
         if 'color' not in self.meta:
-            self.meta['color'] = '#' + config.area_colors[self.meta['name']]
+            self.meta['color'] = '#' + epconfig.area_colors[self.meta['name']]
 
     @property
     def name(self) -> str:
@@ -485,6 +487,8 @@ class EyeVolumePixelAnnotation:
     @property
     def enface(self) -> np.ndarray:
         """Transformed projection of the annotation to the enface plane."""
+        from skimage import transform
+
         return transform.warp(
             self.projection,
             self.volume.localizer_transform.inverse,
@@ -500,7 +504,7 @@ class EyeVolumePixelAnnotation:
         self,
         ax: Optional[plt.Axes] = None,
         region: Union[slice, tuple[slice, slice]] = np.s_[:, :],
-        cmap: Union[str, mpl.colors.Colormap] = 'Reds',
+        cmap: Union[str, mcolors.Colormap] = 'Reds',
         vmin: Optional[float] = None,
         vmax: Optional[float] = None,
         cbar: bool = True,
@@ -522,6 +526,8 @@ class EyeVolumePixelAnnotation:
         """
         enface_projection = self.enface
 
+        from eyepy.core._compat import require_matplotlib
+        plt = require_matplotlib('pyplot')
         ax = plt.gca() if ax is None else ax
 
         if vmin is None:
@@ -534,13 +540,16 @@ class EyeVolumePixelAnnotation:
         visible[np.logical_and(vmin <= enface_crop, enface_crop <= vmax)] = 1
 
         if cbar:
+            cm = require_matplotlib('cm')
+            mcolors = require_matplotlib('colors')
+            from mpl_toolkits.axes_grid1 import make_axes_locatable
+
             divider = make_axes_locatable(ax)
             cax = divider.append_axes('right', size='5%', pad=0.05)
-            plt.colorbar(
-                cm.ScalarMappable(colors.Normalize(vmin=vmin, vmax=vmax),
-                                  cmap=cmap),
-                cax=cax,
-            )
+            sm = cm.ScalarMappable(mcolors.Normalize(vmin=vmin, vmax=vmax),
+                                   cmap=cmap)
+            sm.set_array([])
+            plt.colorbar(sm, cax=cax)
 
         ax.imshow(
             enface_crop,
@@ -659,7 +668,7 @@ class EyeVolumePixelAnnotation:
         vmin: Optional[float] = None,
         vmax: Optional[float] = None,
         cbar: bool = True,
-        cmap: Union[str, mpl.colors.Colormap] = 'YlOrRd',
+        cmap: Union[str, mcolors.Colormap] = 'YlOrRd',
     ) -> None:
         """Plot circular grid quantification of the annotation (like ETDRS)
 
@@ -675,7 +684,8 @@ class EyeVolumePixelAnnotation:
         Returns:
             None
         """
-
+        from eyepy.core._compat import require_matplotlib
+        plt = require_matplotlib('pyplot')
         ax = plt.gca() if ax is None else ax
 
         mask_img = np.zeros(self.volume.localizer.shape, dtype=float)[region]
@@ -689,13 +699,16 @@ class EyeVolumePixelAnnotation:
         vmax = max([mask_img.max(), vmin]) if vmax is None else vmax
 
         if cbar:
+            cm = require_matplotlib('cm')
+            mcolors = require_matplotlib('colors')
+            from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+            # Create colorbar for volume layer map (distance to RPE)
             divider = make_axes_locatable(ax)
             cax = divider.append_axes('right', size='5%', pad=0.05)
-            plt.colorbar(
-                cm.ScalarMappable(colors.Normalize(vmin=vmin, vmax=vmax),
-                                  cmap=cmap),
-                cax=cax,
-            )
+            sm = cm.ScalarMappable(cmap=cmap, norm=mcolors.Normalize(vmin=vmin, vmax=vmax))
+            sm.set_array([])
+            plt.colorbar(sm, cax=cax)
 
         ax.imshow(
             mask_img,
@@ -780,9 +793,10 @@ class EyeVolumeSlabAnnotation:
             return np.zeros(self.volume.shape, dtype=bool)
 
         if self._mask is None:
+            from eyepy.core.utils import mask_from_boundaries
             top_data = self.volume.layers[self.top_layer].data
             bottom_data = self.volume.layers[self.bottom_layer].data
-            self._mask = ep.core.utils.mask_from_boundaries(
+            self._mask = mask_from_boundaries(
                 upper=top_data,
                 lower=bottom_data,
                 height=self.volume.size_y,
@@ -804,6 +818,7 @@ class EyeVolumeSlabAnnotation:
     def enface(self) -> np.ndarray:
         """Transformed projection of the annotation to the enface plane."""
         def get_enface(par: bool = False) -> np.ndarray:
+            from skimage import transform
             data = self.projection(par=par)
             return transform.warp(
                 data,
@@ -840,7 +855,7 @@ class EyeVolumeSlabAnnotation:
         self,
         ax: Optional[plt.Axes] = None,
         region: Union[slice, tuple[slice, slice]] = np.s_[:, :],
-        cmap: Union[str, mpl.colors.Colormap] = 'Greys_r',
+        cmap: Union[str, mcolors.Colormap] = 'Greys_r',
         vmin: Optional[float] = None,
         vmax: Optional[float] = None,
         cbar: bool = False,
@@ -885,6 +900,8 @@ class EyeVolumeSlabAnnotation:
 
         enface_crop = self.apply_contrast(enface_projection[region], contrast)
 
+        from eyepy.core._compat import require_matplotlib
+        plt = require_matplotlib('pyplot')
         ax = plt.gca() if ax is None else ax
 
         if vmin is None:
@@ -896,13 +913,16 @@ class EyeVolumeSlabAnnotation:
         visible[np.logical_and(vmin < enface_crop, enface_crop <= vmax)] = 1
 
         if cbar:
+            cm = require_matplotlib('cm')
+            mcolors = require_matplotlib('colors')
+            from mpl_toolkits.axes_grid1 import make_axes_locatable
+
             divider = make_axes_locatable(ax)
             cax = divider.append_axes('right', size='5%', pad=0.05)
-            plt.colorbar(
-                cm.ScalarMappable(colors.Normalize(vmin=vmin, vmax=vmax),
-                                  cmap=cmap),
-                cax=cax,
-            )
+            sm = cm.ScalarMappable(mcolors.Normalize(vmin=vmin, vmax=vmax),
+                                   cmap=cmap)
+            sm.set_array([])
+            plt.colorbar(sm, cax=cax)
 
         ax.imshow(
             enface_crop,
@@ -1035,7 +1055,7 @@ class EyeEnfacePixelAnnotation:
 
         # Set default color from config if not already specified
         if 'color' not in self.meta:
-            self.meta['color'] = '#' + config.area_colors[self.meta['name']]
+            self.meta['color'] = '#' + epconfig.area_colors[self.meta['name']]
 
     @property
     def name(self) -> str:
@@ -1136,6 +1156,9 @@ class EyeEnfaceOpticDiscAnnotation(PolygonAnnotation):
         adjusted_polygon = self._polygon - [min_row - padding, min_col - padding]
 
         # Create temporary mask (draw.polygon expects row, col)
+        from skimage import draw
+        from skimage import measure
+
         temp_mask = np.zeros(temp_shape, dtype=bool)
         rr, cc = draw.polygon(adjusted_polygon[:, 0], adjusted_polygon[:, 1],
                              shape=temp_shape)
@@ -1290,6 +1313,9 @@ class EyeEnfaceOpticDiscAnnotation(PolygonAnnotation):
             >>> optic_disc.plot(ax, plot_contour=True, plot_area=True,
             ...                 contour_color='darkred', area_color='red', area_alpha=0.3)
         """
+        from eyepy.core._compat import require_matplotlib
+        plt = require_matplotlib('pyplot')
+
         if ax is None:
             ax = plt.gca()
 
@@ -1372,6 +1398,9 @@ class EyeEnfaceFoveaAnnotation(PolygonAnnotation):
         Returns:
             None
         """
+        from eyepy.core._compat import require_matplotlib
+        plt = require_matplotlib('pyplot')
+
         if ax is None:
             ax = plt.gca()
 

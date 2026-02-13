@@ -217,7 +217,7 @@ class E2EFolder():
     type: int
     size: int
     ind: int
-    reader: 'HeE2eReader'
+    reader: HeE2eReader
 
     _data = None
     _header = None
@@ -831,7 +831,7 @@ class HeE2eReader(AbstractContextManager):
             series += s.series.values()
         return sorted(series, key=lambda s: s.id)
 
-    def __enter__(self) -> 'HeE2eReader':
+    def __enter__(self) -> HeE2eReader:
         self.file_object = open(self.path, 'rb')
         return self
 

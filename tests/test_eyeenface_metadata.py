@@ -1,5 +1,4 @@
 """Test that EyeEnface transformations update metadata correctly."""
-from unittest.mock import MagicMock
 
 import numpy as np
 import pytest

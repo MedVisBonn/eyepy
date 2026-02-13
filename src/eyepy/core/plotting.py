@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-import logging
-from typing import Optional, Union
+from typing import Optional, TYPE_CHECKING, Union
 
-import matplotlib.pyplot as plt
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+
+import logging
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +18,7 @@ def plot_scalebar(scale: tuple[float, float],
                   flip_y: bool = False,
                   color: str = 'white',
                   linewidth: float = 1.5,
-                  ax: Optional[plt.Axes] = None,
+                  ax: Optional[Axes] = None,
                   **kwargs: dict) -> None:
     """Plot a scalebar for an image.
 
@@ -34,6 +36,9 @@ def plot_scalebar(scale: tuple[float, float],
     Returns:
         None
     """
+    from eyepy.core._compat import require_matplotlib
+    plt = require_matplotlib('pyplot')
+
     ax = plt.gca() if ax is None else ax
 
     x, y = pos
@@ -91,7 +96,7 @@ def plot_scalebar(scale: tuple[float, float],
             color=color)
 
 
-def plot_watermark(ax: plt.Axes) -> None:
+def plot_watermark(ax: Axes) -> None:
     """Add a watermark in the lower right corner of a matplotlib axes object.
 
     Args:

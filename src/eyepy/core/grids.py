@@ -3,18 +3,17 @@ from __future__ import annotations
 import cmath
 from collections.abc import Sequence
 import functools
-import logging
 from typing import Any, Iterable, Optional, TYPE_CHECKING, Union
 
 import numpy as np
 import numpy.typing as npt
-from skimage import transform
-
-logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     Shape = Union[int, tuple[int, int]]
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 def circle_mask(radius: int,
                 mask_shape: Optional[tuple[int, int]] = None,
@@ -41,6 +40,7 @@ def circle_mask(radius: int,
     circle_mask[radius_filtergrid(
         work_shape, quadrant_shift=False, normalize=False) < radius] = 1
 
+    from skimage import transform
     return transform.resize(circle_mask, mask_shape)
 
 
@@ -119,6 +119,7 @@ def create_sectors(mask_shape: tuple[int, int],
         mask[selection] = 1
 
         if smooth_edges:
+            from skimage import transform
             mask = transform.resize(mask, mask_shape)
 
         masks.append(mask)
@@ -261,6 +262,7 @@ def grid(
         raise ValueError('laterality has to be one of OD/OS')
 
     if center is not None:
+        from skimage import transform
         translation = transform.AffineTransform(translation=np.array(center) -
                                                 np.array(mask_shape) / 2)
         masks = {

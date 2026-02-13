@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Utilities for compressing and decompressing boolean masks using packbits.
 
 This module provides functions to compress boolean masks using
@@ -63,15 +65,3 @@ def decompress_boolean_mask(
     mask = unpacked.astype(bool).reshape(shape)
 
     return mask
-
-
-def is_boolean_array(arr: npt.NDArray) -> bool:
-    """Check if an array is of boolean dtype.
-
-    Args:
-        arr: numpy array to check
-
-    Returns:
-        True if array dtype is bool, False otherwise
-    """
-    return arr.dtype == np.bool_

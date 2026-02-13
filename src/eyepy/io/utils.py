@@ -7,12 +7,13 @@ from datetime import timedelta
 from datetime import timezone
 import logging
 import sys
-from typing import Optional, Union
+from typing import Optional, TYPE_CHECKING, Union
 
 import construct as cs
 import numpy as np
-from skimage import transform
-from skimage.transform import AffineTransform
+
+if TYPE_CHECKING:
+    from skimage.transform import AffineTransform
 
 from eyepy.core.eyemeta import EyeBscanMeta
 
@@ -136,6 +137,9 @@ def _compute_localizer_oct_transform(
 
     # Switch from row/column indices to x/y coordinates by flipping last axis of src
     src = np.flip(src, axis=1)
+
+    from skimage import transform
+
     # src = src[:, [1, 0]]
     return transform.estimate_transform('affine', src, dst)
 

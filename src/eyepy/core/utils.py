@@ -2,12 +2,9 @@ from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
-from skimage.util import img_as_float32
-from skimage.util import img_as_ubyte
 
+from eyepy.core.annotations import EyeVolumeLayerAnnotation
 from eyepy.core.filter import filter_by_height_enface
-
-from .annotations import EyeVolumeLayerAnnotation
 
 NDArrayFloat32 = npt.NDArray[np.float32]
 NDArrayFloat = npt.NDArray[np.float64]
@@ -72,6 +69,9 @@ def from_vol_intensity(data: NDArrayFloat) -> NDArrayUByte:
     data[selection_data] = new
     data[selection_0] = 0
     data = np.clip(data, 0, 1)
+
+    from skimage.util import img_as_ubyte
+
     return img_as_ubyte(data).astype(np.ubyte)
 
 def from_e2e_intensity(data: NDArrayFloat32) -> NDArrayUByte:
@@ -84,11 +84,16 @@ def from_e2e_intensity(data: NDArrayFloat32) -> NDArrayUByte:
     data[selection_data] = new
     data[selection_0] = 0
     data = np.clip(data, 0, 1)
+
+    from skimage.util import img_as_ubyte
+
     return img_as_ubyte(data).astype(np.ubyte)
 
 
 # Function expects numpy array of uint8 type hint
 def to_vol_intensity(data: np.ndarray) -> NDArrayFloat:
+    from skimage.util import img_as_float32
+
     data = img_as_float32(data)
     data = data * 8.285 - 8.3
     data = np.exp(data) - 2.44e-04
