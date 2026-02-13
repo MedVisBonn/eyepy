@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Spatial reference systems for anatomical quantification.
 
 This module provides classes for defining spatial reference frames based
@@ -89,7 +91,7 @@ class AnatomicalOrigin:
         cls,
         optic_disc_center: tuple[float, float],
         laterality: str,
-    ) -> 'AnatomicalOrigin':
+    ) -> AnatomicalOrigin:
         """Create origin at optic disc center.
 
         Args:
@@ -114,7 +116,7 @@ class AnatomicalOrigin:
         cls,
         fovea_center: tuple[float, float],
         laterality: str,
-    ) -> 'AnatomicalOrigin':
+    ) -> AnatomicalOrigin:
         """Create origin at fovea center.
 
         Args:
@@ -140,7 +142,7 @@ class AnatomicalOrigin:
         optic_disc_center: tuple[float, float],
         fovea_center: tuple[float, float],
         laterality: str,
-    ) -> 'AnatomicalOrigin':
+    ) -> AnatomicalOrigin:
         """Create hybrid origin from optic disc and fovea positions.
 
         Uses the horizontal (x) position from the optic disc center and
@@ -173,7 +175,7 @@ class AnatomicalOrigin:
         cls,
         origin: tuple[float, float],
         laterality: str,
-    ) -> 'AnatomicalOrigin':
+    ) -> AnatomicalOrigin:
         """Create origin at custom position.
 
         Args:

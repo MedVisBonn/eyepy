@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import datetime
 import json
 import os
 from typing import Any, Iterable, MutableMapping, Union
@@ -27,6 +26,7 @@ class EyeMeta(MutableMapping):
         Returns:
             Dictionary containing all metadata key-value pairs
         """
+        import datetime
         data = self._store.copy()
 
         for key in data:
@@ -34,7 +34,7 @@ class EyeMeta(MutableMapping):
                 data[key] = data[key].isoformat()
         return data
 
-    def copy(self) -> 'EyeMeta':
+    def copy(self) -> EyeMeta:
         """Create a shallow copy of this metadata object.
 
         Creates a new instance with the same metadata. Note that this is a
@@ -100,7 +100,7 @@ class EyeEnfaceMeta(EyeMeta):
                          **kwargs)
 
     @classmethod
-    def from_dict(cls, data: dict) -> 'EyeEnfaceMeta':
+    def from_dict(cls, data: dict) -> EyeEnfaceMeta:
         """Create an EyeEnfaceMeta instance from a dictionary.
 
         Args:
@@ -109,12 +109,13 @@ class EyeEnfaceMeta(EyeMeta):
         Returns:
             New EyeEnfaceMeta instance
         """
+        import datetime
         for key in ['visit_date', 'exam_time']:
             if key in data.keys() and data[key] is not None:
                 data[key] = datetime.datetime.fromisoformat(data[key])
         return cls(**data)
 
-    def copy(self) -> 'EyeEnfaceMeta':
+    def copy(self) -> EyeEnfaceMeta:
         """Create a shallow copy of this enface metadata object.
 
         Creates a new instance with the same metadata. Note that this is a
@@ -202,7 +203,7 @@ class EyeVolumeMeta(EyeMeta):
         return data
 
     @classmethod
-    def from_dict(cls, data: dict) -> 'EyeVolumeMeta':
+    def from_dict(cls, data: dict) -> EyeVolumeMeta:
         """
 
         Args:

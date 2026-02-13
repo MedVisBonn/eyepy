@@ -13,4 +13,3 @@ from .eyemeta import EyeBscanMeta
 from .eyemeta import EyeEnfaceMeta
 from .eyemeta import EyeVolumeMeta
 from .eyevolume import EyeVolume
-from .utils import drusen

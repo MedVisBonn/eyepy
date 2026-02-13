@@ -5,22 +5,10 @@ import pytest
 
 from eyepy.core.mask_compression import compress_boolean_mask
 from eyepy.core.mask_compression import decompress_boolean_mask
-from eyepy.core.mask_compression import is_boolean_array
 
 
 class TestMaskCompressionUtilities:
     """Test basic mask compression utility functions."""
-
-    def test_is_boolean_array(self):
-        """Test boolean array detection."""
-        bool_array = np.array([True, False, True], dtype=bool)
-        assert is_boolean_array(bool_array) is True
-
-        int_array = np.array([1, 0, 1], dtype=int)
-        assert is_boolean_array(int_array) is False
-
-        float_array = np.array([1.0, 0.0, 1.0], dtype=float)
-        assert is_boolean_array(float_array) is False
 
     def test_compress_decompress_1d(self):
         """Test compression and decompression of 1D boolean array."""

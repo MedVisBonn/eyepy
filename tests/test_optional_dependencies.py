@@ -44,3 +44,23 @@ def test_import_topcon_fda_with_oct_converter():
         # Any other error means oct-converter is installed but file processing failed
         # This is also fine - it means the dependency check passed
         assert 'oct-converter is required' not in str(e)
+
+
+def test_require_matplotlib_missing():
+    """Test that plotting raises ImportError when matplotlib is not installed."""
+    with patch.dict(sys.modules, {'matplotlib': None, 'matplotlib.pyplot': None}):
+        from eyepy.core._compat import require_matplotlib
+
+        with pytest.raises(ImportError, match='matplotlib is required for plotting'):
+            require_matplotlib('pyplot')
+
+
+def test_require_matplotlib_available():
+    """Test that require_matplotlib returns the module when matplotlib is
+    installed."""
+    try:
+        from eyepy.core._compat import require_matplotlib
+        plt = require_matplotlib('pyplot')
+        assert hasattr(plt, 'gca')
+    except ImportError:
+        pytest.skip('matplotlib not installed')

@@ -1,8 +1,12 @@
-import logging
+from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
-from scipy import ndimage as ndimage
+
+if TYPE_CHECKING:
+    from scipy import ndimage as ndimage
+
+import logging
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +22,8 @@ def filter_by_depth(drusen_map: npt.NDArray[np.bool_],
     Returns:
 
     """
+    from scipy import ndimage
+
     filtered_drusen = np.copy(drusen_map)
     if minimum_depth == 0:
         return drusen_map
@@ -49,6 +55,8 @@ def filter_by_height_enface(drusen_map: npt.NDArray[np.bool_],
     """
     if minimum_height == 0:
         return drusen_map
+
+    from scipy import ndimage
 
     projection = np.sum(drusen_map, axis=1,
                         keepdims=True)  # Shape (n_bscans, width)

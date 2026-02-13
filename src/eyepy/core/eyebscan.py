@@ -2,22 +2,18 @@ from __future__ import annotations
 
 from typing import Any, Optional, TYPE_CHECKING, Union
 
-import matplotlib.colors as mcolors
-import matplotlib.patches as mpatches
-import matplotlib.pyplot as plt
 import numpy as np
 
-from eyepy import config
+import eyepy.config as epconfig
 from eyepy.core.annotations import EyeBscanLayerAnnotation
 from eyepy.core.annotations import EyeBscanSlabAnnotation
-from eyepy.core.eyemeta import EyeBscanMeta
-from eyepy.core.plotting import plot_scalebar
-from eyepy.core.plotting import plot_watermark
 from eyepy.core.utils import DynamicDefaultDict
 
 if TYPE_CHECKING:
-    from eyepy import EyeVolume
+    from matplotlib.axes import Axes
 
+    from eyepy.core.eyemeta import EyeBscanMeta
+    from eyepy.core.eyevolume import EyeVolume
 
 
 class EyeBscan:
@@ -98,7 +94,7 @@ class EyeBscan:
 
     def plot(
         self,
-        ax: Optional[plt.Axes] = None,
+        ax: Optional[Axes] = None,
         layers: Union[bool, list[str]] = False,
         areas: Union[bool, list[str]] = False,
         slabs: Union[bool, list[str]] = False,
@@ -133,6 +129,11 @@ class EyeBscan:
         Returns:
             None
         """
+        from eyepy.core._compat import require_matplotlib
+        mcolors = require_matplotlib('colors')
+        mpatches = require_matplotlib('patches')
+        plt = require_matplotlib('pyplot')
+
         ax = plt.gca() if ax is None else ax
 
         # Complete region index expression
@@ -166,24 +167,24 @@ class EyeBscan:
         #    ascans = self.ascan_maps.keys()
 
         if layer_kwargs is None:
-            layer_kwargs = config.layer_kwargs
+            layer_kwargs = epconfig.layer_kwargs
         else:
-            layer_kwargs = {**config.layer_kwargs, **layer_kwargs}
+            layer_kwargs = {**epconfig.layer_kwargs, **layer_kwargs}
 
         if area_kwargs is None:
-            area_kwargs = config.area_kwargs
+            area_kwargs = epconfig.area_kwargs
         else:
-            area_kwargs = {**config.area_kwargs, **area_kwargs}
+            area_kwargs = {**epconfig.area_kwargs, **area_kwargs}
 
         if slab_kwargs is None:
-            slab_kwargs = config.slab_kwargs
+            slab_kwargs = epconfig.slab_kwargs
         else:
-            slab_kwargs = {**config.slab_kwargs, **slab_kwargs}
+            slab_kwargs = {**epconfig.slab_kwargs, **slab_kwargs}
 
         #if ascan_kwargs is None:
-        #    ascan_kwargs = config.area_kwargs
+        #    ascan_kwargs = epconfig.area_kwargs
         #else:
-        #    ascan_kwargs = {**config.ascan_kwargs, **ascan_kwargs}
+        #    ascan_kwargs = {**epconfig.ascan_kwargs, **ascan_kwargs}
 
         if not annotations_only:
             ax.imshow(self.data[region], cmap='gray')
@@ -219,7 +220,7 @@ class EyeBscan:
                 interpolation='none',
             )
         for layer in layers:
-            color = config.layer_colors[layer]
+            color = epconfig.layer_colors[layer]
 
             layer_data = self.layers[layer].data
             # Adjust layer height to plotted region
@@ -242,7 +243,7 @@ class EyeBscan:
             overlap_count = np.zeros(self.data[region].shape[:2])
 
             for slab in slabs:
-                color = config.slab_colors[slab]
+                color = epconfig.slab_colors[slab]
                 color_rgb = mcolors.to_rgb('#' + color)
 
                 slab_mask = self.slabs[slab].mask
@@ -324,9 +325,11 @@ class EyeBscan:
                     scalebar_kwargs['flip_x'] = True
                     scalebar_kwargs['flip_y'] = True
 
+            from eyepy.core.plotting import plot_scalebar
             plot_scalebar(ax=ax, **scalebar_kwargs)
 
         if watermark:
+            from eyepy.core.plotting import plot_watermark
             plot_watermark(ax)
 
     @property

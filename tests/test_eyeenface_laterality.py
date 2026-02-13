@@ -1,66 +1,30 @@
 """Tests for EyeEnface laterality validation."""
 
-from unittest.mock import Mock
-
 import numpy as np
 import pytest
 
 from eyepy.core.annotations import EyeEnfaceFoveaAnnotation
 from eyepy.core.annotations import EyeEnfaceOpticDiscAnnotation
 from eyepy.core.eyeenface import EyeEnface
+from eyepy.core.eyemeta import EyeEnfaceMeta
 
 
 @pytest.fixture
 def mock_meta_od():
-    """Create a mock EyeEnfaceMeta for right eye (OD)."""
-    meta = Mock()
-    meta.__getitem__ = Mock(side_effect=lambda key: {
-        'scale_x': 1.0,
-        'scale_y': 1.0,
-        'scale_unit': 'mm',
-        'laterality': 'OD'
-    }.get(key))
-    meta.get = Mock(side_effect=lambda key, default=None: {
-        'scale_x': 1.0,
-        'scale_y': 1.0,
-        'scale_unit': 'mm',
-        'laterality': 'OD'
-    }.get(key, default))
-    return meta
+    """Create an EyeEnfaceMeta for right eye (OD)."""
+    return EyeEnfaceMeta(scale_x=1.0, scale_y=1.0, scale_unit='mm', laterality='OD')
 
 
 @pytest.fixture
 def mock_meta_os():
-    """Create a mock EyeEnfaceMeta for left eye (OS)."""
-    meta = Mock()
-    meta.__getitem__ = Mock(side_effect=lambda key: {
-        'scale_x': 1.0,
-        'scale_y': 1.0,
-        'scale_unit': 'mm',
-        'laterality': 'OS'
-    }.get(key))
-    meta.get = Mock(side_effect=lambda key, default=None: {
-        'scale_x': 1.0,
-        'scale_y': 1.0,
-        'scale_unit': 'mm',
-        'laterality': 'OS'
-    }.get(key, default))
-    return meta
+    """Create an EyeEnfaceMeta for left eye (OS)."""
+    return EyeEnfaceMeta(scale_x=1.0, scale_y=1.0, scale_unit='mm', laterality='OS')
 
 
 @pytest.fixture
 def mock_meta_no_laterality():
-    """Create a mock EyeEnfaceMeta without laterality info."""
-    meta = Mock()
-    data = {
-        'scale_x': 1.0,
-        'scale_y': 1.0,
-        'scale_unit': 'mm'
-    }
-    meta.__getitem__ = Mock(side_effect=lambda key: data.get(key))
-    meta.__setitem__ = Mock(side_effect=lambda key, value: data.update({key: value}))
-    meta.get = Mock(side_effect=lambda key, default=None: data.get(key, default))
-    return meta
+    """Create an EyeEnfaceMeta without laterality info."""
+    return EyeEnfaceMeta(scale_x=1.0, scale_y=1.0, scale_unit='mm')
 
 
 class TestLateralityValidation:
@@ -257,19 +221,7 @@ class TestLateralityValidation:
 
         # Test all variants
         for laterality in ['OD', 'R', 'RIGHT', 'od', 'r', 'right']:
-            meta = Mock()
-            meta.__getitem__ = Mock(side_effect=lambda key: {
-                'scale_x': 1.0,
-                'scale_y': 1.0,
-                'scale_unit': 'mm',
-                'laterality': laterality
-            }.get(key))
-            meta.get = Mock(side_effect=lambda key, default=None: {
-                'scale_x': 1.0,
-                'scale_y': 1.0,
-                'scale_unit': 'mm',
-                'laterality': laterality
-            }.get(key, default))
+            meta = EyeEnfaceMeta(scale_x=1.0, scale_y=1.0, scale_unit='mm', laterality=laterality)
 
             # Should not raise for any variant
             enface = EyeEnface(data=data, meta=meta, optic_disc=optic_disc, fovea=fovea)
@@ -299,19 +251,7 @@ class TestLateralityValidation:
 
         # Test all variants
         for laterality in ['OS', 'L', 'LEFT', 'os', 'l', 'left']:
-            meta = Mock()
-            meta.__getitem__ = Mock(side_effect=lambda key: {
-                'scale_x': 1.0,
-                'scale_y': 1.0,
-                'scale_unit': 'mm',
-                'laterality': laterality
-            }.get(key))
-            meta.get = Mock(side_effect=lambda key, default=None: {
-                'scale_x': 1.0,
-                'scale_y': 1.0,
-                'scale_unit': 'mm',
-                'laterality': laterality
-            }.get(key, default))
+            meta = EyeEnfaceMeta(scale_x=1.0, scale_y=1.0, scale_unit='mm', laterality=laterality)
 
             # Should not raise for any variant
             enface = EyeEnface(data=data, meta=meta, optic_disc=optic_disc, fovea=fovea)
