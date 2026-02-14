@@ -22,7 +22,7 @@ from eyepy.core.eyemeta import EyeEnfaceMeta
 from eyepy.core.eyemeta import EyeVolumeMeta
 
 if TYPE_CHECKING:
-    import matplotlib.pyplot as plt
+    from matplotlib.axes import Axes
     from matplotlib import patches
     from skimage.transform._geometric import _GeometricTransform
     from skimage import transform
@@ -931,12 +931,13 @@ class EyeVolume:
 
     def plot(
         self,
-        ax: Optional[plt.Axes] = None,
+        ax: Optional[Axes] = None,
         projections: Union[bool, list[str]] = False,
         slabs: Union[bool, list[str]] = False,
         bscan_region: bool = False,
         bscan_positions: Union[bool, list[int]] = False,
         quantification: Optional[str] = None,
+        quantification_kwargs: Optional[dict] = None,
         region: tuple[slice, slice] = np.s_[:, :],
         annotations_only: bool = False,
         projection_kwargs: Optional[dict] = None,
@@ -957,6 +958,7 @@ class EyeVolume:
             bscan_region: If `True` plot the region B-scans are located in (default: `False`)
             bscan_positions: If `True` plot positions of all B-scan (default: `False`). If a list of integers is given, plot the B-scans with the respective indices. Indexing starts at the bottom of the localizer.
             quantification: Name of the OCT volume annotations to plot a quantification for (default: `None`). Quantifications are performed on circular grids.
+            quantification_kwargs: Optional keyword arguments for the quantification plots. If `None` default values are used (default: `None`).
             region: Region of the localizer to plot (default: `np.s_[...]`)
             annotations_only: If `True` localizer image is not plotted (defaualt: `False`)
             projection_kwargs: Optional keyword arguments for the projection plots. If `None` default values are used (default: `None`). If a dictionary is given, the keys are the projection names and the values are dictionaries of keyword arguments.
@@ -994,19 +996,38 @@ class EyeVolume:
 
         if projections is True:
             projections = list(self.volume_maps.keys())
+        elif isinstance(projections, str):
+            projections = [projections]
         elif not projections:
             projections = []
 
         if slabs is True:
             slabs = list(self.slabs.keys())
+        elif isinstance(slabs, str):
+            slabs = [slabs]
         elif not slabs:
             slabs = []
 
         if projection_kwargs is None:
             projection_kwargs = defaultdict(lambda: {})
+
+        # Check if projection_kwargs contains nested dicts (per-projection kwargs)
+        # or flat kwargs (applied to all projections)
+        elif projection_kwargs:
+            is_nested = any(isinstance(v, dict) for v in projection_kwargs.values())
+            if not is_nested:
+                # If flat, apply these kwargs to all specified projections
+                flat_kwargs = projection_kwargs
+                projection_kwargs = defaultdict(lambda: flat_kwargs.copy())
+            else:
+                # If nested, use as is (defaultdict behavior needs manual handling or just dict access)
+                # We'll stick to the existing logic which expects keys to be projection names
+                pass
+
         for name in projections:
-            if name not in projection_kwargs.keys():
+            if name not in projection_kwargs:
                 projection_kwargs[name] = {}
+
             self.volume_maps[name].plot(ax=ax,
                                         region=region,
                                         **projection_kwargs[name])
@@ -1039,13 +1060,16 @@ class EyeVolume:
                                     line_kwargs=line_kwargs)
 
         if quantification:
+            if quantification_kwargs is None:
+                quantification_kwargs = {}
             self.volume_maps[quantification].plot_quantification(region=region,
-                                                                 ax=ax)
+                                                                 ax=ax,
+                                                                 **quantification_kwargs)
 
     def _plot_bscan_positions(
         self,
         bscan_positions: Union[bool, list[int]] = True,
-        ax: Optional[plt.Axes] = None,
+        ax: Optional[Axes] = None,
         region: tuple[slice, slice] = np.s_[:, :],
         line_kwargs: Optional[dict] = None,
     ):
@@ -1110,7 +1134,7 @@ class EyeVolume:
 
     def _plot_bscan_region(self,
                            region: tuple[slice, slice] = np.s_[:, :],
-                           ax: Optional[plt.Axes] = None,
+                           ax: Optional[Axes] = None,
                            line_kwargs: Optional[dict] = None):
 
         from eyepy.core._compat import require_matplotlib

@@ -86,11 +86,12 @@ Here we compute drusen for our sample data which has manual layer annotations fo
 
 ``` python
 import eyepy as ep
+from eyepy.quant import drusen
 
 # Import example data
 ev = ep.data.load("drusen_patient")
 # Compute drusen
-drusen_map = ep.drusen(ev.layers["RPE"].data, ev.layers["BM"].data, ev.shape, minimum_height=2)
+drusen_map = drusen(ev.layers["RPE"].data, ev.layers["BM"].data, ev.shape, minimum_height=2)
 ```
 
 ### Add / Remove Layer Annotations

@@ -98,6 +98,8 @@ class EyeBscan:
         layers: Union[bool, list[str]] = False,
         areas: Union[bool, list[str]] = False,
         slabs: Union[bool, list[str]] = False,
+        layer_labels: Optional[list[str]] = None,
+        area_labels: Optional[list[str]] = None,
         #ascans=None,
         layer_kwargs: Optional[dict] = None,
         area_kwargs: Optional[dict] = None,
@@ -108,6 +110,7 @@ class EyeBscan:
         scalebar: Union[bool, str] = 'botleft',
         scalebar_kwargs: Optional[dict[str, Any]] = None,
         watermark: bool = True,
+        autofocus: Union[bool, int] = False,
     ) -> None:
         """Plot B-scan.
 
@@ -118,6 +121,8 @@ class EyeBscan:
             layers: If `True` plot all layers (default: `False`). If a list of strings is given, plot the layers with the given names.
             areas: If `True` plot all areas (default: `False`). If a list of strings is given, plot the areas with the given names.
             slabs: If `True` plot all slabs (default: `False`). If a list of strings is given, plot the slabs with the given names.
+            layer_labels: Optional list of strings to label the layers in the legend. If `None` the layer names are used.
+            area_labels: Optional list of strings to label the areas in the legend. If `None` the area names are used.
             annotations_only: If `True` do not plot the B-scan image
             region: Region of the localizer to plot (default: `np.s_[:, :]`)
             layer_kwargs: Optional keyword arguments for customizing the OCT layers. If `None` default values are used which are {"linewidth": 1, "linestyle": "-"}
@@ -126,6 +131,7 @@ class EyeBscan:
             scalebar: Position of the scalebar, one of "topright", "topleft", "botright", "botleft" or `False` (default: "botleft"). If `True` the scalebar is placed in the bottom left corner. You can custumize the scalebar using the `scalebar_kwargs` argument.
             scalebar_kwargs: Optional keyword arguments for customizing the scalebar. Check the documentation of [plot_scalebar][eyepy.core.plotting.plot_scalebar] for more information.
             watermark: If `True` plot a watermark on the image (default: `True`). When removing the watermark, please consider to cite eyepy in your publication.
+            autofocus: If a boolean and `True` crop the B-scan to the retina region. If an integer, center the B-scan on the retina and crop to the specified height. (default: `False`)
         Returns:
             None
         """
@@ -144,15 +150,44 @@ class EyeBscan:
 
         region = np.s_[y_start:y_stop, x_start:x_stop]
 
+        if autofocus:
+            from eyepy.quant.segmentation import compute_retina_mask
+            mask = compute_retina_mask(self.data)
+            # sum over columns
+            mask_sum = np.sum(mask, axis=1)
+            # find first and last index where mask sum is > 0
+            indices = np.where(mask_sum > 0)[0]
+            if len(indices) > 0:
+                min_index = indices[0]
+                max_index = indices[-1]
+
+                if isinstance(autofocus, bool):
+                    # crop to retina region
+                    y_start = max(0, min_index - 10)
+                    y_stop = min(self.shape[0], max_index + 10)
+                elif isinstance(autofocus, int):
+                    # center on retina
+                    center = (min_index + max_index) // 2
+                    half_height = autofocus // 2
+                    y_start = max(0, center - half_height)
+                    y_stop = min(self.shape[0], center + half_height)
+
+                region = np.s_[y_start:y_stop, x_start:x_stop]
+
+
         if not layers:
             layers = []
         elif layers is True:
             layers = list(self.volume.layers.keys())
+        elif isinstance(layers, str):
+            layers = [layers]
 
         if not areas:
             areas = []
         elif areas is True:
             areas = list(self.volume.volume_maps.keys())
+        elif isinstance(areas, str):
+            areas = [areas]
 
         if not slabs:
             slabs = []
@@ -160,6 +195,8 @@ class EyeBscan:
             slabs = list(self.volume.slabs.keys())
             # Exclude 'RET' slab from the list of slabs to plot
             slabs = [s for s in slabs if s != 'RET']
+        elif isinstance(slabs, str):
+            slabs = [slabs]
 
         #if ascans is None:
         #    ascans = []
@@ -198,7 +235,7 @@ class EyeBscan:
         #              alpha=visible[region] * ascan_kwargs["alpha"],
         #              cmap="Reds")
 
-        for area in areas:
+        for i, area in enumerate(areas):
             data = self.area_maps[area][region]
             visible = np.zeros(data.shape, dtype=bool)
             visible[data != 0] = 1.0
@@ -207,7 +244,8 @@ class EyeBscan:
             color = meta['color'] if 'color' in meta else 'red'
             color = mcolors.to_rgba(color)
             # create a 0 radius circle patch as dummy for the area label
-            patch = mpatches.Circle((0, 0), radius=0, color=color, label=area)
+            label = area_labels[i] if area_labels else area
+            patch = mpatches.Circle((0, 0), radius=0, color=color, label=label)
             ax.add_patch(patch)
 
             # Create plot_data by tiling the color vector over the plotting shape
@@ -219,7 +257,7 @@ class EyeBscan:
                 plot_data,
                 interpolation='none',
             )
-        for layer in layers:
+        for i, layer in enumerate(layers):
             color = epconfig.layer_colors[layer]
 
             layer_data = self.layers[layer].data
@@ -231,10 +269,11 @@ class EyeBscan:
             region_height = region[0].stop - region[0].start
             layer_data[layer_data > region_height] = region_height
 
+            label = layer_labels[i] if layer_labels else layer
             ax.plot(
                 layer_data,
                 color='#' + color,
-                label=layer,
+                label=label,
                 **layer_kwargs,
             )
         if slabs:
