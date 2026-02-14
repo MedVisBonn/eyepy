@@ -133,7 +133,7 @@ def create_grid_regions(
     mask_shape: tuple[int, int],
     radii: Sequence[int],
     n_sectors: Sequence[int],
-    offsets: Sequence[int],
+    rotation: Sequence[int],
     clockwise: bool,
     smooth_edges: bool = False,
 ) -> list[npt.NDArray[Any]]:
@@ -144,14 +144,14 @@ def create_grid_regions(
     on.
     If you want the complete ring, set the respective n_sectors entry to 1. You  can split
     the ring into n sectors by setting the respective entry to n.
-    Setting a number in `offsets` rotates the respective ring sectors by n
+    Setting a number in `rotation` rotates the respective ring sectors by n
     degree.
 
     Args:
         mask_shape: Output shape of the computed masks
         radii: Ascending radii of the circular regions in pixels
         n_sectors: Number of sectors corresponding to the radii
-        offsets: Angular offset of first sector corresponding to the radii
+        rotation: Angular rotation of first sector corresponding to the radii
         clockwise: If True sectors are added clockwise starting from the start_angles
         smooth_edges: If True, compute non binary masks where edges might be shared between adjacent regions
 
@@ -163,7 +163,7 @@ def create_grid_regions(
         circles.append(circle_mask(radius, mask_shape, smooth_edges))
 
     level_sector_parts = []
-    for n_sec, start_angle in zip(n_sectors, offsets):
+    for n_sec, start_angle in zip(n_sectors, rotation):
         if n_sec is not None:
             level_sector_parts.append(
                 create_sectors(
@@ -198,7 +198,7 @@ def grid(
     radii: Union[Sequence[Union[int, float]], int, float],
     laterality: str,
     n_sectors: Union[Sequence[Union[int, float]], int, float] = 1,
-    offsets: Union[Sequence[Union[int, float]], int, float] = 0,
+    rotation: Union[Sequence[Union[int, float]], int, float] = 0,
     center: Optional[tuple] = None,
     smooth_edges: bool = False,
     radii_scale: Union[int, float] = 1,
@@ -210,7 +210,7 @@ def grid(
         radii: Ascending radii of the circular regions in pixels
         laterality: OD/OS depending for which eye to compute the grid
         n_sectors: Number of sectors corresponding to the radii
-        offsets: Sector offsets from the horizonal line on the nasal side in degree
+        rotation: Sector rotation from the horizonal line on the nasal side in degree
         center: Center location of the computed masks
         smooth_edges: If True, compute non binary masks where edges might be shared between adjacent regions
         radii_scale:
@@ -229,16 +229,16 @@ def grid(
     if len(n_sectors) == 1:
         n_sectors = n_sectors * len(radii)
 
-    offsets = [offsets] if isinstance(offsets, (int, float)) else list(offsets)
-    if len(offsets) == 1:
-        offsets = offsets * len(radii)
+    rotation = [rotation] if isinstance(rotation, (int, float)) else list(rotation)
+    if len(rotation) == 1:
+        rotation = rotation * len(radii)
 
     clockwise = False
     masks = create_grid_regions(
         mask_shape,
         tuple(radii),
         tuple(n_sectors),
-        tuple(offsets),
+        tuple(rotation),
         clockwise,
         smooth_edges,
     )

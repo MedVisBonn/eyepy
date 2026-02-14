@@ -13,7 +13,7 @@ from eyepy.io import HeE2eReader
 print(HeE2eReader("filename.E2E")) # (1)
 ```
 
-1.  Printing an HeE2eReader results in someting similar to this:
+1.  Printing an HeE2eReader results in something similar to this:
 
     ```text
     E2EFile
@@ -57,7 +57,7 @@ with HeE2eReader("filename.E2E", single=True) as e2e_reader: # (2)
 
 ## Access other data stored in E2E files
 
-Not everything stored in an E2E file is accessible through parsing to [`EyeVolume`][eyepy.core.EyeVolume] objects. If you are interested in accessing other data stored in the E2E file, you can use the file hierarchy created by the [`HeE2eReader`][eyepy.io.he.e2e_reader.HeE2eReader]. The structure of the build hieararchy is shown in the [diagram](#e2e-hierarchie) below. The file hierarchy can be accessed through the `file_hierarchy` attribute of the [`HeE2eReader`][eyepy.io.he.e2e_reader.HeE2eReader] object. You can either traverse the hierarchy level by level or access all elements of a specific level at once using one of the following attributes:
+Not everything stored in an E2E file is accessible through parsing to [`EyeVolume`][eyepy.core.EyeVolume] objects. If you are interested in accessing other data stored in the E2E file, you can use the file hierarchy created by the [`HeE2eReader`][eyepy.io.he.e2e_reader.HeE2eReader]. The structure of the build hierarchy is shown in the [diagram](#e2e-hierarchy) below. The file hierarchy can be accessed through the `file_hierarchy` attribute of the [`HeE2eReader`][eyepy.io.he.e2e_reader.HeE2eReader] object. You can either traverse the hierarchy level by level or access all elements of a specific level at once using one of the following attributes:
 
 + `e2e_reader.patients` returns a list of all [`E2EPatientStructure`][eyepy.io.he.e2e_reader.E2EPatientStructure] objects
 + `e2e_reader.studies` returns a list of all [`E2EStudyStructure`][eyepy.io.he.e2e_reader.E2EStudyStructure] objects
@@ -75,7 +75,7 @@ with HeE2eReader("filename.E2E") as e2e_reader:
 1.  This method is basically an extended version of `print(HeE2eReader("filename.E2E"))` that adds for every level of the hierarchy a table with information about the containded data.
 
 
-### E2E Hierarchie
+### E2E Hierarchy
 ```mermaid
 classDiagram
     E2EFileStructure *-- E2EPatientStructure
@@ -136,7 +136,7 @@ If you have any further information on the E2E format or if you find any errors 
     + B-scan positions in the E2E format are given relative to an origin roughly in the center of the localizer image. We assume that the positions are given as angles in degree since the absolute value of minimum and maximum position is very close to half the field of view. This is different to VOL and XML formats where positions are given in mm with the origin in the top left corner of the localizer image. Since some position values indicate that they are located outside of the localizer image, we might have to apply the localizer transformation to them as well after mapping them to pixel indices.
     + VOL and XML exports store the localizer scaling, as well as the scaling of the B-scans. The VOL format even stores the distance between the B-scans which has to be calculated from the B-scans in the XML and currently also the E2E format. We did not find this scaling information in the E2E format yet and use a hardcoded value for now. The only scaling we found was the Y Scale of the B-scan.
 
-## Aknowledgements
+## Acknowledgements
 While building the E2E file reader, and investigating the format we took inspiration from several existing projects, which we would like to thank:
 
 + [OCT-Converter](https://github.com/marksgraham/OCT-Converter)

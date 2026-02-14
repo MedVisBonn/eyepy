@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import cmath
 from collections import defaultdict
 from collections.abc import Iterable
 import logging
-from typing import Any, Literal, Optional, TYPE_CHECKING, Union
+from typing import Any, Literal, TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
@@ -11,8 +12,8 @@ import numpy.typing as npt
 import eyepy.config as epconfig
 
 if TYPE_CHECKING:
+    from matplotlib.axes import Axes
     import matplotlib.colors as mcolors
-    import matplotlib.pyplot as plt
 
     from eyepy.core.eyeenface import EyeEnface
     from eyepy.core.eyevolume import EyeVolume
@@ -45,7 +46,7 @@ class PolygonAnnotation:
     """
 
     def __init__(self, polygon: npt.NDArray[np.float64],
-                 shape: Optional[tuple[int, int]] = None) -> None:
+                 shape: tuple[int, int] | None = None) -> None:
         """Initialize PolygonAnnotation from polygon vertices.
 
         Args:
@@ -90,7 +91,7 @@ class PolygonAnnotation:
         return self._polygon.copy()
 
     @property
-    def shape(self) -> Optional[tuple[int, int]]:
+    def shape(self) -> tuple[int, int] | None:
         """Get the image shape used for mask generation."""
         return self._shape
 
@@ -123,7 +124,7 @@ class PolygonAnnotation:
         self._cached_mask = mask
         return mask
 
-    def scale(self, factor: float, center: Optional[tuple[float, float]] = None) -> PolygonAnnotation:
+    def scale(self, factor: float, center: tuple[float, float] | None = None) -> PolygonAnnotation:
         """Return a new PolygonAnnotation with scaled polygon.
 
         Args:
@@ -166,7 +167,7 @@ class PolygonAnnotation:
 
         return self.transform(translation_matrix)
 
-    def rotate(self, angle: float, center: Optional[tuple[float, float]] = None) -> PolygonAnnotation:
+    def rotate(self, angle: float, center: tuple[float, float] | None = None) -> PolygonAnnotation:
         """Return a new PolygonAnnotation with rotated polygon.
 
         Args:
@@ -190,7 +191,7 @@ class PolygonAnnotation:
         return self.transform(rotation_matrix, center=center)
 
     def transform(self, matrix: npt.NDArray[np.float64],
-                  center: Optional[tuple[float, float]] = None) -> PolygonAnnotation:
+                  center: tuple[float, float] | None = None) -> PolygonAnnotation:
         """Return a new PolygonAnnotation with affine-transformed polygon.
 
         Args:
@@ -238,7 +239,7 @@ class PolygonAnnotation:
 
         return self.__class__(result, shape=self._shape)
 
-    def plot(self, ax: Optional[plt.Axes] = None, offset: tuple[float, float] = (0, 0),
+    def plot(self, ax: Axes | None = None, offset: tuple[float, float] = (0, 0),
              **kwargs) -> None:
         """Plot the polygon outline on the given axes.
 
@@ -274,8 +275,8 @@ class EyeVolumeLayerAnnotation:
     def __init__(
         self,
         volume: EyeVolume,
-        data: Optional[npt.NDArray[np.float64]] = None,
-        meta: Optional[dict] = None,
+        data: npt.NDArray[np.float64] | None = None,
+        meta: dict | None = None,
         **kwargs: Any,
     ) -> None:
         """Layer annotation for a single layer in an EyeVolume.
@@ -367,12 +368,12 @@ class EyeVolumePixelAnnotation:
         self,
         volume: EyeVolume,
         # Type hint for an optional boolean numpy array
-        data: Optional[npt.NDArray[np.bool_]] = None,
-        meta: Optional[dict] = None,
+        data: npt.NDArray[np.bool_] | None = None,
+        meta: dict | None = None,
         radii: Iterable[float] = (1.5, 2.5),
         n_sectors: Iterable[int] = (1, 4),
-        offsets: Iterable[int] = (0, 45),
-        center: Optional[tuple[float, float]] = None,
+        rotation: Iterable[int] = (0, 45),
+        center: tuple[float, float] | None = None,
         **kwargs: Any,
     ) -> None:
         """Pixel annotation for an EyeVolume.
@@ -383,7 +384,7 @@ class EyeVolumePixelAnnotation:
             meta: dict with additional meta data
             radii: radii for quantification on circular grid
             n_sectors: number of sectors for quantification on circular grid
-            offsets: offsets from x axis for first sector, for quantification on circular grid
+            rotation: rotation from x axis for first sector, for quantification on circular grid
             center: center of circular grid for quantification
             **kwargs: additional meta data specified as parameters
 
@@ -412,7 +413,7 @@ class EyeVolumePixelAnnotation:
             **{
                 'radii': radii,
                 'n_sectors': n_sectors,
-                'offsets': offsets,
+                'rotation': rotation,
                 'center': center,
             })
 
@@ -457,15 +458,15 @@ class EyeVolumePixelAnnotation:
         self.meta['n_sectors'] = value
 
     @property
-    def offsets(self) -> Iterable[int]:
-        """Offsets from x axis for first sector, for quantification on circular
+    def rotation(self) -> Iterable[int]:
+        """Rotation from x axis for first sector, for quantification on circular
         grid."""
-        return self.meta['offsets']
+        return self.meta['rotation']
 
-    @offsets.setter
-    def offsets(self, value: Iterable[int]) -> None:
+    @rotation.setter
+    def rotation(self, value: Iterable[int]) -> None:
         self._reset()
-        self.meta['offsets'] = value
+        self.meta['rotation'] = value
 
     @property
     def center(self) -> tuple[float, float]:
@@ -502,13 +503,14 @@ class EyeVolumePixelAnnotation:
 
     def plot(
         self,
-        ax: Optional[plt.Axes] = None,
-        region: Union[slice, tuple[slice, slice]] = np.s_[:, :],
-        cmap: Union[str, mcolors.Colormap] = 'Reds',
-        vmin: Optional[float] = None,
-        vmax: Optional[float] = None,
+        ax: Axes | None = None,
+        region: slice | tuple[slice, slice] = np.s_[:, :],
+        cmap: str | mcolors.Colormap = 'Reds',
+        vmin: float | None = None,
+        vmax: float | None = None,
         cbar: bool = True,
         alpha: float = 1,
+        **kwargs: Any,
     ) -> None:
         """Plot the annotation on the enface plane.
 
@@ -557,6 +559,7 @@ class EyeVolumePixelAnnotation:
             cmap=cmap,
             vmin=vmin,
             vmax=vmax,
+            **kwargs,
         )
 
     @property
@@ -574,7 +577,7 @@ class EyeVolumePixelAnnotation:
                 radii=self.radii,
                 laterality=self.volume.laterality,
                 n_sectors=self.n_sectors,
-                offsets=self.offsets,
+                rotation=self.rotation,
                 radii_scale=self.volume.scale_x,
                 center=self.center,
             )
@@ -582,7 +585,7 @@ class EyeVolumePixelAnnotation:
         return self._masks
 
     @property
-    def quantification(self) -> dict[str, Union[float, str]]:
+    def quantification(self) -> dict[str, float | str]:
         """Quantification of the annotation on the specified circular grid.
 
         Returns:
@@ -593,7 +596,7 @@ class EyeVolumePixelAnnotation:
 
         return self._quantification
 
-    def _quantify(self) -> dict[str, Union[float, str]]:
+    def _quantify(self) -> dict[str, float | str]:
         enface_voxel_size_ym3 = (self.volume.localizer.scale_x * 1e3 *
                                  self.volume.localizer.scale_y * 1e3 *
                                  self.volume.scale_y * 1e3)
@@ -614,61 +617,150 @@ class EyeVolumePixelAnnotation:
         results['Laterality'] = self.volume.laterality
         return results
 
-    # # Todo
-    # def create_region_shape_primitives(
-    #     mask_shape,
-    #     radii: list = (0.8, 1.8),
-    #     n_sectors: list = (1, 4),
-    #     rotation: list = (0, 45),
-    #     center=None,
-    # ):
-    #     """Create circles and lines indicating region boundaries of quantification
-    #     masks. These can be used for plotting the masks.
-    #
-    #     Parameters
-    #     ----------
-    #     mask_shape :
-    #     radii :
-    #     n_sectors :
-    #     rotation :
-    #     center :
-    #
-    #     Returns
-    #     -------
-    #     """
-    #     if center is None:
-    #         center = (mask_shape[0] / 2, mask_shape[0] / 2)
-    #
-    #     primitives = {"circles": [], "lines": []}
-    #     # Create circles
-    #     for radius in radii:
-    #         primitives["circles"].append({"center": center, "radius": radius})
-    #
-    #     for i, (n_sec, rot, radius) in enumerate(zip(n_sectors, rotation, radii)):
-    #         rot = rot / 360 * 2 * np.pi
-    #         if not n_sec is None and n_sec != 1:
-    #             for sec in range(n_sec):
-    #                 theta = 2 * np.pi / n_sec * sec + rot
-    #
-    #                 start = cmath.rect(radii[i - 1], theta)
-    #                 start = (start.real + center[0], start.imag + center[1])
-    #
-    #                 end = cmath.rect(radius, theta)
-    #                 end = (end.real + center[0], end.imag + center[1])
-    #
-    #                 primitives["lines"].append({"start": start, "end": end})
-    #
-    #     return primitives
+    def create_region_shape_primitives(
+        self,
+        mask_shape: tuple[int, int] | None = None,
+        radii: list[float] | None = None,
+        n_sectors: list[int] | None = None,
+        rotation: list[float] | None = None,
+        center: tuple[float, float] | None = None,
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Create circles and lines indicating region boundaries of quantification
+        masks. These can be used for plotting the masks.
+
+        Args:
+            mask_shape: Shape of the mask (height, width). Defaults to volume localizer shape.
+            radii: List of radii for the circular grid. Defaults to self.radii.
+            n_sectors: List of number of sectors for each ring. Defaults to self.n_sectors.
+            rotation: List of rotation angles (in degrees) for each ring. Defaults to self.rotation.
+            center: Center of the circular grid (row, col). Defaults to self.center.
+
+        Returns:
+            Dictionary containing "circles" and "lines" primitives.
+        """
+        if mask_shape is None:
+            mask_shape = self.volume.localizer.shape
+
+        if radii is None:
+            radii = self.radii
+        if n_sectors is None:
+            n_sectors = self.n_sectors
+        if rotation is None:
+            rotation = self.rotation
+        if center is None:
+            center = self.center
+
+        if center is None:
+            center = (mask_shape[0] // 2, mask_shape[1] // 2)
+
+        # Radii are in physical units, convert to pixels using volume scale
+        radii = [r / self.volume.scale_x for r in radii]
+
+        primitives = {'circles': [], 'lines': []}
+        # Create circles
+        # center is (row, col). Mpatches.Circle expects (x, y) = (col, row)
+        for radius in radii:
+            primitives['circles'].append({
+                'center': (center[1], center[0]),
+                'radius': radius
+            })
+
+        # Augment radii with 0.0 for the start point calculation
+        aug_radii = [0.0] + list(radii)
+
+        for i, (n_sec, rot, radius) in enumerate(
+                zip(n_sectors, rotation, radii)):
+            rot = rot / 360 * 2 * np.pi
+            if n_sec is not None and n_sec > 1:
+                for sec in range(n_sec):
+                    theta = 2 * np.pi / n_sec * sec + rot
+
+                    # Start point (inner radius of the ring)
+                    # For i=0, aug_radii[0] is 0.0
+                    inner_radius = aug_radii[i]
+                    start = cmath.rect(inner_radius, theta)
+
+                    # center is (row, col).
+                    # cmath.rect gives (x, y) relative to center.
+                    # We need absolute (x, y) for plotting.
+                    # center_x = center[1], center_y = center[0]
+                    cx, cy = center[1], center[0]
+
+                    p_start = (cx + start.real, cy + start.imag)
+
+                    end = cmath.rect(radius, theta)
+                    p_end = (cx + end.real, cy + end.imag)
+
+                    primitives['lines'].append({
+                        'start': p_start,
+                        'end': p_end
+                    })
+
+        return primitives
+
+
+    def plot_region_shape_primitives(
+        self,
+        primitives: dict[str, list[dict[str, Any]]] | None = None,
+        ax: Axes | None = None,
+        color: str = 'red',
+        linewidth: float = 1,
+        **kwargs: Any
+    ) -> None:
+        """Plot region shape primitives on an axis.
+
+        Args:
+            primitives: Dictionary of primitives from create_region_shape_primitives.
+                        If None, they are created automatically.
+            ax: Matplotlib axes.
+            color: Color of the primitives.
+            linewidth: Line width of the primitives.
+            **kwargs: Additional arguments passed to patches.
+        """
+        from eyepy.core._compat import require_matplotlib
+        plt = require_matplotlib('pyplot')
+        mpatches = require_matplotlib('patches')
+
+        if ax is None:
+            ax = plt.gca()
+
+        if primitives is None:
+            primitives = self.create_region_shape_primitives()
+
+        for circle in primitives['circles']:
+            circle_patch = mpatches.Circle(
+                circle['center'],
+                circle['radius'],
+                fill=False,
+                color=color,
+                linewidth=linewidth,
+                **kwargs,
+            )
+            ax.add_patch(circle_patch)
+
+        for line in primitives['lines']:
+            polygon_patch = mpatches.Polygon(
+                [line['start'], line['end']],
+                closed=False,
+                fill=False,
+                color=color,
+                linewidth=linewidth,
+                **kwargs,
+            )
+            ax.add_patch(polygon_patch)
+
 
     def plot_quantification(
         self,
-        ax: Optional[plt.Axes] = None,
-        region: Union[slice, tuple[slice, slice]] = np.s_[:, :],
+        ax: Axes | None = None,
+        region: slice | tuple[slice, slice] = np.s_[:, :],
         alpha: float = 0.5,
-        vmin: Optional[float] = None,
-        vmax: Optional[float] = None,
+        vmin: float | None = None,
+        vmax: float | None = None,
         cbar: bool = True,
-        cmap: Union[str, mcolors.Colormap] = 'YlOrRd',
+        cmap: str | mcolors.Colormap = 'YlOrRd',
+        plot_grid: bool = True,
+        grid_kwargs: dict[str, Any] | None = None,
     ) -> None:
         """Plot circular grid quantification of the annotation (like ETDRS)
 
@@ -680,6 +772,8 @@ class EyeVolumePixelAnnotation:
             vmax: Maximum value for the colorbar
             cbar: Whether to plot a colorbar
             cmap: Colormap to use
+            plot_grid: Whether to plot the grid on top
+            grid_kwargs: Arguments passed to plot_region_shape_primitives
 
         Returns:
             None
@@ -718,6 +812,12 @@ class EyeVolumePixelAnnotation:
             vmax=vmax,
         )
 
+        if plot_grid:
+            if grid_kwargs is None:
+                grid_kwargs = {}
+            self.plot_region_shape_primitives(ax=ax, **grid_kwargs)
+
+
 
 class EyeVolumeSlabAnnotation:
     """"""
@@ -725,7 +825,7 @@ class EyeVolumeSlabAnnotation:
     def __init__(
         self,
         volume: EyeVolume,
-        meta: Optional[dict] = None,
+        meta: dict | None = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -764,22 +864,27 @@ class EyeVolumeSlabAnnotation:
         self.meta['name'] = value
 
     @property
-    def top_layer(self) -> Optional[str]:
+    def top_layer(self) -> str | None:
         """Top layer name/acronym."""
         return self.meta['top_layer']
+
+    def _reset(self) -> None:
+        self._mask = None
 
     @top_layer.setter
     def top_layer(self, value: str) -> None:
         self.meta['top_layer'] = value
+        self._reset()
 
     @property
-    def bottom_layer(self) -> Optional[str]:
+    def bottom_layer(self) -> str | None:
         """Bottom layer name/acronym."""
         return self.meta['bottom_layer']
 
     @bottom_layer.setter
     def bottom_layer(self, value: str) -> None:
         self.meta['bottom_layer'] = value
+        self._reset()
 
     @property
     def mask(self) -> npt.NDArray[np.bool_]:
@@ -804,33 +909,27 @@ class EyeVolumeSlabAnnotation:
 
         return self._mask
 
-    @property
-    def projection(self) -> np.ndarray:
+    def projection(self, par: bool = False) -> np.ndarray:
         """Projection of the data within the slab mask to the enface plane."""
         # The flip is required because in the volume the bottom most B-scan has the lowest index
         # while in the enface projection the bottom most position should have the biggest index.
-        def get_projection(par: bool = False) -> np.ndarray:
-            data = self.volume.data_par if par else self.volume.data
-            return np.flip(np.nansum(data * self.mask, axis=1), axis=0)
-        return get_projection
+        data = self.volume.data_par if par else self.volume.data
+        return np.flip(np.nansum(data * self.mask, axis=1), axis=0)
 
-    @property
-    def enface(self) -> np.ndarray:
+    def enface(self, par: bool = False) -> np.ndarray:
         """Transformed projection of the annotation to the enface plane."""
-        def get_enface(par: bool = False) -> np.ndarray:
-            from skimage import transform
-            data = self.projection(par=par)
-            return transform.warp(
-                data,
-                self.volume.localizer_transform.inverse,
-                output_shape=(
-                    self.volume.localizer.size_y,
-                    self.volume.localizer.size_x,
-                ),
-                order=0,
-                cval=np.nan,
-            )
-        return get_enface
+        from skimage import transform
+        data = self.projection(par=par)
+        return transform.warp(
+            data,
+            self.volume.localizer_transform.inverse,
+            output_shape=(
+                self.volume.localizer.size_y,
+                self.volume.localizer.size_x,
+            ),
+            order=0,
+            cval=np.nan,
+        )
 
     def iqr_contrast(self, enface: np.ndarray, factor: float=1.5) -> float:
         valid_data = enface[~np.isnan(enface)]
@@ -853,14 +952,14 @@ class EyeVolumeSlabAnnotation:
 
     def plot(
         self,
-        ax: Optional[plt.Axes] = None,
-        region: Union[slice, tuple[slice, slice]] = np.s_[:, :],
-        cmap: Union[str, mcolors.Colormap] = 'Greys_r',
-        vmin: Optional[float] = None,
-        vmax: Optional[float] = None,
+        ax: plt.Axes | None = None,
+        region: slice | tuple[slice, slice] = np.s_[:, :],
+        cmap: str | mcolors.Colormap = 'Greys_r',
+        vmin: float | None = None,
+        vmax: float | None = None,
         cbar: bool = False,
         alpha: float = 1,
-        contrast: Union[int, Literal['auto']] = None,
+        contrast: int | Literal['auto'] = None,
         par: bool = None,
         transform: bool = False,
         **kwargs
@@ -885,12 +984,12 @@ class EyeVolumeSlabAnnotation:
         if par is None:
             par = SLAB_PROJECTION_DEFAULTS.get(self.name, {}).get('PAR', False)
 
-        enface_projection = self.enface(par) if transform else self.projection(par)
+        enface_projection = self.enface(par=par) if transform else self.projection(par=par)
 
         if contrast is None:
             contrast = SLAB_PROJECTION_DEFAULTS.get(self.name, {}).get('contrast', 'auto')
         if contrast == 'auto':
-            contrast = self.iqr_contrast(self.projection(par), kwargs.get('factor', 1.5))
+            contrast = self.iqr_contrast(self.projection(par=par), kwargs.get('factor', 1.5))
         elif not isinstance(contrast, (int, float)) or contrast <= 0:
             logger.warning(
                 f'Invalid contrast value: {contrast}. Using default contrast of 4.')
@@ -1020,8 +1119,8 @@ class EyeEnfacePixelAnnotation:
     def __init__(
         self,
         enface: EyeEnface,
-        data: Optional[npt.NDArray[np.bool_]] = None,
-        meta: Optional[dict] = None,
+        data: npt.NDArray[np.bool_] | None = None,
+        meta: dict | None = None,
         **kwargs: Any,
     ) -> None:
         """Pixel annotation for an enface image.
@@ -1080,7 +1179,7 @@ class EyeEnfaceOpticDiscAnnotation(PolygonAnnotation):
     """
 
     def __init__(self, polygon: npt.NDArray[np.float64],
-                 shape: Optional[tuple[int, int]] = None) -> None:
+                 shape: tuple[int, int] | None = None) -> None:
         """Initialize EyeEnfaceOpticDiscAnnotation from a polygon.
 
         Args:
@@ -1094,7 +1193,7 @@ class EyeEnfaceOpticDiscAnnotation(PolygonAnnotation):
     @classmethod
     def from_ellipse(cls, center: tuple[float, float], minor_axis: float, major_axis: float,
                      rotation: float = 0.0, num_points: int = 64,
-                     shape: Optional[tuple[int, int]] = None) -> 'EyeEnfaceOpticDiscAnnotation':
+                     shape: tuple[int, int] | None = None) -> 'EyeEnfaceOpticDiscAnnotation':
         """Create EyeEnfaceOpticDiscAnnotation from ellipse parameters.
 
         Args:
@@ -1277,10 +1376,10 @@ class EyeEnfaceOpticDiscAnnotation(PolygonAnnotation):
         # Height is the distance between topmost and bottommost intersections
         return max(row_coords) - min(row_coords)
 
-    def plot(self, ax: Optional[plt.Axes] = None, offset: tuple[float, float] = (0, 0),
+    def plot(self, ax: plt.Axes | None = None, offset: tuple[float, float] = (0, 0),
              plot_contour: bool = True, plot_area: bool = False,
              contour_color: str = 'red', contour_linewidth: float = 2,
-             contour_linestyle: str = '-', area_color: Optional[str] = None,
+             contour_linestyle: str = '-', area_color: str | None = None,
              area_alpha: float = 0.3, **kwargs) -> None:
         """Plot the optic disc annotation on the given axes.
 
@@ -1381,7 +1480,7 @@ class EyeEnfaceFoveaAnnotation(PolygonAnnotation):
         """
         return tuple(self._polygon.mean(axis=0))
 
-    def plot(self, ax: Optional[plt.Axes] = None, offset: tuple[float, float] = (0, 0),
+    def plot(self, ax: plt.Axes | None = None, offset: tuple[float, float] = (0, 0),
              color: str = 'yellow', marker: str = '+', markersize: float = 12,
              markeredgewidth: float = 2, **kwargs) -> None:
         """Plot the fovea annotation on the given axes as a center marker.

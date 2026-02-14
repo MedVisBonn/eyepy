@@ -8,6 +8,7 @@ relative to anatomical landmarks.
 from eyepy.quant.drusen import drusen
 from eyepy.quant.drusen import ideal_rpe
 from eyepy.quant.metrics import compute_area
+from eyepy.quant.segmentation import compute_retina_mask
 from eyepy.quant.spatial import AnatomicalOrigin
 from eyepy.quant.spatial import DirectionalExtent
 from eyepy.quant.spatial import ExtentMetrics
@@ -17,6 +18,7 @@ from eyepy.quant.spatial import PolarReference
 
 __all__ = [
     'compute_area',
+    'compute_retina_mask',
     'drusen',
     'ideal_rpe',
     'AnatomicalOrigin',
