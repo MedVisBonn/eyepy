@@ -384,14 +384,14 @@ def _extract_boundary_with_border(mask: npt.NDArray[np.bool_]) -> tuple[npt.NDAr
         padded_mask = np.pad(filled_mask, pad_width=1, mode='constant', constant_values=False)
 
         # Extract boundary from padded mask
-        eroded = morphology.binary_erosion(padded_mask)
+        eroded = morphology.erosion(padded_mask)
         boundary_padded = padded_mask & ~eroded
 
         # Remove padding (shift coordinates back)
         boundary = boundary_padded[1:-1, 1:-1]
     else:
         # Normal case: erosion works correctly
-        eroded = morphology.binary_erosion(filled_mask)
+        eroded = morphology.erosion(filled_mask)
         boundary = filled_mask & ~eroded
 
     # Get coordinates of boundary pixels

@@ -1,7 +1,9 @@
-"""Tests for optic disc plotting functionality."""
+import numpy as np
+import pytest
+
+mpl = pytest.importorskip('matplotlib')
 from matplotlib.patches import Polygon as MPLPolygon
 import matplotlib.pyplot as plt
-import numpy as np
 import pytest
 
 from eyepy.core.annotations import EyeEnfaceOpticDiscAnnotation
