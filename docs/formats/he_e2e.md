@@ -148,9 +148,13 @@ with HeE2eReader("filename.E2E") as reader:
     series_metadata = series.get_heyex_metadata()
     bscan_metadata = series.get_heyex_metadata(bscan_index=0)
     sources = series.get_heyex_metadata_sources(bscan_index=0)
+    volume = series.get_volume()
+    volume_bundle = volume.meta["e2e_metadata"]
 ```
 
 The `bscan_index` argument matters because several OCT export fields are slice specific in HEYEX. If `bscan_index` is omitted, the reader leaves `OCT Image -> ART Mode`, `Quality`, and `Acquisition Time` as `None`.
+
+When an E2E series is converted to an [`EyeVolume`][eyepy.core.EyeVolume], the same information is also attached under `volume.meta["e2e_metadata"]`. This bundle contains the series-level HEYEX metadata, provenance, per-B-scan HEYEX OCT metadata, and the current provisional findings.
 
 ### Field Scope
 

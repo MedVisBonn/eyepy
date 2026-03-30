@@ -915,6 +915,52 @@ class E2ESeriesStructure(E2EStructureMixin):
         _, sources = self._build_heyex_metadata(bscan_index=bscan_index)
         return sources
 
+    def get_eyevolume_e2e_metadata(self) -> dict[str, Any]:
+        """Return a compact E2E metadata bundle suitable for EyeVolumeMeta."""
+        return {
+            'heyex': self.get_heyex_metadata(),
+            'heyex_sources': self.get_heyex_metadata_sources(),
+            'heyex_bscan_oct': [
+                self.get_heyex_metadata(bscan_index=i)['OCT Image']
+                for i in range(self.n_bscans)
+            ],
+            'heyex_bscan_oct_sources': [
+                self.get_heyex_metadata_sources(bscan_index=i)['OCT Image']
+                for i in range(self.n_bscans)
+            ],
+            'findings': {
+                'scan_focus': {
+                    'raw_candidate': self.get_focus_candidate_raw(),
+                    'derived_diopters': self._derive_scan_focus_diopters(),
+                    'source': 'Type10004@bscan0+offset140:float32',
+                    'status': 'provisional',
+                    'formula':
+                    'focus_D ≈ 1.079 * sign(v) * (abs(v) - 3.505)',
+                },
+                'scaling_x': {
+                    **self.get_x_scale_derivation(),
+                    'source':
+                    'derived from Type10004.start_x/end_x/imgSizeWidth',
+                    'status': 'provisional',
+                    'formula':
+                    'Scaling X ≈ (end_x - start_x) / imgSizeWidth * 289.6',
+                },
+                'oct_firmware_assignment': {
+                    'oct_controller_fw_offset': 124,
+                    'oct_camera_fw_offset': 128,
+                    'oct_camera_fpga_offset': 132,
+                    'status': 'provisional',
+                    'note':
+                    'OCT Camera FW and OCT Camera FPGA may need to be swapped later if a dataset with distinct values proves the order is reversed.',
+                },
+                'type39_storage': {
+                    'status': 'observed',
+                    'note':
+                    'In the current sample set Type39 is stored in every B-scan slice and is volume-constant within a series.',
+                },
+            },
+        }
+
     def add_folder(self, folder: E2EFolder) -> None:
         """Add a folder to the Series.
 
@@ -1155,6 +1201,7 @@ class E2ESeriesStructure(E2EStructureMixin):
                 exam_time=None,
                 bscan_meta=bscan_meta,
                 intensity_transform='e2e',
+                e2e_metadata=self.get_eyevolume_e2e_metadata(),
             )
         return self._meta
 
