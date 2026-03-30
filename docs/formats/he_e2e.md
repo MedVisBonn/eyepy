@@ -136,6 +136,86 @@ If you have any further information on the E2E format or if you find any errors 
     + B-scan positions in the E2E format are given relative to an origin roughly in the center of the localizer image. We assume that the positions are given as angles in degree since the absolute value of minimum and maximum position is very close to half the field of view. This is different to VOL and XML formats where positions are given in mm with the origin in the top left corner of the localizer image. Since some position values indicate that they are located outside of the localizer image, we might have to apply the localizer transformation to them as well after mapping them to pixel indices.
     + VOL and XML exports store the localizer scaling, as well as the scaling of the B-scans. The VOL format even stores the distance between the B-scans which has to be calculated from the B-scans in the XML and currently also the E2E format. We did not find this scaling information in the E2E format yet and use a hardcoded value for now. The only scaling we found was the Y Scale of the B-scan.
 
+## HEYEX Metadata Provenance
+
+The [`E2ESeriesStructure`][eyepy.io.he.e2e_reader.E2ESeriesStructure] now exposes a HEYEX-style metadata view:
+
+```python
+from eyepy.io import HeE2eReader
+
+with HeE2eReader("filename.E2E") as reader:
+    series = reader.series[0]
+    series_metadata = series.get_heyex_metadata()
+    bscan_metadata = series.get_heyex_metadata(bscan_index=0)
+    sources = series.get_heyex_metadata_sources(bscan_index=0)
+```
+
+The `bscan_index` argument matters because several OCT export fields are slice specific in HEYEX. If `bscan_index` is omitted, the reader leaves `OCT Image -> ART Mode`, `Quality`, and `Acquisition Time` as `None`.
+
+### Field Scope
+
+| Scope | Meaning |
+| --- | --- |
+| `patient` | Read from patient-level containers such as `Type9` |
+| `study` | Read from study-level containers such as `Type13`, `Type9000`, `Type9001` |
+| `series` | Read from series-level containers such as `Type10005`, `Type9005`-`Type9008` |
+| `bscan` | Read from slice/B-scan containers such as `Type39` or `Type10004` |
+| `derived` | Computed directly from stored values |
+| `provisional` | Strong empirical mapping, but not yet proven |
+
+### Provenance Table
+
+| Export field | Scope | Provenance |
+| --- | --- | --- |
+| `General Parameters -> Examination Time` | `series` | `Type10005@series+offset16` |
+| `General Parameters -> Examined Structure` | `series` | `Type9005` |
+| `General Parameters -> Application` | `study/series` | `Type13`, with fallback to `Type9005` |
+| `General Parameters -> Scan Focus` | `bscan/provisional` | `Type10004@offset140` as `float32`, converted empirically |
+| `IR Image -> ART Mode` | `bscan` | `Type39@offset376` |
+| `IR Image -> Sensitivity (DC/DC)` | `bscan` | `Type39@offset8` |
+| `IR Image -> Total Sensitivity` | `bscan` | `Type39@offset116` |
+| `OCT Image -> ART Mode` | `bscan` | `Type10004@offset120` |
+| `OCT Image -> Quality` | `bscan` | `Type10004@offset156` |
+| `OCT Image -> Acquisition Time` | `bscan` | `Type10004.acquisitionTime` |
+| `OCT Image -> Scaling Z` | `bscan` | `Type10004.scale_y` |
+| `OCT Image -> Scaling X` | `derived/provisional` | `Type10004.start_x`, `end_x`, and `imgSizeWidth` |
+| `OCT Scan Pattern -> Number of B-Scans` | `bscan` | `Type10004.n_bscans` |
+| `OCT Scan Pattern -> Pattern Size` | `derived/provisional` | angular span from `Type10004`, converted with the current `Medium` eye-length constant |
+| `OCT Scan Pattern -> Distance between B-Scans` | `derived/provisional` | vertical span from `Type10004`, converted with the current `Medium` eye-length constant |
+| `Device -> Camera Model` | `study` | `Type13` |
+| `Device -> Camera Model Code` | `bscan` | ASCII model codes embedded in `Type39` |
+| `Device -> Camera/Power/Touch serial numbers` | `bscan` | `Type39@offset104`, `108`, `112` |
+| `Device -> HRA/Power/Touch firmware` | `bscan` | `Type39@offset128`, `132`, `136` |
+| `Device -> OCT Controller FW Version` | `bscan` | `Type10004@offset124` |
+| `Device -> OCT Camera FW Version` | `bscan/provisional` | `Type10004@offset128` |
+| `Device -> OCT Camera FPGA Version` | `bscan/provisional` | `Type10004@offset132` |
+| `Device -> Acquisition Software Version` | `bscan` | `Type39@offset140` |
+
+### Provisional Mappings
+
+`Scan Focus` currently uses the strongest candidate field found:
+
+```text
+v = Type10004@offset140 as float32
+focus_D ≈ 1.079 * sign(v) * (abs(v) - 3.505)
+```
+
+This fit matches our examples closely, but it is still empirical and should be treated as provisional.
+
+`Scaling X` in `µm/pixel` also appears to be derived rather than stored directly:
+
+```text
+Scaling X ≈ (end_x - start_x) / imgSizeWidth * 289.6
+```
+
+The constant `289.6 µm/degree` is the current best fit for the `Medium` eye-length preset. Additional paired files are still needed to confirm the conversion for `Short` and `Long`.
+
+### Current Caveats
+
++ `Type40` currently looks related to acquisition rotation / shear geometry rather than focus. In our sample set it changes for the rotated scan but not for the other focus-varying scans.
++ `OCT Camera FW Version` and `OCT Camera FPGA Version` are assigned from `Type10004@offset128` and `Type10004@offset132` respectively, but these two slots may need to be swapped later if a dataset with distinct values proves the order is reversed.
++ `Date of Birth`, `Resolution Mode`, `Camera Objective`, `Internal Target`, `External Target`, `A-Scan Rate`, `Eye Length`, `EDI Mode`, and `EVI Mode` are still unresolved and are therefore returned as `None` by the HEYEX metadata helper.
+
 ## Acknowledgements
 While building the E2E file reader, and investigating the format we took inspiration from several existing projects, which we would like to thank:
 

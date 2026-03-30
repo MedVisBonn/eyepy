@@ -3,9 +3,13 @@ from __future__ import annotations
 from collections import defaultdict
 from contextlib import AbstractContextManager
 import dataclasses
+import datetime
 from io import BufferedReader
 import logging
+import math
 from pathlib import Path
+import re
+import struct
 import sys
 from textwrap import indent
 import traceback
@@ -31,6 +35,7 @@ from .e2e_format import containerheader_format
 from .e2e_format import DataContainer
 from .e2e_format import datacontainer_format
 from .e2e_format import e2e_format
+from .e2e_format import Type10004
 from .e2e_format import Type10025
 from .e2e_format import TypesEnum
 from .vol_reader import SEG_MAPPING
@@ -52,6 +57,44 @@ type_occurence = {
         1073751824, 1073751825, 1073751826
     ]
 }
+
+HEYEX_TIMEZONE_SUFFIX = 'UTC+1'
+MEDIUM_EYE_LENGTH_UM_PER_DEG = 289.6
+
+
+def _format_version(raw: bytes) -> str:
+    return '.'.join(str(part) for part in raw)
+
+
+def _format_px_mm(size_px: int, scale_um_per_px: Optional[float]) -> str:
+    if scale_um_per_px is None:
+        return f'{size_px} pixels'
+    return f'{size_px} pixels ({size_px * scale_um_per_px / 1000:.1f} mm)'
+
+
+def _format_scan_focus(value_diopters: Optional[float]) -> Optional[str]:
+    if value_diopters is None:
+        return None
+    return f'{value_diopters:.2f} D'
+
+
+def _format_time(iso_value: Optional[str],
+                 timezone_suffix: str = HEYEX_TIMEZONE_SUFFIX) -> Optional[str]:
+    if iso_value is None:
+        return None
+    dt = datetime.datetime.fromisoformat(iso_value) + datetime.timedelta(hours=1)
+    return f'{dt:%H:%M:%S} ({timezone_suffix})'
+
+
+def _extract_ascii_codes(raw: bytes) -> list[str]:
+    seen = set()
+    values = []
+    for match in re.findall(rb'S[0-9]{4}[A-Z0-9-]*', raw):
+        text = match.decode('ascii', errors='ignore')
+        if text and text not in seen:
+            seen.add(text)
+            values.append(text)
+    return values
 
 
 class E2EStructureMixin:
@@ -323,8 +366,40 @@ class E2ESliceStructure(E2EStructureMixin):
                 'There is more than one bscanmeta object. This is not expected.'
             )
 
-
         meta = self.folders[TypesEnum.bscanmeta][0].data
+        meta_dict = {
+            'unknown0': meta.unknown0,
+            'size_y': meta.size_y,
+            'size_x': meta.size_x,
+            'start_x': meta.start_x,
+            'start_y': meta.start_y,
+            'end_x': meta.end_x,
+            'end_y': meta.end_y,
+            'zero1': meta.zero1,
+            'unknown1': meta.unknown1,
+            'scale_y': meta.scale_y,
+            'unknown2': meta.unknown2,
+            'zero2': meta.zero2,
+            'unknown3': meta.unknown3,
+            'zero3': meta.zero3,
+            'imgSizeWidth': meta.imgSizeWidth,
+            'n_bscans': meta.n_bscans,
+            'aktImage': meta.aktImage,
+            'scan_pattern': meta.scan_pattern,
+            'center_x': meta.center_x,
+            'center_y': meta.center_y,
+            'unknown4': meta.unknown4,
+            'acquisitionTime': meta.acquisitionTime,
+            'numAve': meta.numAve,
+            'quality': meta.quality,
+            'unknown5': meta.unknown5,
+            'art_mode': meta.art_mode,
+            'quality_ui': meta.quality_ui,
+            'focus_candidate_raw': meta.focus_candidate_raw,
+            'oct_controller_fw_version': meta.oct_controller_fw_version,
+            'oct_camera_fw_version': meta.oct_camera_fw_version,
+            'oct_camera_fpga_version': meta.oct_camera_fpga_version,
+        }
 
         return EyeBscanMeta(  #quality=meta.quality,
             start_pos=((meta['start_x']),
@@ -332,7 +407,7 @@ class E2ESliceStructure(E2EStructureMixin):
             end_pos=((meta['end_x']),
                      (meta['end_y'])),
             pos_unit='°',
-            **dataclasses.asdict(meta))
+            **meta_dict)
 
     def get_bscan(self) -> np.ndarray:
         """Return the slice image (B-scan)"""
@@ -370,6 +445,8 @@ class E2ESeriesStructure(E2EStructureMixin):
         self.id = id
         self.substructure: dict[int, E2ESliceStructure] = {}
         self.folders: dict[Union[int, str], list[E2EFolder]] = {}
+        self.study: Optional[E2EStudyStructure] = None
+        self.patient: Optional[E2EPatientStructure] = None
 
         self._meta = None
         self._bscan_meta = None
@@ -385,6 +462,458 @@ class E2ESeriesStructure(E2EStructureMixin):
             ('Oct Modality:', 9008, 1),
             ('Enface Modality:', 9007, 1),
         ]
+
+    def _folders_for(
+        self,
+        structure: Optional[E2EStructureMixin],
+        folder_type: Union[TypesEnum, int],
+    ) -> list[E2EFolder]:
+        if structure is None:
+            return []
+        return structure.folders.get(folder_type, [])
+
+    def _first_folder(
+        self,
+        structure: Optional[E2EStructureMixin],
+        folder_type: Union[TypesEnum, int],
+    ) -> Optional[E2EFolder]:
+        folders = self._folders_for(structure, folder_type)
+        return folders[0] if folders else None
+
+    def _first_series_folder(self, folder_type: Union[TypesEnum,
+                                                       int]) -> Optional[E2EFolder]:
+        return self._first_folder(self, folder_type)
+
+    def _first_study_folder(self, folder_type: Union[TypesEnum,
+                                                      int]) -> Optional[E2EFolder]:
+        return self._first_folder(self.study, folder_type)
+
+    def _first_patient_folder(
+        self,
+        folder_type: Union[TypesEnum, int],
+    ) -> Optional[E2EFolder]:
+        return self._first_folder(self.patient, folder_type)
+
+    def _sorted_slices(self) -> list[E2ESliceStructure]:
+        def sort_key(slice_structure: E2ESliceStructure) -> tuple[int, int]:
+            if TypesEnum.bscanmeta not in slice_structure.folders:
+                return (sys.maxsize, slice_structure.id)
+            return (slice_structure.folders[TypesEnum.bscanmeta][0].data.aktImage,
+                    slice_structure.id)
+
+        return sorted(self.slices.values(), key=sort_key)
+
+    def _bscanmeta_items(self) -> list[Type10004]:
+        items = []
+        for slice_structure in self._sorted_slices():
+            folder = self._first_folder(slice_structure, TypesEnum.bscanmeta)
+            if folder is not None:
+                items.append(folder.data)
+        return items
+
+    def _bscanmeta_item(self, bscan_index: int) -> Type10004:
+        items = self._bscanmeta_items()
+        if bscan_index < 0 or bscan_index >= len(items):
+            raise IndexError(
+                f'bscan_index {bscan_index} is out of range for {len(items)} B-scans.'
+            )
+        return items[bscan_index]
+
+    def _first_type39_raw(self) -> Optional[bytes]:
+        for slice_structure in self._sorted_slices():
+            folder = self._first_folder(slice_structure, TypesEnum.localizer_settings)
+            if folder is not None:
+                return folder.data.raw
+        return None
+
+    def _type39_uint8(self, offset: int) -> Optional[int]:
+        raw = self._first_type39_raw()
+        if raw is None or len(raw) <= offset:
+            return None
+        return raw[offset]
+
+    def _type39_uint32(self, offset: int) -> Optional[int]:
+        raw = self._first_type39_raw()
+        if raw is None or len(raw) < offset + 4:
+            return None
+        return struct.unpack_from('<I', raw, offset)[0]
+
+    def _type39_version(self, offset: int) -> Optional[str]:
+        raw = self._first_type39_raw()
+        if raw is None or len(raw) < offset + 4:
+            return None
+        return _format_version(raw[offset:offset + 4])
+
+    def _type39_codes(self) -> list[str]:
+        raw = self._first_type39_raw()
+        if raw is None:
+            return []
+        return _extract_ascii_codes(raw)
+
+    def _type13_strings(self) -> list[str]:
+        folder = self._first_study_folder(TypesEnum.application_data)
+        if folder is None:
+            return []
+        return folder.data.text
+
+    def _camera_model(self) -> Optional[str]:
+        for text in self._type13_strings():
+            if 'Spectralis' in text:
+                return re.sub(r'\s*\+\s*', '+', text).replace('HRA+', 'HRA+')
+        return None
+
+    def _application(self) -> Optional[str]:
+        examined_structure = self._series_text(TypesEnum.examined_structure, 0)
+        for text in self._type13_strings():
+            if text == examined_structure:
+                return text
+        return examined_structure
+
+    def _series_text(self, folder_type: Union[TypesEnum, int],
+                     index: int = 0) -> Optional[str]:
+        folder = self._first_series_folder(folder_type)
+        if folder is None:
+            return None
+        text = folder.data.text
+        if index >= len(text):
+            return None
+        return text[index]
+
+    def _study_text(self, folder_type: Union[TypesEnum, int],
+                    index: int = 0) -> Optional[str]:
+        folder = self._first_study_folder(folder_type)
+        if folder is None:
+            return None
+        text = folder.data.text
+        if index >= len(text):
+            return None
+        return text[index]
+
+    def _series_exam_time_iso(self) -> Optional[str]:
+        folder = self._first_series_folder(TypesEnum.examination_time)
+        if folder is None:
+            return None
+        return folder.data.examination_time
+
+    def _series_date_iso(self) -> Optional[str]:
+        exam_time = self._series_exam_time_iso()
+        if exam_time is None:
+            return None
+        return datetime.datetime.fromisoformat(exam_time).date().isoformat()
+
+    def get_focus_candidate_raw(self) -> Optional[float]:
+        items = self._bscanmeta_items()
+        if not items:
+            return None
+        return items[0].focus_candidate_raw
+
+    def _derive_scan_focus_diopters(self) -> Optional[float]:
+        raw_value = self.get_focus_candidate_raw()
+        if raw_value is None:
+            return None
+        return 1.079 * math.copysign(max(abs(raw_value) - 3.505, 0.0), raw_value)
+
+    def get_x_scale_derivation(self) -> dict[str, Optional[float]]:
+        items = self._bscanmeta_items()
+        if not items:
+            return {
+                'angular_width_deg': None,
+                'img_size_width': None,
+                'constant_um_per_deg': MEDIUM_EYE_LENGTH_UM_PER_DEG,
+                'scaling_x_um_per_pixel': None,
+            }
+
+        bscan_meta = items[0]
+        angular_width_deg = abs(bscan_meta.end_x - bscan_meta.start_x)
+        scaling_x = (angular_width_deg / bscan_meta.imgSizeWidth *
+                     MEDIUM_EYE_LENGTH_UM_PER_DEG)
+        return {
+            'angular_width_deg': angular_width_deg,
+            'img_size_width': bscan_meta.imgSizeWidth,
+            'constant_um_per_deg': MEDIUM_EYE_LENGTH_UM_PER_DEG,
+            'scaling_x_um_per_pixel': scaling_x,
+        }
+
+    def _oct_quality_db(self, bscan_index: Optional[int]) -> Optional[int]:
+        if bscan_index is None:
+            return None
+        return round(self._bscanmeta_item(bscan_index).quality_ui)
+
+    def _oct_art_mode(self, bscan_index: Optional[int]) -> Optional[int]:
+        if bscan_index is None:
+            return None
+        return self._bscanmeta_item(bscan_index).art_mode
+
+    def _oct_acquisition_time(self,
+                              bscan_index: Optional[int]) -> Optional[str]:
+        if bscan_index is None:
+            return None
+        return self._bscanmeta_item(bscan_index).acquisitionTime
+
+    def _bscan_vertical_span_deg(self) -> Optional[float]:
+        items = self._bscanmeta_items()
+        if not items:
+            return None
+        centers = [item.center_y for item in items]
+        return max(centers) - min(centers)
+
+    def _build_heyex_metadata(
+        self,
+        bscan_index: Optional[int] = None,
+    ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+        patient_folder = self._first_patient_folder(TypesEnum.patient)
+        patient_data = patient_folder.data if patient_folder is not None else None
+        exam_time_iso = self._series_exam_time_iso()
+        exam_time = _format_time(exam_time_iso)
+        focus_diopters = self._derive_scan_focus_diopters()
+        focus_text = _format_scan_focus(focus_diopters)
+        x_scale_info = self.get_x_scale_derivation()
+        scaling_x = x_scale_info['scaling_x_um_per_pixel']
+        bscan_meta = self._bscanmeta_items()[0] if self._bscanmeta_items() else None
+        localizer_folder = self._first_series_folder(TypesEnum.image)
+        localizer_size_x = None
+        localizer_size_y = None
+        if localizer_folder is not None and localizer_folder.data.type == 33620481:
+            localizer_size_x = localizer_folder.data.width
+            localizer_size_y = localizer_folder.data.height
+
+        oct_scan_angle = None
+        size_x = None
+        size_z = None
+        scaling_z = None
+        pattern_height_deg = self._bscan_vertical_span_deg()
+        if bscan_meta is not None:
+            oct_scan_angle = abs(bscan_meta.end_x - bscan_meta.start_x)
+            size_x = bscan_meta.size_x
+            size_z = bscan_meta.size_y
+            scaling_z = bscan_meta.scale_y * 1000
+
+        pattern_height_mm = (None if pattern_height_deg is None else
+                             pattern_height_deg * MEDIUM_EYE_LENGTH_UM_PER_DEG /
+                             1000)
+        distance_between_bscans_um = None
+        if pattern_height_deg is not None and self.n_bscans > 1:
+            distance_between_bscans_um = (
+                pattern_height_deg * MEDIUM_EYE_LENGTH_UM_PER_DEG /
+                (self.n_bscans - 1))
+
+        model_codes = self._type39_codes()
+        camera_model_code = None
+        if len(model_codes) >= 2:
+            camera_model_code = '/'.join(model_codes[:2])
+        elif model_codes:
+            camera_model_code = model_codes[0]
+
+        ir_art_mode = self._type39_uint8(376)
+        ir_dc_sensitivity = self._type39_uint8(8)
+        ir_total_sensitivity = self._type39_uint8(116)
+        oct_art_mode = self._oct_art_mode(bscan_index)
+        oct_quality_db = self._oct_quality_db(bscan_index)
+        oct_acquisition_time = _format_time(self._oct_acquisition_time(bscan_index))
+
+        metadata = {
+            'Patient': {
+                'First Name': patient_data.firstname.strip()
+                if patient_data is not None else None,
+                'Surname': patient_data.surname.strip()
+                if patient_data is not None else None,
+                'Patient ID': patient_data.patient_id.strip()
+                if patient_data is not None else None,
+                'Date of Birth': None,
+                'Sex': patient_data.sex.strip() if patient_data is not None else None,
+            },
+            'Container': {
+                'Series ID': str(self.id),
+                'Series Date': self._series_date_iso(),
+                'Image Count': str(self.n_bscans),
+                'Laterality': self.laterality(),
+                'Scan Pattern': self._series_text(TypesEnum.scanpattern, 0),
+                'Enface Modality': self.enface_modality(),
+                'OCT Modality': self._series_text(TypesEnum.oct_modality, 1),
+            },
+            'General Parameters': {
+                'Resolution Mode': None,
+                'Scan Focus': focus_text,
+                'Camera Objective': None,
+                'Internal Target': None,
+                'External Target': None,
+                'Examination Time': exam_time,
+                'Examined Structure': self._series_text(TypesEnum.examined_structure,
+                                                        0),
+                'Application': self._application(),
+            },
+            'IR Image': {
+                'Scan Angle': '30°' if localizer_size_x is not None else None,
+                'Size X': _format_px_mm(localizer_size_x, scaling_x)
+                if localizer_size_x is not None else None,
+                'Size Y': _format_px_mm(localizer_size_y, scaling_x)
+                if localizer_size_y is not None else None,
+                'Scaling': None if scaling_x is None else f'{scaling_x:.2f} µm/pixel',
+                'ART Mode': None if ir_art_mode is None else
+                f'ON ({ir_art_mode} images averaged)',
+                'ART Normalization': None,
+                'Sensitivity (DC/DC)': None if ir_dc_sensitivity is None else
+                f'{ir_dc_sensitivity}%',
+                'Total Sensitivity': None if ir_total_sensitivity is None else
+                str(ir_total_sensitivity),
+                'IR Laser Power': None,
+                'Filter State': None,
+                'Lookup Table': None,
+                'ERG Mode': None,
+                'Auto-Brightness State': None,
+                'Grey Value Offset': None,
+            },
+            'OCT Image': {
+                'Scan Angle': None if oct_scan_angle is None else
+                f'{round(oct_scan_angle):d}°',
+                'Size X': _format_px_mm(size_x, scaling_x)
+                if size_x is not None else None,
+                'Size Z': _format_px_mm(size_z, scaling_z)
+                if size_z is not None and scaling_z is not None else None,
+                'Scaling X': None if scaling_x is None else
+                f'{scaling_x:.2f} µm/pixel',
+                'Scaling Z': None if scaling_z is None else
+                f'{scaling_z:.2f} µm/pixel',
+                'ART Mode': None if oct_art_mode is None else
+                f'ON ({oct_art_mode} images averaged)',
+                'A-Scan Rate': None,
+                'Eye Length': None,
+                'Quality': None if oct_quality_db is None else f'{oct_quality_db} dB',
+                'EDI Mode': None,
+                'EVI Mode': None,
+                'Acquisition Time': oct_acquisition_time,
+            },
+            'OCT Scan Pattern': {
+                'Number of B-Scans': str(self.n_bscans),
+                'Pattern Size': None if oct_scan_angle is None or
+                pattern_height_deg is None or scaling_x is None or
+                pattern_height_mm is None else
+                f'{round(oct_scan_angle):d}° x {pattern_height_deg:.1f}° ({size_x * scaling_x / 1000:.1f} x {pattern_height_mm:.1f} mm)',
+                'Distance between B-Scans': None if distance_between_bscans_um is None
+                else f'{round(distance_between_bscans_um):d} µm',
+            },
+            'Device': {
+                'Camera Model': self._camera_model(),
+                'Camera Model Code': camera_model_code,
+                'Camera S/N': None if self._type39_uint32(104) is None else
+                f'{self._type39_uint32(104):06d}',
+                'Power Supply S/N': None if self._type39_uint32(108) is None else
+                f'{self._type39_uint32(108):06d}',
+                'Touch Panel S/N': None if self._type39_uint32(112) is None else
+                f'{self._type39_uint32(112):06d}',
+                'HRA Camera FW Version': self._type39_version(128),
+                'Power Supply FW Version': self._type39_version(132),
+                'Touch Panel FW Version': self._type39_version(136),
+                'OCT Camera FW Version': None if bscan_meta is None else
+                bscan_meta.oct_camera_fw_version,
+                'OCT Controller FW Version': None if bscan_meta is None else
+                bscan_meta.oct_controller_fw_version,
+                'OCT Camera FPGA Version': None if bscan_meta is None else
+                bscan_meta.oct_camera_fpga_version,
+                'Acquisition Software Version': self._type39_version(140),
+            },
+        }
+
+        sources = {
+            'Patient': {
+                'First Name': 'Type9@patient+offset0:ascii'
+                if patient_data is not None else None,
+                'Surname': 'Type9@patient+offset31:ascii'
+                if patient_data is not None else None,
+                'Patient ID': 'Type9@patient+offset106:ascii'
+                if patient_data is not None else None,
+                'Date of Birth': None,
+                'Sex': 'Type9@patient+offset101:ascii'
+                if patient_data is not None else None,
+            },
+            'Container': {
+                'Series ID': 'ContainerHeader.series_id',
+                'Series Date': 'derived from Type10005@series+offset16',
+                'Image Count': 'derived from Type10004.n_bscans',
+                'Laterality': 'Type11@series+offset14',
+                'Scan Pattern': 'Type9006@series[0]',
+                'Enface Modality': 'Type9007@series[1]',
+                'OCT Modality': 'Type9008@series[1]',
+            },
+            'General Parameters': {
+                'Resolution Mode': None,
+                'Scan Focus': 'provisional derived from Type10004@bscan0+offset140:float32',
+                'Camera Objective': None,
+                'Internal Target': None,
+                'External Target': None,
+                'Examination Time': 'Type10005@series+offset16:DateTime',
+                'Examined Structure': 'Type9005@series[0]',
+                'Application': 'Type13@study (fallback Type9005@series[0])',
+            },
+            'IR Image': {
+                'Scan Angle': 'derived from current localizer field size assumption',
+                'Size X': 'derived from localizer width and provisional Scaling',
+                'Size Y': 'derived from localizer height and provisional Scaling',
+                'Scaling': 'provisional derived from Type10004.start_x/end_x/imgSizeWidth',
+                'ART Mode': 'Type39@slice0+offset376:uint8',
+                'ART Normalization': None,
+                'Sensitivity (DC/DC)': 'Type39@slice0+offset8:uint8',
+                'Total Sensitivity': 'Type39@slice0+offset116:uint8',
+                'IR Laser Power': None,
+                'Filter State': None,
+                'Lookup Table': None,
+                'ERG Mode': None,
+                'Auto-Brightness State': None,
+                'Grey Value Offset': None,
+            },
+            'OCT Image': {
+                'Scan Angle': 'derived from Type10004.start_x/end_x',
+                'Size X': 'Type10004.size_x plus provisional Scaling X',
+                'Size Z': 'Type10004.size_y and Type10004.scale_y',
+                'Scaling X': 'provisional derived from Type10004.start_x/end_x/imgSizeWidth',
+                'Scaling Z': 'Type10004.scale_y',
+                'ART Mode': None if bscan_index is None else
+                f'Type10004@bscan{bscan_index}+offset120:uint32',
+                'A-Scan Rate': None,
+                'Eye Length': None,
+                'Quality': None if bscan_index is None else
+                f'Type10004@bscan{bscan_index}+offset156:float32',
+                'EDI Mode': None,
+                'EVI Mode': None,
+                'Acquisition Time': None if bscan_index is None else
+                f'Type10004@bscan{bscan_index}+offset88:DateTime',
+            },
+            'OCT Scan Pattern': {
+                'Number of B-Scans': 'Type10004.n_bscans',
+                'Pattern Size': 'derived from Type10004 centers and provisional Scaling X',
+                'Distance between B-Scans': 'derived from Type10004 centers and provisional Medium eye-length constant',
+            },
+            'Device': {
+                'Camera Model': 'Type13@study',
+                'Camera Model Code': 'Type39 raw ASCII model codes',
+                'Camera S/N': 'Type39@slice0+offset104:uint32',
+                'Power Supply S/N': 'Type39@slice0+offset108:uint32',
+                'Touch Panel S/N': 'Type39@slice0+offset112:uint32',
+                'HRA Camera FW Version': 'Type39@slice0+offset128:bytes4',
+                'Power Supply FW Version': 'Type39@slice0+offset132:bytes4',
+                'Touch Panel FW Version': 'Type39@slice0+offset136:bytes4',
+                'OCT Camera FW Version': 'Type10004@bscan0+offset128:bytes4 (may need swapping with FPGA later)',
+                'OCT Controller FW Version': 'Type10004@bscan0+offset124:bytes4',
+                'OCT Camera FPGA Version': 'Type10004@bscan0+offset132:bytes4 (may need swapping with camera FW later)',
+                'Acquisition Software Version': 'Type39@slice0+offset140:bytes4',
+            },
+        }
+
+        return metadata, sources
+
+    def get_heyex_metadata(
+        self,
+        bscan_index: Optional[int] = None,
+    ) -> dict[str, dict[str, Any]]:
+        metadata, _ = self._build_heyex_metadata(bscan_index=bscan_index)
+        return metadata
+
+    def get_heyex_metadata_sources(
+        self,
+        bscan_index: Optional[int] = None,
+    ) -> dict[str, dict[str, Any]]:
+        _, sources = self._build_heyex_metadata(bscan_index=bscan_index)
+        return sources
 
     def add_folder(self, folder: E2EFolder) -> None:
         """Add a folder to the Series.
@@ -642,6 +1171,7 @@ class E2EStudyStructure(E2EStructureMixin):
         self.id = id
         self.substructure: dict[int, E2ESeriesStructure] = {}
         self.folders: dict[Union[int, str], list[E2EFolder]] = {}
+        self.patient: Optional[E2EPatientStructure] = None
 
         self._section_description_parts = [('Device:', 9001, 0),
                                            ('Studyname:', 9000, 0)]
@@ -667,6 +1197,9 @@ class E2EStudyStructure(E2EStructureMixin):
             if folder.series_id not in self.series:
                 self.series[folder.series_id] = E2ESeriesStructure(
                     folder.series_id)
+                self.series[folder.series_id].study = self
+                self.series[folder.series_id].patient = getattr(
+                    self, 'patient', None)
             self.series[folder.series_id].add_folder(folder)
 
 
@@ -701,6 +1234,7 @@ class E2EPatientStructure(E2EStructureMixin):
             if folder.study_id not in self.studies:
                 self.studies[folder.study_id] = E2EStudyStructure(
                     folder.study_id)
+                self.studies[folder.study_id].patient = self
             self.studies[folder.study_id].add_folder(folder)
 
 

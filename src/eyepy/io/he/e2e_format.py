@@ -150,9 +150,12 @@ class LateralityEnum(EnumBase):
 class TypesEnum(EnumBase):
     """Enum for types of data stored in .e2e files."""
     patient = EnumValue(9)
+    application_data = EnumValue(13)
     laterality = EnumValue(11)
     diagnose = EnumValue(17)
+    localizer_settings = EnumValue(39)
     bscanmeta = EnumValue(10004)
+    examination_time = EnumValue(10005)
     layer_annotation = EnumValue(10019)
     slodata = EnumValue(10025)
     image = EnumValue(1073741824)
@@ -227,6 +230,41 @@ class Type10004(DataclassMixin, TypeMixin):
         'Quality according to LibE2E<br>**Does not match the quality value in the XML export which is an integer compared to a float here with value 0.84 for a complete volume. Maybe this is the focus length, at least it is similar to the value given in the XML (0.87)**'
     )
     unknown5: float = csfield(cs.Float32l)
+    unknown6: bytes = csfield(cs.Bytes(12))
+    art_mode: int = csfield(
+        cs.Int32ul,
+        doc='Per-B-scan ART count as shown in the HEYEX OCT metadata export.',
+    )
+    oct_controller_fw_raw: bytes = csfield(cs.Bytes(4))
+    oct_camera_fw_raw: bytes = csfield(cs.Bytes(4))
+    oct_camera_fpga_raw: bytes = csfield(cs.Bytes(4))
+    unknown7: bytes = csfield(cs.Bytes(4))
+    focus_candidate_raw: float = csfield(
+        cs.Float32l,
+        doc='Strong provisional candidate for scan focus.',
+    )
+    unknown8: bytes = csfield(cs.Bytes(12))
+    quality_ui: float = csfield(
+        cs.Float32l,
+        doc='Per-B-scan quality value used by the HEYEX OCT metadata export.',
+    )
+    rest: bytes = csfield(cs.GreedyBytes)
+
+    @staticmethod
+    def _format_version(raw: bytes) -> str:
+        return '.'.join(str(part) for part in raw)
+
+    @property
+    def oct_controller_fw_version(self) -> str:
+        return self._format_version(self.oct_controller_fw_raw)
+
+    @property
+    def oct_camera_fw_version(self) -> str:
+        return self._format_version(self.oct_camera_fw_raw)
+
+    @property
+    def oct_camera_fpga_version(self) -> str:
+        return self._format_version(self.oct_camera_fpga_raw)
 
 
 type10004_format = DataclassStruct(Type10004)
@@ -302,6 +340,23 @@ class Type9(DataclassMixin, TypeMixin):
 
 
 type9_format = DataclassStruct(Type9)
+
+
+@dataclasses.dataclass
+class Type13(DataclassMixin, TypeMixin):
+    """Study/application/device-description strings.
+
+    Size: variable
+    """
+    raw: bytes = csfield(cs.Bytes(cs.this._.header.size))
+
+    @property
+    def text(self) -> t.List[str]:
+        decoded = self.raw.decode('utf-16le', errors='ignore')
+        return [part.strip() for part in decoded.split('\x00') if part.strip()]
+
+
+type13_format = DataclassStruct(Type13)
 
 
 @dataclasses.dataclass
@@ -578,10 +633,38 @@ class Type10025(DataclassMixin, TypeMixin):
 
 type10025_format = DataclassStruct(Type10025)
 
+
+@dataclasses.dataclass
+class Type39(DataclassMixin, TypeMixin):
+    """IR/localizer and device setting payload for a slice.
+
+    Size: variable
+    """
+    raw: bytes = csfield(cs.Bytes(cs.this._.header.size))
+
+
+type39_format = DataclassStruct(Type39)
+
+
+@dataclasses.dataclass
+class Type10005(DataclassMixin, TypeMixin):
+    """Series / examination timestamp.
+
+    Size: 24 bytes
+    """
+    unknown: bytes = csfield(cs.Bytes(16))
+    examination_time: str = csfield(DateTime)
+
+
+type10005_format = DataclassStruct(Type10005)
+
 item_switch = cs.Switch(cs.this.header.type, {
     TypesEnum.patient: type9_format,
+    TypesEnum.application_data: type13_format,
     TypesEnum.laterality: type11_format,
+    TypesEnum.localizer_settings: type39_format,
     TypesEnum.bscanmeta: type10004_format,
+    TypesEnum.examination_time: type10005_format,
     TypesEnum.layer_annotation: type10019_format,
     TypesEnum.image: type1073741824_format,
     TypesEnum.measurements: type7_format,
@@ -794,7 +877,8 @@ __e2efile_structures__ = [
     ContainerHeader,
 ]
 __all_types__ = [
-    Type3, Type5, Type7, Type9, Type11, Type17, Type59, Type9000, Type9001,
-    Type9005, Type9006, Type9007, Type9008, Type10004, Type10010, Type10012,
-    Type10013, Type10019, Type10025, Type1073741824
+    Type3, Type5, Type7, Type9, Type11, Type13, Type17, Type39, Type59,
+    Type9000, Type9001, Type9005, Type9006, Type9007, Type9008, Type10004,
+    Type10005, Type10010, Type10012, Type10013, Type10019, Type10025,
+    Type1073741824
 ]
