@@ -101,10 +101,26 @@ class DateTimeAdapter(cs.Adapter):
                  self.start_epoch).total_seconds() * 1e7))
 
 
+class SingleByteStringAdapter(cs.Adapter):
+
+    def __init__(self, length: int, encoding: str = 'latin1'):
+        super().__init__(cs.Bytes(length))
+        self.length = length
+        self.encoding = encoding
+
+    def _decode(self, obj: bytes, context, path):
+        return obj.split(b'\x00', 1)[0].decode(self.encoding, errors='replace')
+
+    def _encode(self, obj: str, context, path):
+        encoded = obj.encode(self.encoding, errors='replace')
+        return encoded.ljust(self.length, b'\x00')[:self.length]
+
+
 LocalizerNIR = LocalizerNIRAdapter(cs.Bytes(cs.this.n_values))
 Segmentation = SegmentationAdapter(cs.Bytes(cs.this.width * 4))
 Bscan = BscanAdapter(cs.Bytes(cs.this.n_values * 2))
 DateTime = DateTimeAdapter(cs.Bytes(8))
+Latin1String = SingleByteStringAdapter
 
 
 def _type10019_padding_values(context) -> int:
@@ -278,11 +294,11 @@ class Type9(DataclassMixin, TypeMixin):
 
     Notes:
     """
-    firstname: str = csfield(cs.PaddedString(31, 'ascii'))
-    surname: str = csfield(cs.PaddedString(66, 'ascii'))
+    firstname: str = csfield(Latin1String(31))
+    surname: str = csfield(Latin1String(66))
     birthdate: int = csfield(cs.Int32ul)
     sex: str = csfield(cs.PaddedString(1, 'ascii'))
-    patient_id: str = csfield(cs.PaddedString(25, 'ascii'))
+    patient_id: str = csfield(Latin1String(25))
 
 
 type9_format = DataclassStruct(Type9)
