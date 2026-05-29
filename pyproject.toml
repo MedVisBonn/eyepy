@@ -1,6 +1,6 @@
 [project]
 name = "eyepy"
-version = "0.19.2"
+version = "0.20.0"
 description = "A python package to read, analyse and visualize OCT and fundus data form various sources."
 authors = [{ name = "Olivier Morelle", email = "oli4morelle@gmail.com" }]
 requires-python = ">=3.10,<4.0"
@@ -53,6 +53,7 @@ all = [
 [project.urls]
 Repository = "https://github.com/MedVisBonn/eyepy"
 
+
 [dependency-groups]
 test = [
     "pytest>=8.0.0,<9",
@@ -102,9 +103,6 @@ include = ["src/eyepy"]
 [tool.hatch.build.targets.wheel.sources]
 "src/eyepy" = "eyepy"
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
 
 [tool.semantic_release]
 allow_zero_version = true
@@ -134,3 +132,8 @@ blank = false
 
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+

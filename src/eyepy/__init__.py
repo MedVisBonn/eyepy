@@ -27,7 +27,7 @@
 
 __author__ = """Olivier Morelle"""
 __email__ = 'oli4morelle@gmail.com'
-__version__ = '0.19.2'
+__version__ = '0.20.0'
 
 from eyepy.core import drusen
 from eyepy.core import EyeBscan
