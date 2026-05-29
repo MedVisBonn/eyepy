@@ -131,22 +131,8 @@ def import_heyex_e2e(path: Union[str, Path]) -> EyeVolume:
 
     Returns:
         Parsed data as EyeVolume object
-
-    Raises:
-        ImportError: If E2E extras are not installed (construct-typing)
-
-    Notes
-    -----
-    This function requires additional dependencies.
-    Install with: `pip install eyepy[e2e]`
     """
-    try:
-        from .he import HeE2eReader
-    except ImportError as exc:
-        raise ImportError(
-            'Reading E2E files requires additional dependencies.'
-            'Install with pip install eyepy[e2e]'
-        ) from exc
+    from .he import HeE2eReader
 
     reader = HeE2eReader(path)
     if len(reader.series) < 1:
