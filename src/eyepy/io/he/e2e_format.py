@@ -107,6 +107,21 @@ Bscan = BscanAdapter(cs.Bytes(cs.this.n_values * 2))
 DateTime = DateTimeAdapter(cs.Bytes(8))
 
 
+def _type10019_padding_values(context) -> int:
+    """Return additional uint32 values before Type10019 segmentation data."""
+    try:
+        size = context._.header.size
+    except (AttributeError, KeyError):
+        return 0
+
+    padding_bytes = size - 16 - context.width * 4
+    if padding_bytes < 0 or padding_bytes % 4:
+        logger.debug('Unexpected Type10019 size: %s', size)
+        return 0
+
+    return padding_bytes // 4
+
+
 class LateralityEnum(EnumBase):
     """Enum for laterality of eye.
 
@@ -285,6 +300,9 @@ class Type10019(DataclassMixin, TypeMixin):
     id: int = csfield(cs.Int32ul, doc='ID of the layer')
     unknown1: int = csfield(cs.Int32ul)
     width: int = csfield(cs.Int32ul, doc='Width of the layer')
+    unknown2: t.List[int] = csfield(
+        cs.Array(_type10019_padding_values, cs.Int32ul),
+        doc='Additional values before the layer annotation data')
     data: t.List[float] = csfield(Segmentation, doc='Layer annotation data')
 
 
