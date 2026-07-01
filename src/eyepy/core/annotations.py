@@ -327,6 +327,17 @@ class EyeVolumeLayerAnnotation:
         """Knots parameterizing the layer."""
         return self.meta['knots']
 
+    @property
+    def manual(self) -> list[bool | None]:
+        """Whether each B-scan layer segment was manually altered."""
+        if 'manual' not in self.meta:
+            self.meta['manual'] = [None] * self.volume.size_z
+        return self.meta['manual']
+
+    @manual.setter
+    def manual(self, value: list[bool | None]) -> None:
+        self.meta['manual'] = value
+
     def layer_indices(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Returns pixel indices of the layer in the volume.
 
@@ -1075,6 +1086,15 @@ class EyeBscanLayerAnnotation:
     @knots.setter
     def knots(self, value: list) -> None:
         self.eyevolumelayerannotation.knots[self.index] = value
+
+    @property
+    def manual(self) -> bool | None:
+        """Whether this B-scan layer segment was manually altered."""
+        return self.eyevolumelayerannotation.manual[self.index]
+
+    @manual.setter
+    def manual(self, value: bool | None) -> None:
+        self.eyevolumelayerannotation.manual[self.index] = value
 
 
 class EyeBscanSlabAnnotation:

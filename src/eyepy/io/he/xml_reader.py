@@ -22,6 +22,13 @@ from eyepy.io.utils import get_bscan_spacing
 
 logger = logging.getLogger(__name__)
 
+
+def _get_bool_from_xml_text(element: ElementTree.Element | None) -> bool | None:
+    if element is None or element.text is None:
+        return None
+    return element.text.strip().lower() == 'true'
+
+
 xml_format = {
     # Version
     'version': ('./SWVersion/Version', _get_first_as_str),
@@ -297,6 +304,7 @@ class HeXmlReader:
 
         bscans = []
         layer_heights = {}
+        layer_manual = {}
         for index, bscan_root in enumerate(
                 self.xml_root[0].findall(".//ImageType[Type='OCT']..")):
             scan_name = bscan_root.find('./ImageData/ExamURL').text.split(
@@ -317,7 +325,10 @@ class HeXmlReader:
                 data[data == 3.0e+38] = np.nan
                 if name not in layer_heights:
                     layer_heights[name] = []
+                    layer_manual[name] = []
                 layer_heights[name].append((index, data))
+                layer_manual[name].append(
+                    (index, _get_bool_from_xml_text(segline.find('./Manual'))))
 
         data = np.stack(bscans, axis=0)
 
@@ -327,10 +338,18 @@ class HeXmlReader:
                           dtype=np.float32)
             for name in layer_heights
         }
+        layer_manual_maps = {
+            name: [None] * data.shape[0]
+            for name in layer_manual
+        }
 
         for name, heights in layer_heights.items():
             for index, layer_height in heights:
                 layer_height_maps[name][index, :] = layer_height
+
+        for name, manual_values in layer_manual.items():
+            for index, manual in manual_values:
+                layer_manual_maps[name][index] = manual
 
         localizer = self.localizer
         volume_meta = self.meta
@@ -345,6 +364,10 @@ class HeXmlReader:
         )
 
         for name, height_map in layer_height_maps.items():
-            volume.add_layer_annotation(height_map, name=name)
+            volume.add_layer_annotation(
+                height_map,
+                name=name,
+                manual=layer_manual_maps[name],
+            )
 
         return volume
