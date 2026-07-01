@@ -124,18 +124,19 @@ Latin1String = SingleByteStringAdapter
 
 
 def _type10019_padding_values(context) -> int:
-    """Return additional uint32 values before Type10019 segmentation data."""
+    """Return number of padding uint32 values before Type10019 segmentation
+    data."""
     try:
         size = context._.header.size
     except (AttributeError, KeyError):
-        return 0
+        return -1
 
     padding_bytes = size - 16 - context.width * 4
     if padding_bytes < 0 or padding_bytes % 4:
         logger.debug('Unexpected Type10019 size: %s', size)
-        return 0
+        return -1
 
-    return padding_bytes // 4
+    return padding_bytes // 4 - 1
 
 
 class LateralityEnum(EnumBase):
@@ -371,6 +372,8 @@ class Type10019(DataclassMixin, TypeMixin):
     id: int = csfield(cs.Int32ul, doc='ID of the layer')
     unknown1: int = csfield(cs.Int32ul)
     width: int = csfield(cs.Int32ul, doc='Width of the layer')
+    manual_edit_raw: int = csfield(cs.Int32ul,
+        doc='Manual edit flag; non-zero means the layer was manually edited')
     unknown2: t.List[int] = csfield(
         cs.Array(_type10019_padding_values, cs.Int32ul),
         doc='Additional values before the layer annotation data')

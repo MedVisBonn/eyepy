@@ -365,6 +365,18 @@ class E2ESliceStructure(E2EStructureMixin):
             layers[layer_folder.data.id] = layer_folder.data.data
         return layers
 
+    def get_layer_manual_flags(self) -> dict[int, bool]:
+        """Return manual edit flags by layer id.
+
+        For Type10019 layer annotations, the ``manual_edit_raw`` field
+        indicates whether the B-scan layer was manually changed.
+        """
+        manual_flags = {}
+        for layer_folder in self.folders[TypesEnum.layer_annotation]:
+            layer_data = layer_folder.data
+            manual_flags[layer_data.id] = bool(layer_data.manual_edit_raw)
+        return manual_flags
+
     def _get_bscanmeta_data(self) -> Type10004:
         if self._bscanmeta_data is None:
             folder = self.folders[TypesEnum.bscanmeta][0]
@@ -1076,9 +1088,14 @@ class E2ESeriesStructure(E2EStructureMixin):
         )
 
         layer_height_maps = self.get_layers()
+        layer_manual_maps = self.get_layer_manual_maps()
         for name, i in SEG_MAPPING.items():
             if i in layer_height_maps:
-                volume.add_layer_annotation(layer_height_maps[i], name=name)
+                volume.add_layer_annotation(
+                    layer_height_maps[i],
+                    name=name,
+                    manual=layer_manual_maps.get(i),
+                )
 
         return volume
 
@@ -1133,6 +1150,37 @@ class E2ESeriesStructure(E2EStructureMixin):
             layers[i] = layer
 
         return layers
+
+    def get_layer_manual_maps(self) -> dict[int, list[bool | None]]:
+        """Return manual edit flags for each layer and B-scan.
+
+        Entries may be ``None`` for B-scans without a corresponding layer
+        annotation.
+        """
+        slice_layer_manual = {}
+        layer_ids = set()
+
+        for ind, sl in self.slices.items():
+            manual_flags = sl.get_layer_manual_flags()
+            layer_ids.update(manual_flags.keys())
+            slice_layer_manual[ind // 2] = manual_flags
+
+        manual_maps = {}
+        for i in layer_ids:
+            manual = [None] * self.n_bscans
+            if self.n_bscans == 1:
+                manual[0] = slice_layer_manual[1].get(i)
+                manual_maps[i] = manual
+            else:
+                for sl in range(self.n_bscans):
+                    try:
+                        manual[sl] = slice_layer_manual[sl][i]
+                    except KeyError:
+                        pass
+
+            manual_maps[i] = manual
+
+        return manual_maps
 
     def enface_modality(self) -> str:
         folders = self.folders[TypesEnum.enface_modality]

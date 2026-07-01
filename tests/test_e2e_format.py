@@ -69,14 +69,15 @@ def _type10019_container(values, padding=()):
     return header + item
 
 
-@pytest.mark.parametrize('padding', [(), (0, 0, 0, 0, 0)])
+@pytest.mark.parametrize('padding', [(0, ), (0, 0, 0, 0, 0)])
 def test_type10019_parses_layer_data_after_variable_padding(padding):
     values = (1.25, 2.5, 3.75)
 
     parsed = datacontainer_format.parse(_type10019_container(values, padding))
 
     assert parsed.item.width == len(values)
-    assert list(parsed.item.unknown2) == list(padding)
+    assert parsed.item.manual_edit_raw == padding[0]
+    assert list(parsed.item.unknown2) == list(padding[1:])
     np.testing.assert_allclose(parsed.item.data, values)
 
 
