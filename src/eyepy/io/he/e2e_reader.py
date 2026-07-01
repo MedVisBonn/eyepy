@@ -36,6 +36,7 @@ from .e2e_format import DataContainer
 from .e2e_format import datacontainer_format
 from .e2e_format import e2e_format
 from .e2e_format import Type10004
+from .e2e_format import type10004_format
 from .e2e_format import Type10025
 from .e2e_format import TypesEnum
 from .vol_reader import SEG_MAPPING
@@ -264,6 +265,7 @@ class E2EFolder():
 
     _data = None
     _header = None
+    _bytes = None
 
     @property
     def file_object(self) -> BufferedReader:
@@ -323,8 +325,10 @@ class E2EFolder():
         or during initialization of the HeE2eReader. Otherwise the E2E
         file is not open.
         """
-        self.file_object.seek(self.start + containerheader_format.sizeof())
-        return self.file_object.read(self.size)
+        if self._bytes is None:
+            self.file_object.seek(self.start + containerheader_format.sizeof())
+            self._bytes = self.file_object.read(self.size)
+        return self._bytes
 
 
 class E2ESliceStructure(E2EStructureMixin):
@@ -337,6 +341,8 @@ class E2ESliceStructure(E2EStructureMixin):
     def __init__(self, id: int) -> None:
         self.id = id
         self.folders: dict[Union[int, str], list[E2EFolder]] = {}
+        self._meta = None
+        self._bscanmeta_data = None
 
         # Empty so inspect() does not fail
         self.substructure = {}
@@ -359,14 +365,23 @@ class E2ESliceStructure(E2EStructureMixin):
             layers[layer_folder.data.id] = layer_folder.data.data
         return layers
 
+    def _get_bscanmeta_data(self) -> Type10004:
+        if self._bscanmeta_data is None:
+            folder = self.folders[TypesEnum.bscanmeta][0]
+            self._bscanmeta_data = type10004_format.parse(folder.get_bytes())
+        return self._bscanmeta_data
+
     def get_meta(self) -> EyeBscanMeta:
         """Return the slice meta data."""
+        if self._meta is not None:
+            return self._meta
+
         if len(self.folders[TypesEnum.bscanmeta]) > 1:
             logger.warning(
                 'There is more than one bscanmeta object. This is not expected.'
             )
 
-        meta = self.folders[TypesEnum.bscanmeta][0].data
+        meta = self._get_bscanmeta_data()
         meta_dict = {
             'unknown0': meta.unknown0,
             'size_y': meta.size_y,
@@ -401,13 +416,14 @@ class E2ESliceStructure(E2EStructureMixin):
             'oct_camera_fpga_version': meta.oct_camera_fpga_version,
         }
 
-        return EyeBscanMeta(  #quality=meta.quality,
+        self._meta = EyeBscanMeta(  #quality=meta.quality,
             start_pos=((meta['start_x']),
                        (meta['start_y'])),
             end_pos=((meta['end_x']),
                      (meta['end_y'])),
             pos_unit='°',
             **meta_dict)
+        return self._meta
 
     def get_bscan(self) -> np.ndarray:
         """Return the slice image (B-scan)"""
@@ -451,6 +467,9 @@ class E2ESeriesStructure(E2EStructureMixin):
         self._meta = None
         self._bscan_meta = None
         self._localizer_meta = None
+        self._sorted_slices_cache = None
+        self._bscanmeta_items_cache = None
+        self._type39_raw_cache = None
         self._section_title = ''
         self._section_description = ''
 
@@ -495,21 +514,28 @@ class E2ESeriesStructure(E2EStructureMixin):
         return self._first_folder(self.patient, folder_type)
 
     def _sorted_slices(self) -> list[E2ESliceStructure]:
+        if self._sorted_slices_cache is not None:
+            return self._sorted_slices_cache
+
         def sort_key(slice_structure: E2ESliceStructure) -> tuple[int, int]:
             if TypesEnum.bscanmeta not in slice_structure.folders:
                 return (sys.maxsize, slice_structure.id)
-            return (slice_structure.folders[TypesEnum.bscanmeta][0].data.aktImage,
+            return (slice_structure._get_bscanmeta_data().aktImage,
                     slice_structure.id)
 
-        return sorted(self.slices.values(), key=sort_key)
+        self._sorted_slices_cache = sorted(self.slices.values(), key=sort_key)
+        return self._sorted_slices_cache
 
     def _bscanmeta_items(self) -> list[Type10004]:
+        if self._bscanmeta_items_cache is not None:
+            return self._bscanmeta_items_cache
+
         items = []
         for slice_structure in self._sorted_slices():
-            folder = self._first_folder(slice_structure, TypesEnum.bscanmeta)
-            if folder is not None:
-                items.append(folder.data)
-        return items
+            if TypesEnum.bscanmeta in slice_structure.folders:
+                items.append(slice_structure._get_bscanmeta_data())
+        self._bscanmeta_items_cache = items
+        return self._bscanmeta_items_cache
 
     def _bscanmeta_item(self, bscan_index: int) -> Type10004:
         items = self._bscanmeta_items()
@@ -520,10 +546,14 @@ class E2ESeriesStructure(E2EStructureMixin):
         return items[bscan_index]
 
     def _first_type39_raw(self) -> Optional[bytes]:
+        if self._type39_raw_cache is not None:
+            return self._type39_raw_cache
+
         for slice_structure in self._sorted_slices():
             folder = self._first_folder(slice_structure, TypesEnum.localizer_settings)
             if folder is not None:
-                return folder.data.raw
+                self._type39_raw_cache = folder.get_bytes()
+                return self._type39_raw_cache
         return None
 
     def _type39_uint8(self, offset: int) -> Optional[int]:
@@ -1181,9 +1211,10 @@ class E2ESeriesStructure(E2EStructureMixin):
     def get_bscan_meta(self) -> list[EyeBscanMeta]:
         """Return EyeBscanMeta objects for all B-scans in the series."""
         if self._bscan_meta is None:
-            self._bscan_meta = sorted(
-                [sl.get_meta() for sl in self.slices.values()],
-                key=lambda x: x['aktImage'])
+            self._bscan_meta = [
+                sl.get_meta() for sl in self._sorted_slices()
+                if TypesEnum.bscanmeta in sl.folders
+            ]
         return self._bscan_meta
 
     def get_meta(self) -> EyeVolumeMeta:
