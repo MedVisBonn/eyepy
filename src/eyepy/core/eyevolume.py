@@ -904,6 +904,37 @@ class EyeVolume:
             if name in bscan.slabs:
                 bscan.slabs.pop(name)
 
+    def quantify_thickness(
+        self,
+        top: str,
+        bottom: str,
+        grid: Optional['GridPreset'] = None,
+        **grid_kwargs,
+    ) -> 'EnfaceScalarQuantification':
+        """Mean retinal thickness between two layer boundaries.
+
+        Args:
+            top: Name of the upper layer in ``volume.layers``.
+            bottom: Name of the lower layer in ``volume.layers``.
+            grid: Standard grid preset shorthand (e.g. :data:`~eyepy.quant.ETDRS_9`).
+            **grid_kwargs: ETDRS grid parameters passed to
+                :class:`~eyepy.quant.enface_scalar.EnfaceScalarQuantification`.
+                Supported keys include ``radii``, ``n_sectors``, ``offsets``,
+                ``center``, ``names``, and ``grid``.
+
+        Returns:
+            EnfaceScalarQuantification with enface map and ETDRS statistics.
+        """
+        from eyepy.quant.enface_scalar import EnfaceScalarQuantification
+
+        return EnfaceScalarQuantification.from_layer_pair(
+            self,
+            top,
+            bottom,
+            grid=grid,
+            **grid_kwargs,
+        )
+
     def plot(
         self,
         ax: Optional[plt.Axes] = None,
@@ -912,6 +943,8 @@ class EyeVolume:
         bscan_region: bool = False,
         bscan_positions: Union[bool, list[int]] = False,
         quantification: Optional[str] = None,
+        thickness: Optional[Union[str, tuple[str, str]]] = None,
+        thickness_quantification: Optional[Union[str, tuple[str, str]]] = None,
         region: tuple[slice, slice] = np.s_[:, :],
         annotations_only: bool = False,
         projection_kwargs: Optional[dict] = None,
@@ -932,6 +965,8 @@ class EyeVolume:
             bscan_region: If `True` plot the region B-scans are located in (default: `False`)
             bscan_positions: If `True` plot positions of all B-scan (default: `False`). If a list of integers is given, plot the B-scans with the respective indices. Indexing starts at the bottom of the localizer.
             quantification: Name of the OCT volume annotations to plot a quantification for (default: `None`). Quantifications are performed on circular grids.
+            thickness: Layer pair ``(top, bottom)`` or voxel-annotation name for enface thickness map (default: `None`).
+            thickness_quantification: Layer pair ``(top, bottom)`` or voxel-annotation name for ETDRS mean-thickness plot (default: `None`).
             region: Region of the localizer to plot (default: `np.s_[...]`)
             annotations_only: If `True` localizer image is not plotted (defaualt: `False`)
             projection_kwargs: Optional keyword arguments for the projection plots. If `None` default values are used (default: `None`). If a dictionary is given, the keys are the projection names and the values are dictionaries of keyword arguments.
@@ -1013,6 +1048,40 @@ class EyeVolume:
         if quantification:
             self.volume_maps[quantification].plot_quantification(region=region,
                                                                  ax=ax)
+
+        if thickness is not None:
+            self._plot_thickness(thickness, region=region, ax=ax, quantification=False)
+
+        if thickness_quantification is not None:
+            self._plot_thickness(
+                thickness_quantification,
+                region=region,
+                ax=ax,
+                quantification=True,
+            )
+
+    def _plot_thickness(
+        self,
+        source: Union[str, tuple[str, str]],
+        region: tuple[slice, slice],
+        ax: plt.Axes,
+        quantification: bool,
+    ) -> None:
+        from eyepy.quant.enface_scalar import EnfaceScalarQuantification
+
+        if isinstance(source, tuple):
+            thickness = EnfaceScalarQuantification.from_layer_pair(
+                self,
+                source[0],
+                source[1],
+            )
+        else:
+            thickness = self.volume_maps[source].enface_scalar_quantification()
+
+        if quantification:
+            thickness.plot_quantification(region=region, ax=ax)
+        else:
+            thickness.plot(region=region, ax=ax)
 
     def _plot_bscan_positions(
         self,

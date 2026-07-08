@@ -56,3 +56,6 @@ from eyepy.io.import_functions import import_retouch
 from eyepy.io.import_functions import import_topcon_fda
 from eyepy import data
 from eyepy import quant
+from eyepy.quant import EnfaceScalarQuantification
+from eyepy.quant import thickness_from_layer_pair
+from eyepy.quant import thickness_from_voxel_annotation
