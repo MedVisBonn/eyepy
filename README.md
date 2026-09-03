@@ -32,6 +32,12 @@ To install the latest version of eyepy run `pip install -U eyepy`. (It is `eyepi
 Some file formats require additional dependencies:
 - **Topcon FDA files**: `pip install eyepy[fda]` (requires `oct-converter`)
 - **RETOUCH dataset**: `pip install eyepy[itk]` (requires `itk`)
+- **Plotting**: `pip install eyepy[plot]` (requires `matplotlib`)
+- **Quantification**: `pip install eyepy[quant]` (requires `scipy`)
+- **TIFF codecs**: `pip install eyepy[tiff]` (requires `imagecodecs`)
+- **Pandas metadata export**: `pip install eyepy[pandas]`
+
+Install every optional feature with `pip install eyepy[all]`.
 
 ### Getting Started
 When you don't have a supported OCT volume at hand you can check out our sample datasets to get familiar with `eyepy`.
