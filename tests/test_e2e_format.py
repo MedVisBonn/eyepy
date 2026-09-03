@@ -5,7 +5,14 @@ import pytest
 
 pytest.importorskip('construct_typed')
 
+from eyepy.io.he.e2e_format import chunk_format
 from eyepy.io.he.e2e_format import datacontainer_format
+
+
+def test_e2e_structures_import_with_supported_construct_typing():
+    """Importing all E2E formats catches construct-typing API
+    incompatibilities."""
+    assert chunk_format is not None
 
 
 def _type9_container(firstname, surname, patient_id):
