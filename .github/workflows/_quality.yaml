@@ -57,6 +57,39 @@ jobs:
       - name: Verify heavyweight optional dependency
         run: uv run --python 3.14 --locked --all-extras --no-default-groups --group test-all python -c "import itk"
 
+  optional-extra:
+    name: Optional extra (${{ matrix.extra }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - extra: plot
+            module: matplotlib.pyplot
+          - extra: quant
+            module: scipy
+          - extra: fda
+            module: oct_converter
+          - extra: itk
+            module: itk
+          - extra: pandas
+            module: pandas
+          - extra: tiff
+            module: imagecodecs
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.14"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --python 3.14 --locked --extra ${{ matrix.extra }} --no-default-groups
+      - name: Smoke test feature dependency
+        env:
+          EXTRA_MODULE: ${{ matrix.module }}
+        run: uv run --python 3.14 --locked --extra ${{ matrix.extra }} --no-default-groups python -c "import importlib, os; importlib.import_module(os.environ['EXTRA_MODULE'])"
+
   lowest-direct:
     runs-on: ubuntu-latest
     steps:

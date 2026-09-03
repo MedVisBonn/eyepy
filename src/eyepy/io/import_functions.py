@@ -249,7 +249,13 @@ def import_duke_mat(path: Union[str, Path]) -> EyeVolume:
     Returns:
         Parsed data as EyeVolume object
     """
-    import scipy.io as sio
+    try:
+        import scipy.io as sio
+    except ImportError as exc:
+        raise ImportError(
+            'scipy is required to read Duke MAT files. '
+            'Install it with: pip install eyepy[quant]'
+        ) from exc
 
     loaded = sio.loadmat(path)
     volume = np.moveaxis(loaded['images'], -1, 0)
@@ -295,7 +301,13 @@ def import_dukechiu2_mat(path: Union[str, Path]) -> EyeVolume:
     Returns:
         Parsed data as EyeVolume object
     """
-    import scipy.io as sio
+    try:
+        import scipy.io as sio
+    except ImportError as exc:
+        raise ImportError(
+            'scipy is required to read Duke MAT files. '
+            'Install it with: pip install eyepy[quant]'
+        ) from exc
 
     loaded = sio.loadmat(path)
     volume = np.moveaxis(loaded['images'], -1, 0)

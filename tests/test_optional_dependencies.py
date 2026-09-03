@@ -64,3 +64,33 @@ def test_require_matplotlib_available():
         assert hasattr(plt, 'gca')
     except ImportError:
         pytest.skip('matplotlib not installed')
+
+
+@pytest.mark.parametrize('function_name', ['import_duke_mat', 'import_dukechiu2_mat'])
+def test_import_duke_without_scipy(function_name):
+    """Duke importers point users to the quant extra when scipy is absent."""
+    import eyepy as ep
+
+    with patch.dict(sys.modules, {'scipy': None, 'scipy.io': None}):
+        with pytest.raises(ImportError, match=r'pip install eyepy\[quant\]'):
+            getattr(ep, function_name)('dummy.mat')
+
+
+def test_import_retouch_without_itk():
+    """RETOUCH importer points users to the itk extra when ITK is absent."""
+    import eyepy as ep
+
+    with patch.dict(sys.modules, {'itk': None}):
+        with pytest.raises(ImportError, match=r'pip install eyepy\[itk\]'):
+            ep.import_retouch('dummy')
+
+
+def test_e2e_table_without_pandas():
+    """E2E tables point users to the pandas extra when pandas is absent."""
+    from eyepy.io.he.e2e_reader import E2EFileStructure
+
+    with patch.dict(sys.modules, {'pandas': None}):
+        with pytest.raises(ImportError, match=r'pip install eyepy\[pandas\]'):
+            E2EFileStructure._get_table(
+                object(), {}, structure='E2EFileStructure'
+            )

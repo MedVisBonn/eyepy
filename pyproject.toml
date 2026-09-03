@@ -41,17 +41,17 @@ dependencies = [
 
 [project.optional-dependencies]
 itk = ["itk>=5.3.0,<6"]
-pandas = ["pandas>1.5.3"]
+pandas = ["pandas>=1.5.3"]
 fda = ["oct-converter>=0.6.1,<0.7"]
-build = ["uv ~= 0.9.5"]
 plot = ["matplotlib>=3.9.4"]      # optional for WASM compatibility
 quant = ["scipy>=1.10.0"]
+tiff = ["imagecodecs>=2025.3.30"]
 all = [
     "imagecodecs>=2025.3.30",     # Tiff reading
     "scipy>=1.10.0",              # Quantification
     "matplotlib>=3.9.4",          # Plotting
     "itk>=5.3.0,<6",              # RETOUCH dataset import
-    "pandas>1.5.3",               # E2E metadata as DataFrame
+    "pandas>=1.5.3",              # E2E metadata as DataFrame
     "oct-converter>=0.6.1,<0.7",  # Topcon FDA file reading
 ]
 
@@ -70,7 +70,7 @@ test-all = [
     "scipy>=1.10.0",
     "matplotlib>=3.9.4",
     "itk>=5.3.0,<6",
-    "pandas>1.5.3",
+    "pandas>=1.5.3",
     "oct-converter>=0.6.1,<0.7",
 ]
 doc = [
@@ -124,7 +124,6 @@ upload_to_pypi = true
 upload_to_vsc_release = true
 # Use uv to build distributions (includes hatchling backend)
 build_command = """
-    python -m pip install -e '.[build]'
     uv lock --upgrade-package "$PACKAGE_NAME"
     git add uv.lock
     uv build
