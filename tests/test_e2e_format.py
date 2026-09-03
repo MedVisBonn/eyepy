@@ -15,6 +15,21 @@ def test_e2e_structures_import_with_supported_construct_typing():
     assert chunk_format is not None
 
 
+def test_chunk_seek_field_parses_without_becoming_an_init_argument():
+    """Seek-only fields remain parseable with construct-typing 0.8."""
+    header = struct.pack(
+        '<12sI10HIIII', b'CHUNK', 1, *([0] * 10), 1, 0, 0, 0
+    )
+    folder = struct.pack(
+        '<IIIIiiiiHHII', 0, 96, 0, 0, 1, 2, 3, 4, 1, 0, 9, 0
+    )
+
+    parsed = chunk_format.parse(header + folder + bytes(60))
+
+    assert len(parsed.folders) == 1
+    assert parsed.folders[0].type.name == 'patient'
+
+
 def _type9_container(firstname, surname, patient_id):
     item = (
         firstname.ljust(31, b'\x00')[:31] +

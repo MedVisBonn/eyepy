@@ -5,6 +5,7 @@ import typing as t
 
 import construct as cs
 from construct_typed import csfield
+from construct_typed import csfield_noinit
 from construct_typed import DataclassMixin
 from construct_typed import DataclassStruct
 from construct_typed import EnumBase
@@ -823,7 +824,7 @@ class Chunk(DataclassMixin):
         doc=
         'In the data we have seen each chunk has 512 folders with headers of size 44'
     )
-    jump: int = csfield(
+    jump: int | None = csfield_noinit(
         cs.Seek(cs.this.folders[-1].start + cs.this.folders[-1].size +
                 datacontainer_format.header.sizeof()))
 

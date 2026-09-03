@@ -35,7 +35,7 @@ dependencies = [
     "numpy>=1.22.0",
     "scikit-image>=0.22.0",
     "construct>=2.10.68",
-    "construct-typing>=0.7.0,<0.8",
+    "construct-typing>=0.8.1,<0.9",
     "imageio>=2.25.1,<3",
 ]
 
