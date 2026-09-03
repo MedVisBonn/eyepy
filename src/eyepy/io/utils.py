@@ -39,7 +39,7 @@ def _get_first(unpacked: tuple):
 def _date_in_seconds(
     dt: datetime,
     epoche: datetime = datetime.fromtimestamp(0, timezone.utc),
-    second_frac: Union[float, int] = 1,
+    second_frac: float | int = 1,
 ):
     seconds = (dt - epoche).total_seconds() / second_frac
     if not seconds.is_integer():
@@ -50,7 +50,7 @@ def _date_in_seconds(
 def _date_from_seconds(
     s: int,
     epoche: datetime = datetime.fromtimestamp(0, timezone.utc),
-    second_frac: Union[float, int] = 1,
+    second_frac: float | int = 1,
 ):
     return epoche + timedelta(seconds=s * second_frac)
 
@@ -220,9 +220,9 @@ def get_bscan_spacing(bscan_meta: list[EyeBscanMeta]):
 
 def find_int(bytestring: bytes,
              value: int,
-             signed: Optional[Union[bool, str, list[str]]] = None,
-             endian: Optional[str] = None,
-             bits: Optional[Union[int, list[int], str, list[str]]] = None,
+             signed: bool | str | list[str] | None = None,
+             endian: str | None = None,
+             bits: int | list[int] | str | list[str] | None = None,
              rtol: float = 1e-05,
              atol: float = 1e-08) -> dict[str, list[int]]:
     """Find all occurrences of an integer in a byte string.
@@ -242,7 +242,6 @@ def find_int(bytestring: bytes,
     Returns:
         A dictionary where the key is the type and the value, a list of offsets for which the searched value was found
     """
-
     # construct format strings
     if signed is None:
         signed = ['s'] if value < 0 else ['s', 'u']
@@ -290,8 +289,8 @@ def find_int(bytestring: bytes,
 
 def find_float(bytestring: bytes,
                value: float,
-               endian: Optional[str] = None,
-               bits: Optional[Union[int, list[int], str, list[str]]] = None,
+               endian: str | None = None,
+               bits: int | list[int] | str | list[str] | None = None,
                rtol: float = 1e-05,
                atol: float = 1e-08) -> dict[str, list[int]]:
     """Find all occurrences of a float in a byte string.
@@ -309,7 +308,6 @@ def find_float(bytestring: bytes,
     Returns:
         A dictionary where the key is the type and the value, a list of offsets for which the searched value was found
     """
-
     # construct format strings
     if endian is None:
         endian = sys.byteorder[0]  # first letter of endianness

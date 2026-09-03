@@ -304,9 +304,9 @@ class EyeVolumeLayerAnnotation:
 
         # knots is a dict layername: list of curves where every curve is a list of knots
         if 'knots' not in self.meta:
-            self.meta['knots'] = defaultdict(lambda: [])
+            self.meta['knots'] = defaultdict(list)
         elif type(self.meta['knots']) is dict:
-            self.meta['knots'] = defaultdict(lambda: [], self.meta['knots'])
+            self.meta['knots'] = defaultdict(list, self.meta['knots'])
 
         if 'name' not in self.meta:
             self.meta['name'] = 'Layer Annotation'
@@ -1213,7 +1213,7 @@ class EyeEnfaceOpticDiscAnnotation(PolygonAnnotation):
     @classmethod
     def from_ellipse(cls, center: tuple[float, float], minor_axis: float, major_axis: float,
                      rotation: float = 0.0, num_points: int = 64,
-                     shape: tuple[int, int] | None = None) -> 'EyeEnfaceOpticDiscAnnotation':
+                     shape: tuple[int, int] | None = None) -> EyeEnfaceOpticDiscAnnotation:
         """Create EyeEnfaceOpticDiscAnnotation from ellipse parameters.
 
         Args:

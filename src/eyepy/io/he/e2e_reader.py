@@ -67,20 +67,20 @@ def _format_version(raw: bytes) -> str:
     return '.'.join(str(part) for part in raw)
 
 
-def _format_px_mm(size_px: int, scale_um_per_px: Optional[float]) -> str:
+def _format_px_mm(size_px: int, scale_um_per_px: float | None) -> str:
     if scale_um_per_px is None:
         return f'{size_px} pixels'
     return f'{size_px} pixels ({size_px * scale_um_per_px / 1000:.1f} mm)'
 
 
-def _format_scan_focus(value_diopters: Optional[float]) -> Optional[str]:
+def _format_scan_focus(value_diopters: float | None) -> str | None:
     if value_diopters is None:
         return None
     return f'{value_diopters:.2f} D'
 
 
-def _format_time(iso_value: Optional[str],
-                 timezone_suffix: str = HEYEX_TIMEZONE_SUFFIX) -> Optional[str]:
+def _format_time(iso_value: str | None,
+                 timezone_suffix: str = HEYEX_TIMEZONE_SUFFIX) -> str | None:
     if iso_value is None:
         return None
     dt = datetime.datetime.fromisoformat(iso_value) + datetime.timedelta(hours=1)
@@ -132,9 +132,9 @@ class E2EStructureMixin:
 
     def get_folder_data(
         self,
-        folder_type: Union[TypesEnum, int],
+        folder_type: TypesEnum | int,
         offset: int = 0,
-        data_construct: Optional[Union[cs.Construct, str]] = None,
+        data_construct: cs.Construct | str | None = None,
     ) -> Any:
         """Return the data of a folder type.
 
@@ -146,7 +146,6 @@ class E2EStructureMixin:
         Returns:
             Parsed data or None if no folder of the given type was found.
         """
-
         folders: list[E2EFolder] = self.folders[folder_type]
 
         if len(folders) == 0:
@@ -343,7 +342,7 @@ class E2ESliceStructure(E2EStructureMixin):
 
     def __init__(self, id: int) -> None:
         self.id = id
-        self.folders: dict[Union[int, str], list[E2EFolder]] = {}
+        self.folders: dict[int | str, list[E2EFolder]] = {}
         self._meta = None
         self._bscanmeta_data = None
 
@@ -475,9 +474,9 @@ class E2ESeriesStructure(E2EStructureMixin):
     def __init__(self, id: int) -> None:
         self.id = id
         self.substructure: dict[int, E2ESliceStructure] = {}
-        self.folders: dict[Union[int, str], list[E2EFolder]] = {}
-        self.study: Optional[E2EStudyStructure] = None
-        self.patient: Optional[E2EPatientStructure] = None
+        self.folders: dict[int | str, list[E2EFolder]] = {}
+        self.study: E2EStudyStructure | None = None
+        self.patient: E2EPatientStructure | None = None
 
         self._meta = None
         self._bscan_meta = None
@@ -499,8 +498,8 @@ class E2ESeriesStructure(E2EStructureMixin):
 
     def _folders_for(
         self,
-        structure: Optional[E2EStructureMixin],
-        folder_type: Union[TypesEnum, int],
+        structure: E2EStructureMixin | None,
+        folder_type: TypesEnum | int,
     ) -> list[E2EFolder]:
         if structure is None:
             return []
@@ -508,24 +507,24 @@ class E2ESeriesStructure(E2EStructureMixin):
 
     def _first_folder(
         self,
-        structure: Optional[E2EStructureMixin],
-        folder_type: Union[TypesEnum, int],
-    ) -> Optional[E2EFolder]:
+        structure: E2EStructureMixin | None,
+        folder_type: TypesEnum | int,
+    ) -> E2EFolder | None:
         folders = self._folders_for(structure, folder_type)
         return folders[0] if folders else None
 
-    def _first_series_folder(self, folder_type: Union[TypesEnum,
-                                                       int]) -> Optional[E2EFolder]:
+    def _first_series_folder(self, folder_type: (TypesEnum |
+                                                       int)) -> E2EFolder | None:
         return self._first_folder(self, folder_type)
 
-    def _first_study_folder(self, folder_type: Union[TypesEnum,
-                                                      int]) -> Optional[E2EFolder]:
+    def _first_study_folder(self, folder_type: (TypesEnum |
+                                                      int)) -> E2EFolder | None:
         return self._first_folder(self.study, folder_type)
 
     def _first_patient_folder(
         self,
-        folder_type: Union[TypesEnum, int],
-    ) -> Optional[E2EFolder]:
+        folder_type: TypesEnum | int,
+    ) -> E2EFolder | None:
         return self._first_folder(self.patient, folder_type)
 
     def _sorted_slices(self) -> list[E2ESliceStructure]:
@@ -560,7 +559,7 @@ class E2ESeriesStructure(E2EStructureMixin):
             )
         return items[bscan_index]
 
-    def _first_type39_raw(self) -> Optional[bytes]:
+    def _first_type39_raw(self) -> bytes | None:
         if self._type39_raw_cache is not None:
             return self._type39_raw_cache
 
@@ -571,19 +570,19 @@ class E2ESeriesStructure(E2EStructureMixin):
                 return self._type39_raw_cache
         return None
 
-    def _type39_uint8(self, offset: int) -> Optional[int]:
+    def _type39_uint8(self, offset: int) -> int | None:
         raw = self._first_type39_raw()
         if raw is None or len(raw) <= offset:
             return None
         return raw[offset]
 
-    def _type39_uint32(self, offset: int) -> Optional[int]:
+    def _type39_uint32(self, offset: int) -> int | None:
         raw = self._first_type39_raw()
         if raw is None or len(raw) < offset + 4:
             return None
         return struct.unpack_from('<I', raw, offset)[0]
 
-    def _type39_version(self, offset: int) -> Optional[str]:
+    def _type39_version(self, offset: int) -> str | None:
         raw = self._first_type39_raw()
         if raw is None or len(raw) < offset + 4:
             return None
@@ -601,21 +600,21 @@ class E2ESeriesStructure(E2EStructureMixin):
             return []
         return folder.data.text
 
-    def _camera_model(self) -> Optional[str]:
+    def _camera_model(self) -> str | None:
         for text in self._type13_strings():
             if 'Spectralis' in text:
                 return re.sub(r'\s*\+\s*', '+', text).replace('HRA+', 'HRA+')
         return None
 
-    def _application(self) -> Optional[str]:
+    def _application(self) -> str | None:
         examined_structure = self._series_text(TypesEnum.examined_structure, 0)
         for text in self._type13_strings():
             if text == examined_structure:
                 return text
         return examined_structure
 
-    def _series_text(self, folder_type: Union[TypesEnum, int],
-                     index: int = 0) -> Optional[str]:
+    def _series_text(self, folder_type: TypesEnum | int,
+                     index: int = 0) -> str | None:
         folder = self._first_series_folder(folder_type)
         if folder is None:
             return None
@@ -624,8 +623,8 @@ class E2ESeriesStructure(E2EStructureMixin):
             return None
         return text[index]
 
-    def _study_text(self, folder_type: Union[TypesEnum, int],
-                    index: int = 0) -> Optional[str]:
+    def _study_text(self, folder_type: TypesEnum | int,
+                    index: int = 0) -> str | None:
         folder = self._first_study_folder(folder_type)
         if folder is None:
             return None
@@ -634,31 +633,31 @@ class E2ESeriesStructure(E2EStructureMixin):
             return None
         return text[index]
 
-    def _series_exam_time_iso(self) -> Optional[str]:
+    def _series_exam_time_iso(self) -> str | None:
         folder = self._first_series_folder(TypesEnum.examination_time)
         if folder is None:
             return None
         return folder.data.examination_time
 
-    def _series_date_iso(self) -> Optional[str]:
+    def _series_date_iso(self) -> str | None:
         exam_time = self._series_exam_time_iso()
         if exam_time is None:
             return None
         return datetime.datetime.fromisoformat(exam_time).date().isoformat()
 
-    def get_focus_candidate_raw(self) -> Optional[float]:
+    def get_focus_candidate_raw(self) -> float | None:
         items = self._bscanmeta_items()
         if not items:
             return None
         return items[0].focus_candidate_raw
 
-    def _derive_scan_focus_diopters(self) -> Optional[float]:
+    def _derive_scan_focus_diopters(self) -> float | None:
         raw_value = self.get_focus_candidate_raw()
         if raw_value is None:
             return None
         return 1.079 * math.copysign(max(abs(raw_value) - 3.505, 0.0), raw_value)
 
-    def get_x_scale_derivation(self) -> dict[str, Optional[float]]:
+    def get_x_scale_derivation(self) -> dict[str, float | None]:
         items = self._bscanmeta_items()
         if not items:
             return {
@@ -679,23 +678,23 @@ class E2ESeriesStructure(E2EStructureMixin):
             'scaling_x_um_per_pixel': scaling_x,
         }
 
-    def _oct_quality_db(self, bscan_index: Optional[int]) -> Optional[int]:
+    def _oct_quality_db(self, bscan_index: int | None) -> int | None:
         if bscan_index is None:
             return None
         return round(self._bscanmeta_item(bscan_index).quality_ui)
 
-    def _oct_art_mode(self, bscan_index: Optional[int]) -> Optional[int]:
+    def _oct_art_mode(self, bscan_index: int | None) -> int | None:
         if bscan_index is None:
             return None
         return self._bscanmeta_item(bscan_index).art_mode
 
     def _oct_acquisition_time(self,
-                              bscan_index: Optional[int]) -> Optional[str]:
+                              bscan_index: int | None) -> str | None:
         if bscan_index is None:
             return None
         return self._bscanmeta_item(bscan_index).acquisitionTime
 
-    def _bscan_vertical_span_deg(self) -> Optional[float]:
+    def _bscan_vertical_span_deg(self) -> float | None:
         items = self._bscanmeta_items()
         if not items:
             return None
@@ -704,7 +703,7 @@ class E2ESeriesStructure(E2EStructureMixin):
 
     def _build_heyex_metadata(
         self,
-        bscan_index: Optional[int] = None,
+        bscan_index: int | None = None,
     ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
         patient_folder = self._first_patient_folder(TypesEnum.patient)
         patient_data = patient_folder.data if patient_folder is not None else None
@@ -948,14 +947,14 @@ class E2ESeriesStructure(E2EStructureMixin):
 
     def get_heyex_metadata(
         self,
-        bscan_index: Optional[int] = None,
+        bscan_index: int | None = None,
     ) -> dict[str, dict[str, Any]]:
         metadata, _ = self._build_heyex_metadata(bscan_index=bscan_index)
         return metadata
 
     def get_heyex_metadata_sources(
         self,
-        bscan_index: Optional[int] = None,
+        bscan_index: int | None = None,
     ) -> dict[str, dict[str, Any]]:
         _, sources = self._build_heyex_metadata(bscan_index=bscan_index)
         return sources
@@ -1157,8 +1156,8 @@ class E2ESeriesStructure(E2EStructureMixin):
     def get_layer_manual_maps(self) -> dict[int, list[bool | None]]:
         """Return manual edit flags for each layer and B-scan.
 
-        Entries may be ``None`` for B-scans without a corresponding layer
-        annotation.
+        Entries may be ``None`` for B-scans without a corresponding
+        layer annotation.
         """
         slice_layer_manual = {}
         layer_ids = set()
@@ -1299,8 +1298,8 @@ class E2EStudyStructure(E2EStructureMixin):
     def __init__(self, id) -> None:
         self.id = id
         self.substructure: dict[int, E2ESeriesStructure] = {}
-        self.folders: dict[Union[int, str], list[E2EFolder]] = {}
-        self.patient: Optional[E2EPatientStructure] = None
+        self.folders: dict[int | str, list[E2EFolder]] = {}
+        self.patient: E2EPatientStructure | None = None
 
         self._section_description_parts = [('Device:', 9001, 0),
                                            ('Studyname:', 9000, 0)]
@@ -1338,7 +1337,7 @@ class E2EPatientStructure(E2EStructureMixin):
     def __init__(self, id) -> None:
         self.id = id
         self.substructure: dict[int, E2EStudyStructure] = {}
-        self.folders: dict[Union[int, str], list[E2EFolder]] = {}
+        self.folders: dict[int | str, list[E2EFolder]] = {}
 
         self._section_description_parts = []
         self._section_title = ''
@@ -1372,7 +1371,7 @@ class E2EFileStructure(E2EStructureMixin):
 
     def __init__(self):
         self.substructure: dict[int, E2EPatientStructure] = {}
-        self.folders: dict[Union[int, str], list[E2EFolder]] = {}
+        self.folders: dict[int | str, list[E2EFolder]] = {}
 
         self._section_description_parts = []
         self._section_title = ''
@@ -1407,7 +1406,7 @@ class E2EFileStructure(E2EStructureMixin):
 
 class HeE2eReader(AbstractContextManager):
 
-    def __init__(self, path: Union[str, Path]):
+    def __init__(self, path: str | Path):
         """Index an E2E file.
 
         Initialization of the HeE2eReader class indexes the specified E2E file. This allows for printing the reader object
@@ -1503,9 +1502,9 @@ class HeE2eReader(AbstractContextManager):
 
     def find_int(self,
                  value: int,
-                 excluded_folders: list[Union[int,
-                                              str]] = ['images', 'layers'],
-                 slice_id: Optional[int] = None,
+                 excluded_folders: list[(int |
+                                              str)] = ['images', 'layers'],
+                 slice_id: int | None = None,
                  **kwargs: Any) -> dict[int, dict[int, dict[str, list[int]]]]:
         """Find an integer value in the e2e file.
 
@@ -1538,9 +1537,9 @@ class HeE2eReader(AbstractContextManager):
 
     def find_float(self,
                    value: float,
-                   excluded_folders: list[Union[int,
-                                                str]] = ['images', 'layers'],
-                   slice_id: Optional[int] = None,
+                   excluded_folders: list[(int |
+                                                str)] = ['images', 'layers'],
+                   slice_id: int | None = None,
                    **kwargs: Any) -> dict[int, dict[int, dict[str, list[int]]]]:
         """Find a float value in the e2e file.
 
@@ -1572,10 +1571,10 @@ class HeE2eReader(AbstractContextManager):
         return results
 
     def find_number(self,
-                    value: Union[int, float],
-                    excluded_folders: list[Union[int,
-                                                 str]] = ['images', 'layers'],
-                    slice_id: Optional[int] = None,
+                    value: int | float,
+                    excluded_folders: list[(int |
+                                                 str)] = ['images', 'layers'],
+                    slice_id: int | None = None,
                     **kwargs: Any) -> dict[int, dict[int, dict[str, list[int]]]]:
         """Find a number value in the e2e file.
 

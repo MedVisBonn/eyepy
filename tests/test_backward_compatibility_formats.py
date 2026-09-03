@@ -43,9 +43,11 @@ class TestBackwardCompatibilityFormats:
         return ep.EyeVolume(data=data, meta=volume_meta)
 
     def test_format_1_stacked_npy_boolean_masks(self, tmp_path):
-        """Test loading Format 1: Stacked NPY with boolean masks (original format).
+        """Test loading Format 1: Stacked NPY with boolean masks (original
+        format).
 
-        This was the original format where all boolean masks were stacked into a single npy file.
+        This was the original format where all boolean masks were
+        stacked into a single npy file.
         """
         volume = self._create_test_volume()
         n_bscans, bscan_height, bscan_width = volume.shape
@@ -103,8 +105,9 @@ class TestBackwardCompatibilityFormats:
     def test_format_2_individual_compressed_boolean(self, tmp_path):
         """Test loading Format 2: Individual compressed boolean masks.
 
-        This was an intermediate format where each boolean mask was individually
-        compressed with packbits, but metadata was stored separately.
+        This was an intermediate format where each boolean mask was
+        individually compressed with packbits, but metadata was stored
+        separately.
         """
         volume = self._create_test_volume()
         n_bscans, bscan_height, bscan_width = volume.shape
@@ -162,10 +165,12 @@ class TestBackwardCompatibilityFormats:
         assert len(loaded.localizer._area_maps) == 2
 
     def test_format_3_individual_mixed_types(self, tmp_path):
-        """Test loading Format 3: Individual mixed-type annotations (current format).
+        """Test loading Format 3: Individual mixed-type annotations (current
+        format).
 
-        This is the current format where each annotation is stored individually,
-        with boolean masks compressed and other types as npy.
+        This is the current format where each annotation is stored
+        individually, with boolean masks compressed and other types as
+        npy.
         """
         volume = self._create_test_volume()
         n_bscans, bscan_height, bscan_width = volume.shape

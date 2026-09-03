@@ -1,4 +1,5 @@
 """Compatibility helpers for optional dependencies."""
+
 from __future__ import annotations
 
 import importlib

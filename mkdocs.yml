@@ -1,6 +1,6 @@
 site_name: eyepy
-site_url: https://example.com/
-copyright: Copyright &copy; 2019 - 2025 Olivier Morelle
+site_url: https://medvisbonn.github.io/eyepy/
+copyright: Copyright &copy; 2019 - 2026 Olivier Morelle
 nav:
     - Home: index.md
     - Cookbook: cookbook.md
@@ -8,6 +8,7 @@ nav:
     - Reference: reference/
     - Changelog: changelog.md
     - Contributing: contributing.md
+    - Maintenance: maintenance.md
 
 # Plugins
 plugins:

@@ -1,7 +1,7 @@
 [project]
 name = "eyepy"
 version = "0.20.1"
-description = "A python package to read, analyse and visualize OCT and fundus data form various sources."
+description = "A Python package to read, analyze, and visualize OCT and fundus data from various sources."
 authors = [{ name = "Olivier Morelle", email = "oli4morelle@gmail.com" }]
 requires-python = ">=3.10,<4.0"
 readme = "README.md"
@@ -56,13 +56,15 @@ all = [
 ]
 
 [project.urls]
+Documentation = "https://medvisbonn.github.io/eyepy/"
+Issues = "https://github.com/MedVisBonn/eyepy/issues"
 Repository = "https://github.com/MedVisBonn/eyepy"
 
 
 [dependency-groups]
 test = [
     "pytest>=8.0.0,<9",
-    "pytest-cov>=6.0.0,<7",
+    "pytest-cov>=6.0.0,<8",
 ]
 test-all = [
     {include-group = "test"},
@@ -76,7 +78,7 @@ test-all = [
 doc = [
     "mkdocs>=1.6.1,<2",
     "mkdocs-material>=9.6.14,<10",
-    "mkdocstrings>=0.29.1,<0.30",
+    "mkdocstrings>=0.29.1,<1",
     "mkdocs-gen-files>=0.5.0,<0.6",
     "mkdocs-literate-nav>=0.6.2,<0.7",
     "mkdocs-section-index>=0.3.5,<0.4",
@@ -87,9 +89,9 @@ doc = [
     "pygifsicle>=1.0.7,<2",
 ]
 format = [
-    "yapf>=0.40.0,<0.41",
+    "yapf>=0.43.0,<0.44",
     "pre-commit>=4.0.0,<5",
-    "commitizen>=3.0.0,<4",
+    "commitizen>=4.0.0,<5",
 ]
 notebook = [
     "jupyter>=1.0.0,<2",
