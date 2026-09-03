@@ -5,7 +5,8 @@ from collections.abc import Callable
 import io
 import json
 from pathlib import Path
-from typing import Optional, overload, SupportsIndex, TYPE_CHECKING, Union
+from typing import (Optional, overload, Protocol, SupportsIndex, TYPE_CHECKING,
+                    Union)
 import warnings
 
 from numpy import typing as npt
@@ -24,12 +25,18 @@ from eyepy.core.eyemeta import EyeVolumeMeta
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib import patches
-    from skimage.transform._geometric import _GeometricTransform
     from skimage import transform
 
 import logging
 
 logger = logging.getLogger('eyepy.core.eyevolume')
+
+
+class GeometricTransform(Protocol):
+    """Structural type for geometric transforms accepted by eyepy."""
+
+    params: npt.NDArray[np.float64]
+    inverse: Callable[[npt.NDArray], npt.NDArray]
 
 
 class EyeVolume:
@@ -40,7 +47,7 @@ class EyeVolume:
         data: npt.NDArray[np.float32],
         meta: Optional[EyeVolumeMeta] = None,
         localizer: Optional[EyeEnface] = None,
-        transformation: Optional[_GeometricTransform] = None,
+        transformation: Optional[GeometricTransform] = None,
     ) -> None:
         """
 
