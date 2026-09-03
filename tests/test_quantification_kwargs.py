@@ -2,9 +2,10 @@
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+
+plt = pytest.importorskip('matplotlib.pyplot')
 
 import eyepy as ep
 

@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   Quality:
-    uses: MedVisBonn/eyepy/.github/workflows/_quality.yaml@master
+    uses: ./.github/workflows/_quality.yaml
 
   release:
     needs: Quality
@@ -161,21 +161,9 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
       - uses: actions/setup-python@v5
         with:
-          python-version: 3.x
-      - run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
-      - uses: actions/cache@v4
+          python-version: "3.14"
+      - uses: astral-sh/setup-uv@v6
         with:
-          key: mkdocs-material-${{ env.cache_id }}
-          path: ~/.cache
-          restore-keys: |
-            mkdocs-material-
-      - run: pip install \
-              mkdocs-material \
-              mkdocstrings[python] \
-              mkdocs-gen-files \
-              mkdocs-literate-nav \
-              mkdocs-section-index \
-              pymdown-extensions \
-              mkdocs-macros-plugin \
-              eyepy[e2e]
-      - run: mkdocs gh-deploy --force
+          enable-cache: true
+      - run: uv sync --locked --no-default-groups --group doc
+      - run: uv run --locked --no-default-groups --group doc mkdocs gh-deploy --force
