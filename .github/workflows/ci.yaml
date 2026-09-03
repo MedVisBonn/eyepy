@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - main
+  workflow_dispatch:
 
 # default: least privileged permissions across all jobs
 permissions:
@@ -16,6 +17,7 @@ jobs:
     uses: MedVisBonn/eyepy/.github/workflows/_quality.yaml@master
 
   release:
+    if: github.event_name == 'push'
     needs: Quality
     runs-on: ubuntu-latest
     concurrency:
@@ -116,7 +118,7 @@ jobs:
     #    and it won't require reversing the release.
     runs-on: ubuntu-latest
     needs: release
-      # if: ${{ needs.release.outputs.released == 'true' }}
+    if: needs.release.outputs.released == 'true'
 
     permissions:
       contents: read
@@ -140,7 +142,32 @@ jobs:
 
       # see https://docs.pypi.org/trusted-publishers/
       - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.13.0
+        uses: pypa/gh-action-pypi-publish@v1.14.2
+        with:
+          packages-dir: dist
+          print-hash: true
+          verbose: true
+
+  publish-existing-0-20-1:
+    name: Publish existing 0.20.1 release
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v0.20.1
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Build existing release
+        run: uv build
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.14.2
         with:
           packages-dir: dist
           print-hash: true
