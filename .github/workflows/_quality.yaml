@@ -3,7 +3,12 @@ name: Quality
 on:
   workflow_call:
   pull_request:
-    branches: [ master ]
+    branches: [master]
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
 
 jobs:
   pre-commit:
@@ -12,42 +17,127 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
-      - uses: pre-commit/action@v3.0.0
-      - uses: pre-commit-ci/lite-action@v1.1.0
-        if: always()
+          python-version: "3.10"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked --no-default-groups --group format
+      - run: uv run --locked --no-default-groups --group format pre-commit run --all-files
 
-  test:
+  core-tests:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
-
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v3
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: Cache virtualenv
-        uses: actions/cache@v3
-        id: virtualenv-cache
+      - uses: astral-sh/setup-uv@v6
         with:
-          path: |
-            ~/.cache
-          key: virtualenv-Python${{ matrix.python-version }}-${{ hashFiles('**/uv.lock') }}
-          restore-keys: |
-            virtualenv-Python${{ matrix.python-version }}-${{ hashFiles('**/uv.lock') }}
+          enable-cache: true
+      - run: uv sync --python ${{ matrix.python-version }} --locked --no-default-groups --group test
+      - run: uv run --python ${{ matrix.python-version }} --locked --no-default-groups --group test pytest
+      - run: uv pip check --python .venv
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
+  all-extras:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.14"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --python 3.14 --locked --all-extras --no-default-groups --group test-all
+      - run: uv run --python 3.14 --locked --all-extras --no-default-groups --group test-all pytest --cov=eyepy
+      - name: Verify heavyweight optional dependency
+        run: uv run --python 3.14 --locked --all-extras --no-default-groups --group test-all python -c "import itk"
 
-      - name: Install Dependencies
-        if: steps.virtualenv-cache.outputs.cache-hit != 'true'
-        run: uv sync --all-groups --all-extras
+  lowest-direct:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Resolve declared minimum direct dependencies
+        run: uv sync --python 3.10 --resolution lowest-direct --all-extras --no-default-groups --group test-all
+      - run: uv run --python 3.10 --frozen --all-extras --no-default-groups --group test-all pytest
+      - run: uv pip check --python .venv
 
-      - name: Test with pytest
-        run: uv run pytest --cov .
+  cross-platform-smoke:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.14"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --python 3.14 --locked --no-default-groups --group test
+      - name: Smoke-test imports and representative file I/O
+        run: >-
+          uv run --python 3.14 --locked --no-default-groups --group test pytest
+          tests/test_io_heyex_vol.py
+          tests/test_io_heyex_xml.py
+          tests/test_eyevolume.py::test_save_load
+      - run: uv pip check --python .venv
+
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked --no-default-groups --group doc
+      - run: uv run --locked --no-default-groups --group doc mkdocs build --strict
+
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/dependency-review-action@v4
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv lock --check
+      - run: uv build
+      - name: Install wheel in a clean environment
+        run: |
+          uv venv .wheel-venv
+          uv pip install --python .wheel-venv/bin/python ./dist/*.whl
+          uv pip check --python .wheel-venv/bin/python
+          .wheel-venv/bin/python -c "import eyepy; import eyepy.io.he.e2e_format"
+      - name: Verify wheel metadata
+        run: |
+          python - <<'PY'
+          import email
+          from pathlib import Path
+          import zipfile
+
+          wheel = next(Path('dist').glob('*.whl'))
+          with zipfile.ZipFile(wheel) as archive:
+              metadata_name = next(name for name in archive.namelist() if name.endswith('.dist-info/METADATA'))
+              metadata = email.message_from_bytes(archive.read(metadata_name))
+
+          assert metadata['Requires-Python'] == '<4.0,>=3.10'
+          PY

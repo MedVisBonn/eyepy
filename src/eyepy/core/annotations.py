@@ -240,7 +240,7 @@ class PolygonAnnotation:
         return self.__class__(result, shape=self._shape)
 
     def plot(self, ax: Axes | None = None, offset: tuple[float, float] = (0, 0),
-             **kwargs) -> None:
+             **kwargs: Any) -> None:
         """Plot the polygon outline on the given axes.
 
         Args:
@@ -1400,7 +1400,7 @@ class EyeEnfaceOpticDiscAnnotation(PolygonAnnotation):
              plot_contour: bool = True, plot_area: bool = False,
              contour_color: str = 'red', contour_linewidth: float = 2,
              contour_linestyle: str = '-', area_color: str | None = None,
-             area_alpha: float = 0.3, **kwargs) -> None:
+             area_alpha: float = 0.3, **kwargs: Any) -> None:
         """Plot the optic disc annotation on the given axes.
 
         Provides flexible visualization options including contour outline and/or filled area.
@@ -1502,7 +1502,7 @@ class EyeEnfaceFoveaAnnotation(PolygonAnnotation):
 
     def plot(self, ax: plt.Axes | None = None, offset: tuple[float, float] = (0, 0),
              color: str = 'yellow', marker: str = '+', markersize: float = 12,
-             markeredgewidth: float = 2, **kwargs) -> None:
+             markeredgewidth: float = 2, **kwargs: Any) -> None:
         """Plot the fovea annotation on the given axes as a center marker.
 
         Args:

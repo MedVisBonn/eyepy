@@ -62,6 +62,9 @@ Repository = "https://github.com/MedVisBonn/eyepy"
 test = [
     "pytest>=8.0.0,<9",
     "pytest-cov>=6.0.0,<7",
+]
+test-all = [
+    {include-group = "test"},
     "imagecodecs>=2025.3.30",
     "scipy>=1.10.0",
     "matplotlib>=3.9.4",
@@ -91,7 +94,7 @@ notebook = [
     "jupyter>=1.0.0,<2",
 ]
 dev = [
-    {include-group = "test"},
+    {include-group = "test-all"},
     {include-group = "doc"},
     {include-group = "format"},
     {include-group = "notebook"},
@@ -135,7 +138,14 @@ wrap-summaries = 82
 blank = false
 
 [tool.pytest.ini_options]
-addopts = ["--import-mode=importlib"]
+addopts = ["--import-mode=importlib", "--strict-markers"]
+
+[tool.coverage.run]
+source = ["eyepy"]
+
+[tool.coverage.report]
+fail_under = 55
+skip_empty = true
 
 [build-system]
 requires = ["hatchling"]

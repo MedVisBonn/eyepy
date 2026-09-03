@@ -231,7 +231,7 @@ class RegionQuantification:
         scale_x: float = 1.0,
         scale_y: float = 1.0,
         unit: str = 'px',
-    ):
+    ) -> RegionQuantification:
         """Quantify region from a binary mask with custom origin.
 
         Computes directional extent (midpoint) and arc statistics in all 8 directions (temporal, nasal,
@@ -279,7 +279,7 @@ class RegionQuantification:
         scale_y: float = 1.0,
         origin_mode: OriginModeType = OriginMode.HYBRID,
         unit: str = 'px',
-    ):
+    ) -> RegionQuantification:
         """Quantify region from a binary mask.
 
         Computes directional extent (midpoint) and arc statistics in all 8 directions (temporal, nasal,
@@ -370,7 +370,7 @@ class RegionQuantification:
         area_map_name: str,
         origin_mode: OriginModeType = OriginMode.HYBRID,
         custom_origin: Optional[AnatomicalOrigin] = None,
-    ):
+    ) -> RegionQuantification:
         """Create RegionQuantification from an EyeEnface object.
 
         A RegionQuantification quantifies an annotation mask of one connected component.

@@ -954,6 +954,10 @@ notebook = [
     { name = "jupyter" },
 ]
 test = [
+    { name = "pytest" },
+    { name = "pytest-cov" },
+]
+test-all = [
     { name = "imagecodecs", version = "2025.3.30", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "imagecodecs", version = "2026.3.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
     { name = "imagecodecs", version = "2026.6.26", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
@@ -1037,6 +1041,10 @@ format = [
 ]
 notebook = [{ name = "jupyter", specifier = ">=1.0.0,<2" }]
 test = [
+    { name = "pytest", specifier = ">=8.0.0,<9" },
+    { name = "pytest-cov", specifier = ">=6.0.0,<7" },
+]
+test-all = [
     { name = "imagecodecs", specifier = ">=2025.3.30" },
     { name = "itk", specifier = ">=5.3.0,<6" },
     { name = "matplotlib", specifier = ">=3.9.4" },
