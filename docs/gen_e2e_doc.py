@@ -22,7 +22,7 @@ def clean_docstring(docstring):
     :return: A cleaned version of the input docstring.
     """
     # Remove leading and trailing whitespace
-    docstring = docstring.strip()
+    docstring = (docstring or '').strip()
 
     # Remove any leading comment characters (#) or whitespace from each line
     lines = [
@@ -42,9 +42,29 @@ def clean_docstring(docstring):
     return '\n'.join(lines)
 
 
+def _doc_parts(obj):
+    """Return stable docstring fields for an E2E structure."""
+    doc = clean_docstring(obj.__doc__)
+    lines = doc.splitlines()
+    title = lines[0] if lines else obj.__name__
+    size = next(
+        (line.removeprefix('Size:').strip() for line in lines
+         if line.startswith('Size:')),
+        'unknown',
+    )
+    notes = doc.partition('Notes:')[2].strip() if 'Notes:' in doc else ''
+    description = next(
+        (line for line in lines[1:]
+         if line and not line.startswith(('Size:', 'Notes:'))),
+        '',
+    )
+    return title, size, notes, description
+
+
 def _get_parses_to(type_annotation):
     """Convert type annotations to markdown links."""
-    if type_annotation.__name__ == 'List':
+    annotation_name = getattr(type_annotation, '__name__', str(type_annotation))
+    if annotation_name == 'List':
         for t in type_annotation.__args__:
             return f'List[{_get_parses_to(t)}]'
     if type_annotation in types:
@@ -52,7 +72,7 @@ def _get_parses_to(type_annotation):
     elif type_annotation in file_structures:
         return f'[{type_annotation.__name__}]({type_annotation.__name__}.md)'
 
-    return str(type_annotation.__name__)
+    return annotation_name
 
 
 # Collect types data for the overview pages
@@ -61,18 +81,12 @@ types_data = {}
 nav = mkdocs_gen_files.Nav()
 for t in types:
     # Extract information from the docstring
-    doc = clean_docstring(t.__doc__)
-    doc_title = doc.splitlines()[0]
+    doc_title, size, text, description = _doc_parts(t)
     t_id = int(t.__name__.lstrip('Type'))
     type_occ = [k for k, v in e2e_reader.type_occurence.items() if t_id in v]
     type_occ = [f'[{t}](../he_e2e_hierarchy/{t}.md)' for t in type_occ]
 
     type_occ = ', '.join(type_occ)
-    size = [
-        l.lstrip('Size: ') for l in doc.splitlines() if l.startswith('Size: ')
-    ][0]
-    text = doc.split('Notes:')[1]
-
     # Name of the documentation file
     doc_path = Path(f'{t.__name__}.md')
     # Path to the documentation file
@@ -85,7 +99,7 @@ for t in types:
     types_data[t_id] = {
         'size': size,
         'content': doc_title,
-        'description': doc.splitlines()[1],
+        'description': description,
     }
 
     with mkdocs_gen_files.open(full_doc_path, 'w') as fd:
@@ -101,7 +115,7 @@ for t in types:
             description = f.metadata['subcon'].docs
             try:
                 size = f.metadata['subcon'].sizeof()
-            except:
+            except Exception:
                 size = 'variable'
             t_annotation = type_annotations[name]
             parses_to = _get_parses_to(t_annotation)
@@ -119,12 +133,7 @@ with mkdocs_gen_files.open('formats/he_e2e_types/SUMMARY.md', 'w') as nav_file:
 nav = mkdocs_gen_files.Nav()
 for t in file_structures:
     # Extract information from the docstring
-    doc = clean_docstring(t.__doc__)
-    doc_title = doc.splitlines()[0]
-    size = [
-        l.lstrip('Size: ') for l in doc.splitlines() if l.startswith('Size: ')
-    ][0]
-    text = doc.split('Notes:')[1]
+    doc_title, size, text, _ = _doc_parts(t)
 
     # Name of the documentation file
     doc_path = Path(f'{t.__name__}.md')
@@ -144,7 +153,7 @@ for t in file_structures:
             description = f.metadata['subcon'].docs
             try:
                 size = f.metadata['subcon'].sizeof()
-            except:
+            except Exception:
                 size = 'variable'
             t_annotation = type_annotations[name]
             parses_to = _get_parses_to(t_annotation)
@@ -179,7 +188,7 @@ for layer, types in e2e_reader.type_occurence.items():
                 content = types_data[t]['content']
                 size = types_data[t]['size']
                 description = types_data[t]['description'].strip('\n')
-            except:
+            except (KeyError, AttributeError):
                 content = ''
                 size = ''
                 description = ''
@@ -190,7 +199,7 @@ for layer, types in e2e_reader.type_occurence.items():
             else:
                 # Create a link to the type documentation
                 print(
-                    f'|[{t} :material-link:](../../../formats/he_e2e_types/Type{t}/)|{content}|{size}|{description}|',
+                    f'|[{t} :material-link:](../he_e2e_types/Type{t}.md)|{content}|{size}|{description}|',
                     file=fd)
 
 with mkdocs_gen_files.open('formats/he_e2e_hierarchy/SUMMARY.md',
