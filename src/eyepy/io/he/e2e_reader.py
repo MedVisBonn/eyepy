@@ -193,7 +193,10 @@ class E2EStructureMixin:
             import pandas as pd
         except ImportError:
             raise ImportError(
-                'pandas is required for table output. Please install pandas or use the inspect function without tables=True.')
+                'pandas is required for table output. Install it with: '
+                'pip install eyepy[pandas]. Alternatively, call inspect with '
+                'tables=False.'
+            ) from None
         text = pd.DataFrame.from_records(data,
                                          columns=[
                                              'Type', 'Count', 'Mean Size',
