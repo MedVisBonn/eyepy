@@ -126,6 +126,7 @@ upload_to_pypi = true
 upload_to_vsc_release = true
 # Use uv to build distributions (includes hatchling backend)
 build_command = """
+    python -m pip install --disable-pip-version-check "uv==0.9.6"
     uv lock --upgrade-package "$PACKAGE_NAME"
     git add uv.lock
     uv build
