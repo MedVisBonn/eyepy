@@ -52,6 +52,8 @@ angio_ev = load("healthy_OD_Angio")
 If you have data at hand use one of eyepy's import functions.
 
 ```python
+import eyepy as ep
+
 # Import HEYEX E2E export
 ev = ep.import_heyex_e2e("path/to/file.e2e")
 # Import HEYEX XML export
