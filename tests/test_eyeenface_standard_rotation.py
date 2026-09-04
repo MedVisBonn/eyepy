@@ -105,7 +105,7 @@ class TestStandardRotation:
 
         # Check that row-coordinates are approximately equal (within tolerance for floating point)
         # center is (row, col), so index 0 is row (vertical position)
-        assert abs(od_center[0] - fovea_center[0]) < 0.5, \
+        assert abs(od_center[0] - fovea_center[0]) < 0.5,\
             f'Centers not aligned: OD row={od_center[0]}, Fovea row={fovea_center[0]}'
 
     def test_standard_rotation_preserves_shape(self, enface_with_annotations):
@@ -249,7 +249,7 @@ class TestStandardRotation:
         fovea_center = rotated.fovea.center
 
         # For right eye, optic disc should be to the right (larger x coordinate)
-        assert od_center[1] > fovea_center[1], \
+        assert od_center[1] > fovea_center[1],\
             f'Right eye: OD should be right of fovea. OD x={od_center[1]}, Fovea x={fovea_center[1]}'
 
         # Should be horizontally aligned
@@ -264,7 +264,7 @@ class TestStandardRotation:
         fovea_center = rotated.fovea.center
 
         # For left eye, optic disc should be to the left (smaller x coordinate)
-        assert od_center[1] < fovea_center[1], \
+        assert od_center[1] < fovea_center[1],\
             f'Left eye: OD should be left of fovea. OD x={od_center[1]}, Fovea x={fovea_center[1]}'
 
         # Should be horizontally aligned
@@ -303,7 +303,7 @@ class TestStandardRotation:
         assert abs(od_center[0] - fovea_center[0]) < 0.5
 
         # Default behavior: fovea to the right (positive x direction)
-        assert fovea_center[1] > od_center[1], \
+        assert fovea_center[1] > od_center[1],\
             'Without laterality, fovea should default to the right'
 
     def test_standard_rotation_laterality_variants(self):
@@ -328,7 +328,7 @@ class TestStandardRotation:
             fovea_center = rotated.fovea.center
 
             # For right eye, OD should be to the right
-            assert od_center[1] > fovea_center[1], \
+            assert od_center[1] > fovea_center[1],\
                 f"Right eye format '{laterality}': OD should be right of fovea"
 
         # Test various left eye formats
@@ -349,5 +349,5 @@ class TestStandardRotation:
             fovea_center = rotated.fovea.center
 
             # For left eye, OD should be to the left
-            assert od_center[1] < fovea_center[1], \
+            assert od_center[1] < fovea_center[1],\
                 f"Left eye format '{laterality}': OD should be left of fovea"

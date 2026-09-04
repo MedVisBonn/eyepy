@@ -67,7 +67,7 @@ class TestMaskCompressionUtilities:
 
         # packbits should compress to ~1/8 of original size
         expected_compression_ratio = uncompressed_size / 8
-        assert compressed_size < expected_compression_ratio * 1.1, \
+        assert compressed_size < expected_compression_ratio * 1.1,\
             f'Compression ratio not as expected: {uncompressed_size} -> {compressed_size} bytes'
 
     def test_metadata_preserved(self):
