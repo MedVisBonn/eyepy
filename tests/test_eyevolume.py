@@ -155,8 +155,6 @@ def test_save_load(eyevolume, tmp_path):
     - Localizer metadata
     - Localizer transform
     """
-
-
     # Save
     eyevolume.save(tmp_path / 'test.eye', compress=True)
     # Load
@@ -176,11 +174,11 @@ def test_save_load(eyevolume, tmp_path):
     assert eyevolume.scale_unit == eyevolume2.scale_unit, 'Scale unit does not match'
 
     # 3. Verify layer annotations
-    assert len(eyevolume.layers) == len(eyevolume2.layers), \
+    assert len(eyevolume.layers) == len(eyevolume2.layers),\
         f'Number of layers mismatch: {len(eyevolume.layers)} vs {len(eyevolume2.layers)}'
 
     for layer_name in eyevolume.layers:
-        assert layer_name in eyevolume2.layers, \
+        assert layer_name in eyevolume2.layers,\
             f"Layer '{layer_name}' not found in loaded volume"
         original_layer = eyevolume.layers[layer_name]
         loaded_layer = eyevolume2.layers[layer_name]
@@ -190,15 +188,15 @@ def test_save_load(eyevolume, tmp_path):
             loaded_layer.data,
             err_msg=f"Layer '{layer_name}' data does not match"
         )
-        assert original_layer.meta == loaded_layer.meta, \
+        assert original_layer.meta == loaded_layer.meta,\
             f"Layer '{layer_name}' metadata does not match"
 
     # 4. Verify volume (voxel) annotations / volume maps
-    assert len(eyevolume.volume_maps) == len(eyevolume2.volume_maps), \
+    assert len(eyevolume.volume_maps) == len(eyevolume2.volume_maps),\
         f'Number of volume maps mismatch: {len(eyevolume.volume_maps)} vs {len(eyevolume2.volume_maps)}'
 
     for vmap_name in eyevolume.volume_maps:
-        assert vmap_name in eyevolume2.volume_maps, \
+        assert vmap_name in eyevolume2.volume_maps,\
             f"Volume map '{vmap_name}' not found in loaded volume"
         original_vmap = eyevolume.volume_maps[vmap_name]
         loaded_vmap = eyevolume2.volume_maps[vmap_name]
@@ -209,7 +207,7 @@ def test_save_load(eyevolume, tmp_path):
             err_msg=f"Volume map '{vmap_name}' data does not match"
         )
         # Note: JSON serialization converts tuples to lists, so we normalize for comparison
-        assert set(original_vmap.meta.keys()) == set(loaded_vmap.meta.keys()), \
+        assert set(original_vmap.meta.keys()) == set(loaded_vmap.meta.keys()),\
             f"Volume map '{vmap_name}' metadata keys do not match"
         for key in original_vmap.meta:
             orig_val = original_vmap.meta[key]
@@ -219,26 +217,26 @@ def test_save_load(eyevolume, tmp_path):
                 orig_val = list(orig_val)
             if isinstance(loaded_val, (tuple, list)):
                 loaded_val = list(loaded_val)
-            assert orig_val == loaded_val, \
+            assert orig_val == loaded_val,\
                 f"Volume map '{vmap_name}' metadata['{key}'] does not match: {original_vmap.meta[key]} != {loaded_vmap.meta[key]}"
 
     # 5. Verify slab annotations
-    assert len(eyevolume.slabs) == len(eyevolume2.slabs), \
+    assert len(eyevolume.slabs) == len(eyevolume2.slabs),\
         f'Number of slabs mismatch: {len(eyevolume.slabs)} vs {len(eyevolume2.slabs)}'
 
     for slab_name in eyevolume.slabs:
-        assert slab_name in eyevolume2.slabs, \
+        assert slab_name in eyevolume2.slabs,\
             f"Slab '{slab_name}' not found in loaded volume"
         original_slab = eyevolume.slabs[slab_name]
         loaded_slab = eyevolume2.slabs[slab_name]
-        assert original_slab.meta == loaded_slab.meta, \
+        assert original_slab.meta == loaded_slab.meta,\
             f"Slab '{slab_name}' metadata does not match"
 
     # 6. Verify area (localizer pixel) annotations
     original_area_maps = eyevolume.localizer._area_maps
     loaded_area_maps = eyevolume2.localizer._area_maps
 
-    assert len(original_area_maps) == len(loaded_area_maps), \
+    assert len(original_area_maps) == len(loaded_area_maps),\
         f'Number of area maps mismatch: {len(original_area_maps)} vs {len(loaded_area_maps)}'
 
     for i, (orig_amap, loaded_amap) in enumerate(zip(original_area_maps, loaded_area_maps)):
@@ -247,7 +245,7 @@ def test_save_load(eyevolume, tmp_path):
             loaded_amap.data,
             err_msg=f'Area map {i} data does not match'
         )
-        assert orig_amap.meta == loaded_amap.meta, \
+        assert orig_amap.meta == loaded_amap.meta,\
             f'Area map {i} metadata does not match'
 
     # 7. Verify localizer image data
@@ -258,18 +256,18 @@ def test_save_load(eyevolume, tmp_path):
     )
 
     # 8. Verify localizer metadata
-    assert eyevolume.localizer.meta == eyevolume2.localizer.meta, \
+    assert eyevolume.localizer.meta == eyevolume2.localizer.meta,\
         'Localizer metadata does not match'
-    assert eyevolume.localizer.scale_x == eyevolume2.localizer.scale_x, \
+    assert eyevolume.localizer.scale_x == eyevolume2.localizer.scale_x,\
         'Localizer scale_x does not match'
-    assert eyevolume.localizer.scale_y == eyevolume2.localizer.scale_y, \
+    assert eyevolume.localizer.scale_y == eyevolume2.localizer.scale_y,\
         'Localizer scale_y does not match'
-    assert eyevolume.localizer.laterality == eyevolume2.localizer.laterality, \
+    assert eyevolume.localizer.laterality == eyevolume2.localizer.laterality,\
         'Localizer laterality does not match'
 
     # 9. Verify localizer transform parameters
     if eyevolume.localizer_transform is not None:
-        assert eyevolume2.localizer_transform is not None, \
+        assert eyevolume2.localizer_transform is not None,\
             'Localizer transform was not loaded'
         np.testing.assert_array_almost_equal(
             eyevolume.localizer_transform.params,

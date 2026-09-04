@@ -9,7 +9,7 @@ We use `uv` for dependency management and task running. Install `uv` in your env
 Install all dependencies (including development dependencies):
 
 ```bash
-uv sync --all-groups
+uv sync --all-groups --all-extras --locked
 ```
 
 You can also install with pip/hatch if you prefer:
@@ -21,7 +21,7 @@ python -m pip install -e .[dev]
 To run the tests in the project's virtual environment:
 
 ```bash
-uv run pytest
+uv run --locked pytest
 ```
 
 Package builds and releases are handled by CI using hatchling and python-semantic-release.
@@ -57,7 +57,7 @@ git checkout -b my-feature
 Install dependencies (including dev dependencies):
 
 ```bash
-uv sync --all-groups
+uv sync --all-groups --all-extras --locked
 
 # or (if you prefer pip/hatch):
 python -m pip install -e .[dev]
@@ -74,7 +74,7 @@ This will create a virtual environment and install all required and development 
 Before committing, make sure all tests pass:
 
 ```bash
-uv run pytest
+uv run --locked pytest
 ```
 
 ### Install and run the pre-commit hooks
@@ -88,7 +88,7 @@ uv run pre-commit install
 Run all hooks manually before committing:
 
 ```bash
-uv run pre-commit run --all-files
+uv run --locked pre-commit run --all-files
 ```
 
 pre-commit might change your files to match the code style. You have to add them again before committing. After installation, hooks will also run automatically on every `git commit`. Since the commit with [Commitizen] fails if the pre-commit hooks fails, run the hooks before committing.
@@ -108,7 +108,7 @@ uv run cz commit
 To build and serve the documentation locally with live reload:
 
 ```bash
-uv run mkdocs serve
+uv run --locked mkdocs serve
 ```
 
 Then open http://127.0.0.1:8000/ in your browser.

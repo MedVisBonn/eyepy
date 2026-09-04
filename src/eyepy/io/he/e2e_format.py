@@ -33,7 +33,7 @@ class BscanAdapter(cs.Adapter):
         Returns:
             float
         """
-        bits = '{0:016b}'.format(uint_16)[::-1]
+        bits = f'{uint_16:016b}'[::-1]
         # get mantissa and exponent
         mantissa = bits[:10]
         exponent = bits[10:]
@@ -145,12 +145,14 @@ class LateralityEnum(EnumBase):
 
     The laterality is stored as single character in ASCII code.
     """
+
     OD = EnumValue(82, doc="82 is the ASCII code for 'R'")
     OS = EnumValue(76, doc="76 is the ASCII code for 'L'")
 
 
 class TypesEnum(EnumBase):
     """Enum for types of data stored in .e2e files."""
+
     patient = EnumValue(9)
     application_data = EnumValue(13)
     laterality = EnumValue(11)
@@ -187,6 +189,7 @@ class Type10004(DataclassMixin, TypeMixin):
     Notes:
     The current Bscan-Meta structure builds on the implementation found in [LibE2E](https://github.com/neurodial/LibE2E/blob/d26d2d9db64c5f765c0241ecc22177bb0c440c87/E2E/dataelements/bscanmetadataelement.cpp#L75).
     """
+
     unknown0: int = csfield(cs.Int32ul, )
     size_y: int = csfield(cs.Int32ul, doc='Bscan height')
     size_x: int = csfield(cs.Int32ul, doc='Bscan width')
@@ -280,6 +283,7 @@ class Type7(DataclassMixin, TypeMixin):
 
     Notes:
     """
+
     eye_side: LateralityEnum = csfield(TEnum(cs.Int8ul, LateralityEnum))
     c_curve_mm: float = csfield(cs.Float64l)
     refraction_dpt: float = csfield(cs.Float64l)
@@ -310,6 +314,7 @@ class Type1073741824(DataclassMixin, TypeMixin):
 
     The custom `float16u` used to store the Bscan data, has no sign, a 6-bit exponent und 10-bit mantissa.
     """
+
     size: int = csfield(cs.Int32ul, doc='Size of the data')
     type: int = csfield(cs.Int32ul, doc='Type of the data')
     n_values: int = csfield(cs.Int32ul, doc='Number of values in the data')
@@ -334,6 +339,7 @@ class Type9(DataclassMixin, TypeMixin):
 
     Notes:
     """
+
     firstname: str = csfield(Latin1String(31))
     surname: str = csfield(Latin1String(66))
     birthdate: int = csfield(cs.Int32ul)
@@ -350,6 +356,7 @@ class Type13(DataclassMixin, TypeMixin):
 
     Size: variable
     """
+
     raw: bytes = csfield(cs.Bytes(cs.this._.header.size))
 
     @property
@@ -369,6 +376,7 @@ class Type10019(DataclassMixin, TypeMixin):
 
     Notes:
     """
+
     unknown0: int = csfield(cs.Int32ul)
     id: int = csfield(cs.Int32ul, doc='ID of the layer')
     unknown1: int = csfield(cs.Int32ul)
@@ -393,6 +401,7 @@ class Type11(DataclassMixin, TypeMixin):
     Notes:
     We don't know what this data is used for, only that the 15th byte indicates the laterality of the eye.
     """
+
     unknown: bytes = csfield(cs.Bytes(14))
     laterality: LateralityEnum = csfield(TEnum(cs.Int8ul, LateralityEnum))
 
@@ -409,13 +418,12 @@ class Type59(DataclassMixin, TypeMixin):
     Notes:
     We don't know what this data is used for, only that the 14th byte indicates the laterality of the eye.
     """
+
     unknown: bytes = csfield(cs.Bytes(14))
     laterality: LateralityEnum = csfield(TEnum(cs.Int8ul, LateralityEnum))
 
 
 type59_format = DataclassStruct(Type59)
-
-
 @dataclasses.dataclass
 class Type3(DataclassMixin, TypeMixin):
     """Type 3.
@@ -425,13 +433,12 @@ class Type3(DataclassMixin, TypeMixin):
     Notes:
     We don't know what this data is used for, only that the 5th byte indicates the laterality of the eye.
     """
+
     unknown: bytes = csfield(cs.Bytes(4))
     laterality: LateralityEnum = csfield(TEnum(cs.Int8ul, LateralityEnum))
 
 
 type3_format = DataclassStruct(Type3)
-
-
 @dataclasses.dataclass
 class Type5(DataclassMixin, TypeMixin):
     """Type 5.
@@ -441,13 +448,12 @@ class Type5(DataclassMixin, TypeMixin):
     Notes:
     We don't know what this data is used for, only that the 3rd byte indicates the laterality of the eye.
     """
+
     unknown: bytes = csfield(cs.Bytes(2))
     laterality: LateralityEnum = csfield(TEnum(cs.Int8ul, LateralityEnum))
 
 
 type5_format = DataclassStruct(Type5)
-
-
 @dataclasses.dataclass
 class Type10013(DataclassMixin, TypeMixin):
     """Type 10013.
@@ -456,13 +462,12 @@ class Type10013(DataclassMixin, TypeMixin):
 
     Notes:
     """
+
     unknown: bytes = csfield(cs.Bytes(12))
     n_bscans: int = csfield(cs.Int32ul)
 
 
 type10013_format = DataclassStruct(Type10013)
-
-
 @dataclasses.dataclass
 class Type10012(DataclassMixin, TypeMixin):
     """Type 10012.
@@ -471,6 +476,7 @@ class Type10012(DataclassMixin, TypeMixin):
 
     Notes:
     """
+
     unknown0: bytes = csfield(cs.Bytes(28))
     value_1: float = csfield(cs.Float32l)
     unknown1: bytes = csfield(cs.Bytes(1))
@@ -478,8 +484,6 @@ class Type10012(DataclassMixin, TypeMixin):
 
 
 type10012_format = DataclassStruct(Type10012)
-
-
 @dataclasses.dataclass
 class Type10010(DataclassMixin, TypeMixin):
     """Type 10010.
@@ -488,13 +492,12 @@ class Type10010(DataclassMixin, TypeMixin):
 
     Notes:
     """
+
     unknown: bytes = csfield(cs.Bytes(12))
     n_bscans: int = csfield(cs.Int32ul)
 
 
 type10010_format = DataclassStruct(Type10010)
-
-
 @dataclasses.dataclass
 class Type9000(DataclassMixin, TypeMixin):
     """Studyname Name of the study/visit.
@@ -503,6 +506,7 @@ class Type9000(DataclassMixin, TypeMixin):
 
     Notes:
     """
+
     n_strings: int = csfield(cs.Int32ul)
     string_size: int = csfield(cs.Int32ul)
     text: t.List[str] = csfield(
@@ -512,7 +516,6 @@ class Type9000(DataclassMixin, TypeMixin):
 
 type9000_format = DataclassStruct(Type9000)
 
-
 @dataclasses.dataclass
 class Type9006(DataclassMixin, TypeMixin):
     """Scan pattern Bscan pattern used for the aquisition.
@@ -521,6 +524,7 @@ class Type9006(DataclassMixin, TypeMixin):
 
     Notes:
     """
+
     n_strings: int = csfield(cs.Int32ul)
     string_size: int = csfield(cs.Int32ul)
     text: t.List[str] = csfield(
@@ -539,6 +543,7 @@ class Type9001(DataclassMixin, TypeMixin):
 
     Notes:
     """
+
     n_strings: int = csfield(cs.Int32ul)
     string_size: int = csfield(cs.Int32ul)
     text: t.List[str] = csfield(
@@ -557,6 +562,7 @@ class Type9005(DataclassMixin, TypeMixin):
 
     Notes:
     """
+
     n_strings: int = csfield(cs.Int32ul)
     string_size: int = csfield(cs.Int32ul)
     text: t.List[str] = csfield(
@@ -575,6 +581,7 @@ class Type9007(DataclassMixin, TypeMixin):
 
     Notes:
     """
+
     n_strings: int = csfield(cs.Int32ul)
     string_size: int = csfield(cs.Int32ul)
     text: t.List[str] = csfield(
@@ -593,6 +600,7 @@ class Type9008(DataclassMixin, TypeMixin):
 
     Notes:
     """
+
     n_strings: int = csfield(cs.Int32ul)
     string_size: int = csfield(cs.Int32ul)
     text: t.List[str] = csfield(
@@ -611,6 +619,7 @@ class Type17(DataclassMixin, TypeMixin):
 
     Notes:
     """
+
     n_strings: int = csfield(cs.Int32ul)
     string_size: int = csfield(cs.Int32ul)
     text: t.List[str] = csfield(
@@ -629,12 +638,11 @@ class Type10025(DataclassMixin, TypeMixin):
 
     Notes:
     """
+
     unknown: bytes = csfield(cs.Bytes(24))
     windate: int = csfield(DateTime)
     transform: t.List[float] = csfield(
         cs.Array(6, cs.Float32l), doc='Parameters of affine transformation')
-
-
 type10025_format = DataclassStruct(Type10025)
 
 
@@ -644,9 +652,8 @@ class Type39(DataclassMixin, TypeMixin):
 
     Size: variable
     """
+
     raw: bytes = csfield(cs.Bytes(cs.this._.header.size))
-
-
 type39_format = DataclassStruct(Type39)
 
 
@@ -656,6 +663,7 @@ class Type10005(DataclassMixin, TypeMixin):
 
     Size: 24 bytes
     """
+
     unknown: bytes = csfield(cs.Bytes(16))
     examination_time: str = csfield(DateTime)
 
@@ -692,6 +700,7 @@ class ContainerHeader(DataclassMixin):
 
     Notes:
     """
+
     magic3: str = csfield(cs.PaddedString(12, 'ascii'))
     unknown0: int = csfield(cs.Int32ul)
     header_pos: int = csfield(cs.Int32ul, doc='Position of the header')
@@ -733,6 +742,7 @@ class DataContainer(DataclassMixin):
 
     Notes:
     """
+
     header: ContainerHeader = csfield(containerheader_format)
     item: t.Any = csfield(
         item_switch,
@@ -752,6 +762,7 @@ class FolderHeader(DataclassMixin):
 
     Notes:
     """
+
     pos: int = csfield(
         cs.Int32ul,
         doc=
@@ -792,6 +803,7 @@ class Header(DataclassMixin):
 
     Notes:
     """
+
     magic2: str = csfield(cs.PaddedString(12, 'ascii'))
     version: int = csfield(cs.Int32ul)
     unknown0: t.List[int] = csfield(cs.Array(10, cs.Int16ul))
@@ -814,6 +826,7 @@ class Chunk(DataclassMixin):
     Notes:
     Every chunk has a header similar to the file header. A chunk then holds the headers of all contained folders sequentially, followed by data containers, that are referenced by the folder headers. A chunk can contain folders with data of different patients, studies, series, slices and types. Each folder contains data for a single (patient, study, series, slice, type) combination which is given in the folder header as well as the data container header. For the last chunk to have 512 folders, empty folders of type=0 are appended.
     """
+
     chunk_header: Header = csfield(
         header_format,
         doc=
@@ -840,6 +853,7 @@ class Version(DataclassMixin):
 
     Notes:
     """
+
     name: str = csfield(cs.PaddedString(12, 'ascii'),
                         doc='Name of the version')
     version: int = csfield(cs.Int32ul, doc='Verion of the file')
@@ -858,6 +872,7 @@ class E2EFormat(DataclassMixin):
     Notes:
     An E2E file starts with a version structure, followed by a header structure. After that the data comes in chunks of 512 folders.
     """
+
     version: Version = csfield(version_format)
     header: Header = csfield(
         header_format,

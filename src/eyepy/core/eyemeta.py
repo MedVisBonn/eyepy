@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, MutableMapping
 import json
 import os
-from typing import Any, Iterable, MutableMapping, Union
+from typing import Any, Union
 
 
 class EyeMeta(MutableMapping):

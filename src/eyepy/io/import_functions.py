@@ -16,7 +16,7 @@ from eyepy.io.utils import _compute_localizer_oct_transform
 logger = logging.getLogger('eyepy.io')
 
 
-def import_topcon_fda(path: Union[str, Path]) -> EyeVolume:
+def import_topcon_fda(path: str | Path) -> EyeVolume:
     """Read a Topcon fda file.
 
     This function is a wrapper around the FDA reader in OCT-Converter.
@@ -119,7 +119,7 @@ def import_topcon_fda(path: Union[str, Path]) -> EyeVolume:
     return ev
 
 
-def import_heyex_e2e(path: Union[str, Path]) -> EyeVolume:
+def import_heyex_e2e(path: str | Path) -> EyeVolume:
     """Read a Heyex E2E file.
 
     This function is a thin wrapper around the HeE2eReader class and
@@ -145,7 +145,7 @@ def import_heyex_e2e(path: Union[str, Path]) -> EyeVolume:
     return ev
 
 
-def import_heyex_xml(path: Union[str, Path]) -> EyeVolume:
+def import_heyex_xml(path: str | Path) -> EyeVolume:
     """Read a Heyex XML file.
 
     This function is a thin wrapper around the HeXmlReader class
@@ -161,7 +161,7 @@ def import_heyex_xml(path: Union[str, Path]) -> EyeVolume:
     return HeXmlReader(path).volume
 
 
-def import_heyex_vol(path: Union[str, Path]) -> EyeVolume:
+def import_heyex_vol(path: str | Path) -> EyeVolume:
     """Read a Heyex VOL file.
 
     This function is a thin wrapper around the HeVolReader class
@@ -177,7 +177,7 @@ def import_heyex_vol(path: Union[str, Path]) -> EyeVolume:
     return HeVolReader(path).volume
 
 
-def import_heyex_angio_vol(path: Union[str, Path]) -> EyeVolume:
+def import_heyex_angio_vol(path: str | Path) -> EyeVolume:
     """Read a Heyex Angio VOL file.
 
     This function is a thin wrapper around the HeVolReader class
@@ -193,7 +193,7 @@ def import_heyex_angio_vol(path: Union[str, Path]) -> EyeVolume:
     return HeVolReader(path, type='octa').volume
 
 
-def import_bscan_folder(path: Union[str, Path]) -> EyeVolume:
+def import_bscan_folder(path: str | Path) -> EyeVolume:
     """Read B-Scans from a folder.
 
     This function can be used to read B-scans from a folder in case that
@@ -236,7 +236,7 @@ def import_bscan_folder(path: Union[str, Path]) -> EyeVolume:
     return EyeVolume(data=volume, meta=meta)
 
 
-def import_duke_mat(path: Union[str, Path]) -> EyeVolume:
+def import_duke_mat(path: str | Path) -> EyeVolume:
     """Import an OCT volume from the Duke dataset.
 
     The dataset is available at https://people.duke.edu/~sf59/RPEDC_Ophth_2013_dataset.htm
@@ -288,7 +288,7 @@ def import_duke_mat(path: Union[str, Path]) -> EyeVolume:
     return volume
 
 
-def import_dukechiu2_mat(path: Union[str, Path]) -> EyeVolume:
+def import_dukechiu2_mat(path: str | Path) -> EyeVolume:
     """Import an OCT volume from the Duke dataset (Chiu_BOE_2014).
 
     The dataset is available at https://people.duke.edu/~sf59/Chiu_BOE_2014_dataset.htm
@@ -375,7 +375,7 @@ def import_dukechiu2_mat(path: Union[str, Path]) -> EyeVolume:
     return volume
 
 
-def import_retouch(path: Union[str, Path]) -> EyeVolume:
+def import_retouch(path: str | Path) -> EyeVolume:
     """Import an OCT volume from the Retouch dataset.
 
     The dataset is available upon request at https://retouch.grand-challenge.org/
