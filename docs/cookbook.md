@@ -143,7 +143,27 @@ The result looks like this: On the left, the scale is the drusen height in voxel
 
 ![Example quantification](https://user-images.githubusercontent.com/5720058/218107881-841c224a-ca1c-465f-ab42-7aa3726fb991.jpeg)
 
-To access the quantification as a dictionary use `ev.volume_maps["drusen"].quantification`
+To access the quantification as a dictionary use `ev.volume_maps["drusen"].quantification`. With a grid preset such as `ETDRS_9`, region keys use predefined names such as `Central [mm³]` and `Inner Superior [mm³]` instead of radius/sector indices. Laterality (`OD`/`OS`) is handled automatically.
+
+### Layer and voxel-annotation thickness
+
+Retinal thickness between two segmented layers (e.g. ILM and BM) and mean axial extent of binary voxel annotations can be quantified on the same ETDRS grid. Units are taken from `EyeVolume` metadata (`scale_unit`).
+
+```python
+from eyepy.quant import ETDRS_9
+
+# Layer-pair thickness (ILM → BM) with standard ETDRS 9-zone grid
+retinal = ev.quantify_thickness("ILM", "BM", grid=ETDRS_9)
+print(retinal.quantification)  # keys like "Central [µm]", "Inner Superior [µm]", ...
+
+fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+ev.plot(ax=axes[0], thickness=("ILM", "BM"))
+ev.plot(ax=axes[1], thickness_quantification=("ILM", "BM"))
+
+# Mean axial extent of a binary voxel annotation (e.g. drusen height)
+ev.volume_maps["drusen"].grid_preset = ETDRS_9
+print(ev.volume_maps["drusen"].thickness_quantification)
+```
 
 ### Interact with individual B-scans
 If you index into an EyeVolume object you get EyeBscan objects. Annotations you added to the respective `EyeVolume` object are also available in the `EyeBscan` object and can be visualized easily. The following code plots the 40th B-scan of the volume together with the layer annotations for BM and RPE and the computed drusen annotation:

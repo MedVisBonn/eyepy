@@ -371,6 +371,8 @@ class EyeVolumePixelAnnotation:
         n_sectors: Iterable[int] = (1, 4),
         offsets: Iterable[int] = (0, 45),
         center: Optional[tuple[float, float]] = None,
+        names: Optional[Iterable[str]] = None,
+        grid_preset: Optional[Any] = None,
         **kwargs: Any,
     ) -> None:
         """Pixel annotation for an EyeVolume.
@@ -383,6 +385,8 @@ class EyeVolumePixelAnnotation:
             n_sectors: number of sectors for quantification on circular grid
             offsets: offsets from x axis for first sector, for quantification on circular grid
             center: center of circular grid for quantification
+            names: explicit region names for quantification grid
+            grid_preset: standard grid preset (e.g. ``ETDRS_9``)
             **kwargs: additional meta data specified as parameters
 
         Returns:
@@ -399,6 +403,7 @@ class EyeVolumePixelAnnotation:
 
         self._masks = None
         self._quantification = None
+        self._thickness_quantification = None
 
         if meta is None:
             self.meta = kwargs
@@ -412,6 +417,8 @@ class EyeVolumePixelAnnotation:
                 'n_sectors': n_sectors,
                 'offsets': offsets,
                 'center': center,
+                'names': names,
+                'grid_preset': grid_preset,
             })
 
         if 'name' not in self.meta:
@@ -433,6 +440,7 @@ class EyeVolumePixelAnnotation:
     def _reset(self) -> None:
         self._masks = None
         self._quantification = None
+        self._thickness_quantification = None
 
     @property
     def radii(self) -> Iterable[float]:
@@ -474,6 +482,26 @@ class EyeVolumePixelAnnotation:
     def center(self, value: tuple[float, float]) -> None:
         self._reset()
         self.meta['center'] = value
+
+    @property
+    def names(self) -> Optional[Iterable[str]]:
+        """Explicit region names for the quantification grid."""
+        return self.meta.get('names')
+
+    @names.setter
+    def names(self, value: Optional[Iterable[str]]) -> None:
+        self._reset()
+        self.meta['names'] = value
+
+    @property
+    def grid_preset(self) -> Optional[Any]:
+        """Standard grid preset with predefined region names."""
+        return self.meta.get('grid_preset')
+
+    @grid_preset.setter
+    def grid_preset(self, value) -> None:
+        self._reset()
+        self.meta['grid_preset'] = value
 
     @property
     def projection(self) -> np.ndarray:
@@ -558,16 +586,26 @@ class EyeVolumePixelAnnotation:
             A dictionary of masks with the keys being the names of the masks.
         """
         from eyepy.core.grids import grid
+        from eyepy.quant.grid import resolve_grid_config
 
         if self._masks is None:
-            self._masks = grid(
-                mask_shape=self.volume.localizer.shape,
+            grid_config = resolve_grid_config(
                 radii=self.radii,
-                laterality=self.volume.laterality,
                 n_sectors=self.n_sectors,
                 offsets=self.offsets,
+                names=self.names,
+                grid_preset=self.grid_preset,
+            )
+            self._masks = grid(
+                mask_shape=self.volume.localizer.shape,
+                radii=grid_config['radii'],
+                laterality=self.volume.laterality,
+                n_sectors=grid_config['n_sectors'],
+                offsets=grid_config['offsets'],
                 radii_scale=self.volume.scale_x,
                 center=self.center,
+                grid_preset=grid_config['grid_preset'],
+                names=grid_config['names'],
             )
 
         return self._masks
@@ -584,7 +622,43 @@ class EyeVolumePixelAnnotation:
 
         return self._quantification
 
+    def enface_scalar_quantification(self):
+        """Build :class:`~eyepy.quant.enface_scalar.EnfaceScalarQuantification`
+        for this annotation."""
+        from eyepy.quant.enface_scalar import EnfaceScalarQuantification
+
+        return EnfaceScalarQuantification.from_pixel_annotation(
+            self.volume,
+            self.name,
+            radii=self.radii,
+            n_sectors=self.n_sectors,
+            offsets=self.offsets,
+            center=self.center,
+            names=self.names,
+            grid=self.grid_preset,
+        )
+
+    @property
+    def thickness_quantification(self) -> dict[str, Union[float, str]]:
+        """Mean axial thickness of the annotation per ETDRS zone.
+
+        For binary 3D masks, thickness is the depth-wise extent per A-scan
+        (projection sum × scale_y), aggregated with mean per grid region.
+        Units are taken from ``volume.scale_unit``.
+
+        Returns:
+            Dictionary of mean thickness values per ETDRS zone.
+        """
+        if self._thickness_quantification is None:
+            self._thickness_quantification = (
+                self.enface_scalar_quantification().quantification
+            )
+
+        return self._thickness_quantification
+
     def _quantify(self) -> dict[str, Union[float, str]]:
+        from eyepy.quant.grid import quantize_on_grid
+
         enface_voxel_size_ym3 = (self.volume.localizer.scale_x * 1e3 *
                                  self.volume.localizer.scale_y * 1e3 *
                                  self.volume.scale_y * 1e3)
@@ -593,10 +667,13 @@ class EyeVolumePixelAnnotation:
 
         enface_projection = self.enface
 
-        results = {}
-        for name, mask in self.masks.items():
-            results[f'{name} [mm³]'] = ((enface_projection * mask).sum() *
-                                        enface_voxel_size_ym3 / 1e9)
+        results = quantize_on_grid(
+            enface_projection,
+            self.masks,
+            aggregator='sum',
+            unit='mm³',
+            scale_factor=enface_voxel_size_ym3 / 1e9,
+        )
 
         results['Total [mm³]'] = enface_projection.sum(
         ) * enface_voxel_size_ym3 / 1e9

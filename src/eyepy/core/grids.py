@@ -13,6 +13,8 @@ from skimage import transform
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
+    from eyepy.quant.grid_presets import GridPreset
+
     Shape = Union[int, tuple[int, int]]
 
 
@@ -192,6 +194,46 @@ def create_grid_regions(
     return all_masks
 
 
+def _index_region_names(
+    input_radii: Sequence[Union[int, float]],
+    n_sectors: Sequence[int],
+) -> list[str]:
+    names: list[str] = []
+    inner_radii = [0.0, *input_radii]
+    for ring_index, outer_radius in enumerate(input_radii):
+        inner_radius = inner_radii[ring_index]
+        for sector_index in range(int(n_sectors[ring_index])):
+            names.append(
+                f'Radius: {inner_radius}-{outer_radius} Sector: {sector_index}'
+            )
+    return names
+
+
+def _resolve_region_names(
+    input_radii: Sequence[Union[int, float]],
+    n_sectors: Sequence[int],
+    grid_preset: Optional['GridPreset'],
+    names: Optional[Sequence[str]],
+    n_masks: int,
+) -> list[str]:
+    if names is not None:
+        if len(names) != n_masks:
+            raise ValueError(
+                f'Expected {n_masks} region names, got {len(names)}'
+            )
+        return list(names)
+
+    if grid_preset is not None:
+        if len(grid_preset.region_names) != n_masks:
+            raise ValueError(
+                f'Grid configuration produces {n_masks} regions, but preset '
+                f'{grid_preset.name!r} defines {len(grid_preset.region_names)} names'
+            )
+        return list(grid_preset.region_names)
+
+    return _index_region_names(input_radii, n_sectors)
+
+
 def grid(
     mask_shape: tuple[int, int],
     radii: Union[Sequence[Union[int, float]], int, float],
@@ -201,6 +243,8 @@ def grid(
     center: Optional[tuple] = None,
     smooth_edges: bool = False,
     radii_scale: Union[int, float] = 1,
+    grid_preset: Optional['GridPreset'] = None,
+    names: Optional[Sequence[str]] = None,
 ) -> dict[str, npt.NDArray[Any]]:
     """Create a quantification grid.
 
@@ -213,6 +257,8 @@ def grid(
         center: Center location of the computed masks
         smooth_edges: If True, compute non binary masks where edges might be shared between adjacent regions
         radii_scale:
+        grid_preset: Standard grid preset with predefined region names.
+        names: Explicit region names; overrides preset and index naming when provided.
 
     Returns:
     """
@@ -242,17 +288,15 @@ def grid(
         smooth_edges,
     )
 
-    names = []
-    radii = [0.0] + radii
-    input_radii = [0] + input_radii
-    for i, r in enumerate(radii):
-        if i + 1 >= len(radii):
-            break
-        for s in range(n_sectors[i]):
-            names.append(
-                f'Radius: {input_radii[i]}-{input_radii[i+1]} Sector: {s}')
+    region_names = _resolve_region_names(
+        input_radii,
+        n_sectors,
+        grid_preset,
+        names,
+        len(masks),
+    )
 
-    masks = {name: mask for name, mask in zip(names, masks)}
+    masks = {name: mask for name, mask in zip(region_names, masks)}
     if laterality == 'OS':
         masks = {name: np.flip(m, axis=1) for name, m in masks.items()}
     elif laterality == 'OD':

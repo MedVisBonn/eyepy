@@ -58,6 +58,11 @@ def eyevolume():
         name='RPE',
         current_color='#00FF00'
     )
+    volume.add_layer_annotation(
+        np.full((n_bscans, bscan_width), bscan_height * 0.8),
+        name='BM',
+        current_color='#0000FF'
+    )
 
     # Add volume map (voxel) annotation
     voxel_map = np.random.rand(n_bscans, bscan_height, bscan_width) > 0.8
