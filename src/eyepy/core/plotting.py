@@ -12,13 +12,13 @@ logger = logging.getLogger(__name__)
 
 def plot_scalebar(scale: tuple[float, float],
                   scale_unit: str,
-                  scale_length: Optional[Union[int, float]] = None,
+                  scale_length: int | float | None = None,
                   pos: tuple[int, int] = (100, 100),
                   flip_x: bool = False,
                   flip_y: bool = False,
                   color: str = 'white',
                   linewidth: float = 1.5,
-                  ax: Optional[Axes] = None,
+                  ax: Axes | None = None,
                   **kwargs: dict) -> None:
     """Plot a scalebar for an image.
 

@@ -1,5 +1,6 @@
 """Tests for saving and loading optic disc and fovea annotations with
 EyeVolume."""
+
 from pathlib import Path
 import tempfile
 

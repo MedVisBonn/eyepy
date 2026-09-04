@@ -24,6 +24,7 @@
 
 + [EyeEnfaceFoveaAnnotation][eyepy.core.annotations.EyeEnfaceFoveaAnnotation]
 """
+
 # isort: skip_file
 
 __author__ = """Olivier Morelle"""

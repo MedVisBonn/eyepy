@@ -5,8 +5,7 @@ from collections.abc import Callable
 import io
 import json
 from pathlib import Path
-from typing import (Optional, overload, Protocol, SupportsIndex, TYPE_CHECKING,
-                    Union)
+from typing import Optional, overload, Protocol, SupportsIndex, TYPE_CHECKING, Union
 import warnings
 
 from numpy import typing as npt
@@ -45,9 +44,9 @@ class EyeVolume:
     def __init__(
         self,
         data: npt.NDArray[np.float32],
-        meta: Optional[EyeVolumeMeta] = None,
-        localizer: Optional[EyeEnface] = None,
-        transformation: Optional[GeometricTransform] = None,
+        meta: EyeVolumeMeta | None = None,
+        localizer: EyeEnface | None = None,
+        transformation: GeometricTransform | None = None,
     ) -> None:
         """
 
@@ -90,7 +89,7 @@ class EyeVolume:
         else:
             self.localizer = localizer
 
-    def save(self, path: Union[str, Path], compress: bool = False) -> None:
+    def save(self, path: str | Path, compress: bool = False) -> None:
         """Save the EyeVolume to a zip file.
 
         Args:
@@ -228,7 +227,7 @@ class EyeVolume:
                     )
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> EyeVolume:
+    def load(cls, path: str | Path) -> EyeVolume:
         """Load an EyeVolume from a zip file.
 
         Args:
@@ -532,8 +531,8 @@ class EyeVolume:
         ...
 
     def __getitem__(
-            self, index: Union[SupportsIndex,
-                               slice]) -> Union[list[EyeBscan], EyeBscan]:
+            self, index: (SupportsIndex |
+                               slice)) -> list[EyeBscan] | EyeBscan:
         """
 
         Args:
@@ -565,7 +564,7 @@ class EyeVolume:
         """The number of B-Scans."""
         return self.shape[0]
 
-    def set_intensity_transform(self, func: Union[str, Callable]) -> None:
+    def set_intensity_transform(self, func: str | Callable) -> None:
         """
 
         Args:
@@ -593,7 +592,7 @@ class EyeVolume:
             self.intensity_transform = func
             self._data = None
 
-    def set_par_algorithm(self, func: Union[str, Callable]) -> None:
+    def set_par_algorithm(self, func: str | Callable) -> None:
         """
 
         Args:
@@ -821,8 +820,8 @@ class EyeVolume:
         return {vm.name: vm for vm in self._volume_maps}
 
     def add_pixel_annotation(self,
-                             voxel_map: Optional[npt.NDArray[np.bool_]] = None,
-                             meta: Optional[dict] = None,
+                             voxel_map: npt.NDArray[np.bool_] | None = None,
+                             meta: dict | None = None,
                              **kwargs: Any) -> EyeVolumePixelAnnotation:
         """
 
@@ -860,9 +859,9 @@ class EyeVolume:
                 bscan.area_maps.pop(name)
 
     def add_layer_annotation(self,
-                             height_map: Optional[npt.NDArray[
-                                 np.float64]] = None,
-                             meta: Optional[dict] = None,
+                             height_map: None | (npt.NDArray[
+                                 np.float64]) = None,
+                             meta: dict | None = None,
                              **kwargs: Any) -> EyeVolumeLayerAnnotation:
         """
 
@@ -900,7 +899,7 @@ class EyeVolume:
                 bscan.layers.pop(name)
 
     def add_slab_annotation(self,
-                            meta: Optional[dict] = None,
+                            meta: dict | None = None,
                             **kwargs: Any) -> EyeVolumeSlabAnnotation:
         """
 
@@ -938,20 +937,20 @@ class EyeVolume:
 
     def plot(
         self,
-        ax: Optional[Axes] = None,
-        projections: Union[bool, list[str]] = False,
-        slabs: Union[bool, list[str]] = False,
+        ax: Axes | None = None,
+        projections: bool | list[str] = False,
+        slabs: bool | list[str] = False,
         bscan_region: bool = False,
-        bscan_positions: Union[bool, list[int]] = False,
-        quantification: Optional[str] = None,
-        quantification_kwargs: Optional[dict] = None,
+        bscan_positions: bool | list[int] = False,
+        quantification: str | None = None,
+        quantification_kwargs: dict | None = None,
         region: tuple[slice, slice] = np.s_[:, :],
         annotations_only: bool = False,
-        projection_kwargs: Optional[dict] = None,
-        slab_kwargs: Optional[dict] = None,
-        line_kwargs: Optional[dict] = None,
-        scalebar: Union[bool, str] = 'botleft',
-        scalebar_kwargs: Optional[dict] = None,
+        projection_kwargs: dict | None = None,
+        slab_kwargs: dict | None = None,
+        line_kwargs: dict | None = None,
+        scalebar: bool | str = 'botleft',
+        scalebar_kwargs: dict | None = None,
         watermark: bool = True,
     ) -> None:
         """Plot an annotated OCT localizer image.
@@ -977,7 +976,6 @@ class EyeVolume:
         Returns:
             None
         """
-
         # Complete region index expression
         y_start = region[0].start if region[0].start is not None else 0
         y_stop = region[0].stop if region[
@@ -1016,7 +1014,7 @@ class EyeVolume:
             slabs = []
 
         if projection_kwargs is None:
-            projection_kwargs = defaultdict(lambda: {})
+            projection_kwargs = defaultdict(dict)
 
         # Check if projection_kwargs contains nested dicts (per-projection kwargs)
         # or flat kwargs (applied to all projections)
@@ -1040,7 +1038,7 @@ class EyeVolume:
                                         **projection_kwargs[name])
 
         if slab_kwargs is None:
-            slab_kwargs = defaultdict(lambda: {})
+            slab_kwargs = defaultdict(dict)
         for name in slabs:
             if name not in slab_kwargs.keys():
                 slab_kwargs[name] = {}
@@ -1075,10 +1073,10 @@ class EyeVolume:
 
     def _plot_bscan_positions(
         self,
-        bscan_positions: Union[bool, list[int]] = True,
-        ax: Optional[Axes] = None,
+        bscan_positions: bool | list[int] = True,
+        ax: Axes | None = None,
         region: tuple[slice, slice] = np.s_[:, :],
-        line_kwargs: Optional[dict] = None,
+        line_kwargs: dict | None = None,
     ):
         if not bscan_positions:
             bscan_positions = []
@@ -1141,8 +1139,8 @@ class EyeVolume:
 
     def _plot_bscan_region(self,
                            region: tuple[slice, slice] = np.s_[:, :],
-                           ax: Optional[Axes] = None,
-                           line_kwargs: Optional[dict] = None):
+                           ax: Axes | None = None,
+                           line_kwargs: dict | None = None):
 
         from eyepy.core._compat import require_matplotlib
         patches = require_matplotlib('patches')

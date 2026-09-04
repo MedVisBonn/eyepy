@@ -1,4 +1,5 @@
 """Test optional dependency handling."""
+
 import sys
 from unittest.mock import patch
 

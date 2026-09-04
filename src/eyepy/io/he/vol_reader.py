@@ -3,6 +3,7 @@
 https://github.com/ayl/heyexReader/blob/master/heyexReader/volReader.py
 https://github.com/FabianRathke/octSegmentation/blob/master/collector/HDEVolImporter.m
 """
+
 from __future__ import annotations
 
 import datetime
@@ -92,7 +93,8 @@ vol_format = cs.Struct(
     cs.Default(IntDate, datetime.datetime(year=2000, month=1, day=1)) *
     'Examination time. The structure holds an unsigned 64-bit date and time value. '
     'It is encoded as 100ns units since beginning of January 1, 1601',
-    'scan_pattern' / cs.Default(cs.Int32sl, 0) * """Scan pattern type:
+    'scan_pattern' / cs.Default(cs.Int32sl, 0) *\
+                                                 """Scan pattern type:
     0 = Unknown pattern,
     1 = Single line scan (one B-Scan only),
     2 = Circular scan (one B-Scan only),

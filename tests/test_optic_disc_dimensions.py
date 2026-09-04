@@ -1,4 +1,5 @@
 """Tests for optic disc width and height measurement methods."""
+
 import numpy as np
 import pytest
 

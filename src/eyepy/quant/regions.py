@@ -36,7 +36,7 @@ class RegionQuantification:
 
     area: float
     extent: DirectionalExtent
-    origin: Optional[AnatomicalOrigin] = None
+    origin: AnatomicalOrigin | None = None
     scale_x: float = 1.0
     scale_y: float = 1.0
     unit: str = 'px'
@@ -66,10 +66,10 @@ class RegionQuantification:
 
     def plot(
         self,
-        ax: Optional[Axes] = None,
+        ax: Axes | None = None,
         show_origin: bool = True,
         show_extent_lines: bool = True,
-        directions: Optional[list[str]] = None,
+        directions: list[str] | None = None,
         origin_color: str = 'blue',
         origin_marker: str = 'x',
         origin_size: float = 100,
@@ -272,9 +272,9 @@ class RegionQuantification:
     def from_mask(
         cls,
         mask: npt.NDArray[np.bool_],
-        optic_disc_center: Optional[tuple[float, float]] = None,
-        fovea_center: Optional[tuple[float, float]] = None,
-        laterality: Optional[str] = None,
+        optic_disc_center: tuple[float, float] | None = None,
+        fovea_center: tuple[float, float] | None = None,
+        laterality: str | None = None,
         scale_x: float = 1.0,
         scale_y: float = 1.0,
         origin_mode: OriginModeType = OriginMode.HYBRID,
@@ -369,7 +369,7 @@ class RegionQuantification:
         enface: EyeEnface,
         area_map_name: str,
         origin_mode: OriginModeType = OriginMode.HYBRID,
-        custom_origin: Optional[AnatomicalOrigin] = None,
+        custom_origin: AnatomicalOrigin | None = None,
     ) -> RegionQuantification:
         """Create RegionQuantification from an EyeEnface object.
 

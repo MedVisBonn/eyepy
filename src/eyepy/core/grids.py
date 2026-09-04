@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import cmath
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 import functools
-from typing import Any, Iterable, Optional, TYPE_CHECKING, Union
+from typing import Any, Optional, TYPE_CHECKING, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -16,7 +16,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 def circle_mask(radius: int,
-                mask_shape: Optional[tuple[int, int]] = None,
+                mask_shape: tuple[int, int] | None = None,
                 smooth_edges: bool = False) -> npt.NDArray[Any]:
     """Create a centered circular mask with given radius.
 
@@ -195,13 +195,13 @@ def create_grid_regions(
 
 def grid(
     mask_shape: tuple[int, int],
-    radii: Union[Sequence[Union[int, float]], int, float],
+    radii: Sequence[int | float] | int | float,
     laterality: str,
-    n_sectors: Union[Sequence[Union[int, float]], int, float] = 1,
-    rotation: Union[Sequence[Union[int, float]], int, float] = 0,
-    center: Optional[tuple] = None,
+    n_sectors: Sequence[int | float] | int | float = 1,
+    rotation: Sequence[int | float] | int | float = 0,
+    center: tuple | None = None,
     smooth_edges: bool = False,
-    radii_scale: Union[int, float] = 1,
+    radii_scale: int | float = 1,
 ) -> dict[str, npt.NDArray[Any]]:
     """Create a quantification grid.
 

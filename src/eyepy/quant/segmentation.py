@@ -15,8 +15,8 @@ def compute_retina_mask(
     image: npt.NDArray[np.float64],
     threshold: int = 2,
     max_iterations: int = 10,
-    upper: Optional[npt.NDArray[np.int_]] = None,
-    lower: Optional[npt.NDArray[np.int_]] = None,
+    upper: npt.NDArray[np.int_] | None = None,
+    lower: npt.NDArray[np.int_] | None = None,
 ) -> npt.NDArray[np.bool_]:
     """Create a retina mask for the input image.
 
@@ -161,7 +161,7 @@ def remove_outliers(
 
 def iteratively_remove_outliers(
     data: npt.NDArray[np.float64],
-    x: Optional[npt.NDArray[np.int_]] = None,
+    x: npt.NDArray[np.int_] | None = None,
     threshold: int = 3,
     max_iterations: int = 5,
 ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64],

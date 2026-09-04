@@ -18,7 +18,7 @@ def clean_docstring(docstring):
     :return: A cleaned version of the input docstring.
     """
     # Remove leading and trailing whitespace
-    docstring = docstring.strip()
+    docstring = (docstring or '').strip()
 
     # Remove any leading comment characters (#) or whitespace from each line
     lines = [
@@ -37,9 +37,29 @@ def clean_docstring(docstring):
     # Join the lines back together and return the result
     return '\n'.join(lines)
 
+
+def _doc_parts(obj):
+    """Return a stable title, size, and description for an E2E type."""
+    doc = clean_docstring(obj.__doc__)
+    lines = doc.splitlines()
+    title = lines[0] if lines else obj.__name__
+    size = next(
+        (line.removeprefix('Size:').strip() for line in lines
+         if line.startswith('Size:')),
+        'unknown',
+    )
+    description = next(
+        (line for line in lines[1:]
+         if line and not line.startswith(('Size:', 'Notes:'))),
+        '',
+    )
+    return title, size, description
+
+
 def _get_parses_to(type_annotation):
     """Convert type annotations to markdown links."""
-    if type_annotation.__name__ == 'List':
+    annotation_name = getattr(type_annotation, '__name__', str(type_annotation))
+    if annotation_name == 'List':
         for t in type_annotation.__args__:
             return f'List[{_get_parses_to(t)}]'
     if type_annotation in types:
@@ -47,7 +67,7 @@ def _get_parses_to(type_annotation):
     elif type_annotation in file_structures:
         return f'[{type_annotation.__name__}]({type_annotation.__name__}.md)'
 
-    return str(type_annotation.__name__)
+    return annotation_name
 
 def define_env(env):
     'Hook function'
@@ -59,14 +79,6 @@ def define_env(env):
         if structure_name in names:
             structure = file_structures[names.index(structure_name)]
 
-            doc = clean_docstring(structure.__doc__)
-            doc_title = doc.splitlines()[0]
-            size = [
-                l.lstrip('Size: ') for l in doc.splitlines()
-                if l.startswith('Size: ')
-            ][0]
-            text = doc.split('Notes:')[1]
-
             text = '|Offset|Name|Size|Parses to|Description|\n'
             text += '|---|----|----|----|-------------|\n'
 
@@ -76,7 +88,7 @@ def define_env(env):
                 description = f.metadata['subcon'].docs
                 try:
                     size = f.metadata['subcon'].sizeof()
-                except:
+                except Exception:
                     size = 'variable'
                 t_annotation = type_annotations[name]
                 parses_to = _get_parses_to(t_annotation)
@@ -92,18 +104,13 @@ def define_env(env):
         types_data = {}
         for t in types:
             # Extract information from the docstring
-            doc = clean_docstring(t.__doc__)
-            doc_title = doc.splitlines()[0]
+            doc_title, size, description = _doc_parts(t)
             t_id = int(t.__name__.lstrip('Type'))
-            size = [
-                l.lstrip('Size: ') for l in doc.splitlines()
-                if l.startswith('Size: ')
-            ][0]
             # Collect types data for the overview pages
             types_data[t_id] = {
                 'size': size,
                 'content': doc_title,
-                'description': doc.splitlines()[1],
+                'description': description,
             }
         return types_data
 
@@ -120,15 +127,14 @@ def define_env(env):
                     content = types_data[t]['content']
                     size = types_data[t]['size']
                     description = types_data[t]['description'].strip('\n')
-                except:
+                except (KeyError, AttributeError):
                     content = ''
                     size = ''
                     description = ''
                 if not content:
                     text += f'|{t}|{content}|{size}|{description}|\n'
                 else:
-                    text += f'|[{t} :material-link:](/formats/he_e2e_types/Type{t})|{content}|{size}|{description}|\n'
-                #text += f'|[{t} :material-link:](../formats/he_e2e_types/Type{t}/popel/)|{content}|{size}|{description}|\n'
+                    text += f'|[{t} :material-link:](../he_e2e_types/Type{t}.md)|{content}|{size}|{description}|\n'
 
             return text
         raise ValueError(f'Level {level_name} not found in E2E hierarchy.')

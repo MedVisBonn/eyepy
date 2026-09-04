@@ -1,4 +1,5 @@
 """Unit tests for the EyeEnfaceOpticDiscAnnotation class."""
+
 import numpy as np
 import pytest
 

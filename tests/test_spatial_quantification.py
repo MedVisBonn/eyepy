@@ -446,7 +446,6 @@ class TestEdgeCases:
         mask[50, 60] = True  # Single pixel
 
         extent = polar_ref.compute_directional_extent(mask)
-
         # Should not crash and should return valid ExtentMetrics
         assert isinstance(extent, DirectionalExtent)
         assert extent.temporal.midpoint >= 0  # Single pixel may have 0 extent    def test_asymmetric_region(self):

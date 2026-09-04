@@ -39,8 +39,8 @@ class EyeEnface:
 
     def __init__(self, data: npt.NDArray[np.int64],
                  meta: EyeEnfaceMeta,
-                 optic_disc: Optional[EyeEnfaceOpticDiscAnnotation] = None,
-                 fovea: Optional[EyeEnfaceFoveaAnnotation] = None) -> None:
+                 optic_disc: EyeEnfaceOpticDiscAnnotation | None = None,
+                 fovea: EyeEnfaceFoveaAnnotation | None = None) -> None:
         """Initialize EyeEnface.
 
         Args:
@@ -65,7 +65,7 @@ class EyeEnface:
         if optic_disc is not None and fovea is not None:
             self._infer_and_validate_laterality()
 
-    def set_intensity_transform(self, func: Union[str, Callable]) -> None:
+    def set_intensity_transform(self, func: str | Callable) -> None:
         """Set the intensity transform function for enface data.
 
         Args:
@@ -122,7 +122,7 @@ class EyeEnface:
         return self._raw_data.shape
 
     @property
-    def optic_disc(self) -> Optional[EyeEnfaceOpticDiscAnnotation]:
+    def optic_disc(self) -> EyeEnfaceOpticDiscAnnotation | None:
         """Get the optic disc annotation.
 
         Returns:
@@ -131,7 +131,7 @@ class EyeEnface:
         return self._optic_disc
 
     @optic_disc.setter
-    def optic_disc(self, value: Optional[EyeEnfaceOpticDiscAnnotation]) -> None:
+    def optic_disc(self, value: EyeEnfaceOpticDiscAnnotation | None) -> None:
         """Set the optic disc annotation.
 
         If both optic_disc and fovea are set, laterality will be inferred (if not already set)
@@ -149,7 +149,7 @@ class EyeEnface:
             self._infer_and_validate_laterality()
 
     @property
-    def fovea(self) -> Optional[EyeEnfaceFoveaAnnotation]:
+    def fovea(self) -> EyeEnfaceFoveaAnnotation | None:
         """Get the fovea annotation.
 
         Returns:
@@ -158,7 +158,7 @@ class EyeEnface:
         return self._fovea
 
     @fovea.setter
-    def fovea(self, value: Optional[EyeEnfaceFoveaAnnotation]) -> None:
+    def fovea(self, value: EyeEnfaceFoveaAnnotation | None) -> None:
         """Set the fovea annotation.
 
         If both optic_disc and fovea are set, laterality will be inferred (if not already set)
@@ -200,7 +200,7 @@ class EyeEnface:
         # Now validate the laterality
         self._validate_laterality()
 
-    def _infer_laterality(self) -> Optional[str]:
+    def _infer_laterality(self) -> str | None:
         """Infer laterality from the relative positions of optic disc and fovea.
 
         For anatomically correct images:
@@ -282,8 +282,8 @@ class EyeEnface:
         return {am.name: am for am in self._area_maps}
 
     def add_area_annotation(self,
-                            area_map: Optional[npt.NDArray[np.bool_]] = None,
-                            meta: Optional[dict] = None,
+                            area_map: npt.NDArray[np.bool_] | None = None,
+                            meta: dict | None = None,
                             **kwargs: Any) -> EyeEnfacePixelAnnotation:
         """
 
@@ -370,17 +370,17 @@ class EyeEnface:
 
     def plot(
         self,
-        ax: Optional[Axes] = None,
+        ax: Axes | None = None,
         region: tuple[slice, slice] = np.s_[:, :],
-        scalebar: Union[bool, str] = 'botleft',
-        scalebar_kwargs: Optional[dict[str, Any]] = None,
+        scalebar: bool | str = 'botleft',
+        scalebar_kwargs: dict[str, Any] | None = None,
         watermark: bool = True,
-        areas: Union[bool, list[str]] = True,
+        areas: bool | list[str] = True,
         plot_optic_disc: bool = True,
         plot_fovea: bool = True,
-        area_kwargs: Optional[dict[str, Any]] = None,
-        optic_disc_kwargs: Optional[dict[str, Any]] = None,
-        fovea_kwargs: Optional[dict[str, Any]] = None,
+        area_kwargs: dict[str, Any] | None = None,
+        optic_disc_kwargs: dict[str, Any] | None = None,
+        fovea_kwargs: dict[str, Any] | None = None,
     ) -> None:
         """
 
@@ -594,7 +594,7 @@ class EyeEnface:
 
         return self.transform(matrix, order=order, mode=mode, cval=cval)
 
-    def rotate(self, angle: float, center: Optional[tuple[float, float]] = None,
+    def rotate(self, angle: float, center: tuple[float, float] | None = None,
                order: int = 1, mode: str = 'constant', cval: float = 0.0) -> EyeEnface:
         """Rotate the enface image and all annotations.
 
@@ -713,7 +713,7 @@ class EyeEnface:
         return self.rotate(-rotation_angle_deg, center=center, order=order, mode=mode, cval=cval)
 
     def transform(self, matrix: npt.NDArray[np.float64],
-                  output_shape: Optional[tuple[int, int]] = None,
+                  output_shape: tuple[int, int] | None = None,
                   order: int = 1, mode: str = 'constant', cval: float = 0.0) -> EyeEnface:
         """Apply an affine transformation to the enface image and all annotations.
 

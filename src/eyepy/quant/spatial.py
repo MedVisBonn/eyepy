@@ -535,7 +535,7 @@ class PolarReference:
         scale_x: float,
         scale_y: float,
         midpoint_angle: float,
-        sector_range: Union[tuple[float, float], tuple[tuple[float, float], tuple[float, float]]],
+        sector_range: tuple[float, float] | tuple[tuple[float, float], tuple[float, float]],
         mask_shape: tuple[int, int],
     ) -> ExtentMetrics:
         """Compute all metrics for a single direction.
