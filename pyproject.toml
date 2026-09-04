@@ -1,6 +1,6 @@
 [project]
 name = "eyepy"
-version = "0.20.1"
+version = "0.21.0"
 description = "A Python package to read, analyze, and visualize OCT and fundus data from various sources."
 authors = [{ name = "Olivier Morelle", email = "oli4morelle@gmail.com" }]
 requires-python = ">=3.10,<4.0"
