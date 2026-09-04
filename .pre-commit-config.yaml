@@ -36,5 +36,6 @@ repos:
   hooks:
     - id: docformatter
       language: python
+      language_version: python3.10
       additional_dependencies: [tomli]
       args: [--config, ./pyproject.toml]
