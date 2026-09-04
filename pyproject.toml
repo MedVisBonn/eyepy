@@ -63,7 +63,7 @@ Repository = "https://github.com/MedVisBonn/eyepy"
 
 [dependency-groups]
 test = [
-    "pytest>=8.0.0,<9",
+    "pytest>=9.0.3,<10",
     "pytest-cov>=6.0.0,<8",
 ]
 test-all = [
