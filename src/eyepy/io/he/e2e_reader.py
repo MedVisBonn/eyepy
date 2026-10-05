@@ -1118,6 +1118,13 @@ class E2ESeriesStructure(E2EStructureMixin):
                 self.get_bscan_meta()
             ) != 1 else 0  # Slice id for single B-scan Volumes is 2 and not 0 in the e2e file.
 
+            if bscan.shape != (size_y, size_x):
+                raise ValueError(
+                    f'B-scan slice {ind} has shape {bscan.shape}; expected '
+                    f'{(size_y, size_x)} from the first B-scan. The E2E series '
+                    'contains scans with different dimensions.'
+                )
+
             data[i] = bscan
 
         return data
