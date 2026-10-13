@@ -286,7 +286,7 @@ class E2EFolder():
     @property
     def data(self) -> Any:
         """Return the data."""
-        if not self._data:
+        if self._data is None:
             parsed = self._parse_data()
             self._data = parsed.item
             self._header = parsed.header
@@ -295,7 +295,7 @@ class E2EFolder():
     @property
     def header(self) -> ContainerHeader:
         """Return the data header."""
-        if not self._header:
+        if self._header is None:
             parsed = self._parse_data()
             self._data = parsed.item
             self._header = parsed.header
@@ -309,7 +309,14 @@ class E2EFolder():
         file is not open.
         """
         self.file_object.seek(self.start)
-        return datacontainer_format.parse_stream(self.file_object)
+        header_size = containerheader_format.sizeof()
+        header = self.file_object.read(header_size)
+        if len(header) != header_size:
+            raise EOFError('Truncated E2E container header')
+        if containerheader_format.parse(header).size != self.size:
+            raise ValueError('E2E directory/container payload sizes disagree')
+        # GreedyBytes must stop at this payload's boundary, not the file's end.
+        return datacontainer_format.parse(header + self.get_bytes())
 
     def parse_spec(self, data_construct: cs.Construct, offset: int = 0) -> Any:
         """Parse a data specification.
@@ -336,6 +343,9 @@ class E2EFolder():
         if self._bytes is None:
             self.file_object.seek(self.start + containerheader_format.sizeof())
             self._bytes = self.file_object.read(self.size)
+            if len(self._bytes) != self.size:
+                self._bytes = None
+                raise EOFError('Truncated E2E container payload')
         return self._bytes
 
 
