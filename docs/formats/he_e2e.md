@@ -55,6 +55,31 @@ with HeE2eReader("filename.E2E", single=True) as e2e_reader: # (2)
 
     If you know how to read this information from the E2E file, please let us know by opening an [issue](https://github.com/MedVisBonn/eyepy/issues)
 
+## Decoded optical settings
+
+The following offsets are relative to the start of the container payload,
+after the 60-byte container header. All three fields are little-endian float64:
+
+| Payload | Offset | Meaning |
+| --- | --- | --- |
+| Type10004 | 136 | Scan focus; `focus_diopters = focus_raw * 1.043 / 1000` |
+| Type10004 | 144 | Eye-length preset: -2500 Short, 0 Medium, 2500 Long, 5000 Extra Long |
+| Type7 / Type39 | 17 / 457 | Corneal radius in millimeters |
+
+The eye-length preset is a category, not a measured axial length. Unknown values
+remain available as `eye_length_preset_raw` and return `None` for the category.
+Type39 returns no radius when the payload is shorter than 465 bytes.
+
+Earlier versions read only the upper float32 half of the focus field at offset
+140 and applied an empirical conversion. Reading the full float64 at offset 136
+reproduces the investigated HEYEX focus values to their displayed precision.
+The exports suggest that the vendor uses float32 precision for the factor
+`1.043`. Using the ordinary decimal constant changes focus by less than
+0.00000003 D across these samples and avoids unnecessary precision conversions.
+`focus_candidate_raw` remains an alias, but now returns the corrected float64
+value. Type7's previously guessed measurement labels have been removed; its
+corneal radius is at offset 17, rather than offset 1.
+
 ## Access other data stored in E2E files
 
 Not everything stored in an E2E file is accessible through parsing to [`EyeVolume`][eyepy.core.EyeVolume] objects. If you are interested in accessing other data stored in the E2E file, you can use the file hierarchy created by the [`HeE2eReader`][eyepy.io.he.e2e_reader.HeE2eReader]. The structure of the build hierarchy is shown in the [diagram](#e2e-hierarchy) below. The file hierarchy can be accessed through the `file_hierarchy` attribute of the [`HeE2eReader`][eyepy.io.he.e2e_reader.HeE2eReader] object. You can either traverse the hierarchy level by level or access all elements of a specific level at once using one of the following attributes:

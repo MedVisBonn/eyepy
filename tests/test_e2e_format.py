@@ -7,6 +7,9 @@ pytest.importorskip('construct_typed')
 
 from eyepy.io.he.e2e_format import chunk_format
 from eyepy.io.he.e2e_format import datacontainer_format
+from eyepy.io.he.e2e_format import type7_format
+from eyepy.io.he.e2e_format import Type39
+from eyepy.io.he.e2e_format import type10004_format
 
 
 def test_e2e_structures_import_with_supported_construct_typing():
@@ -28,6 +31,43 @@ def test_chunk_seek_field_parses_without_becoming_an_init_argument():
 
     assert len(parsed.folders) == 1
     assert parsed.folders[0].type.name == 'patient'
+
+
+@pytest.mark.parametrize('focus', [-1.51, -1.09, -0.49, -0.06, 0, 0.36, 0.82, 0.90])
+def test_focus_uses_full_float64_without_shifting_quality(focus):
+    raw = bytearray(438)
+    struct.pack_into('<d', raw, 136, focus / 0.001043)
+    struct.pack_into('<d', raw, 144, 2500)
+    struct.pack_into('<f', raw, 156, 32)
+
+    meta = type10004_format.parse(raw)
+
+    assert meta.focus_diopters == pytest.approx(focus)
+    assert meta.focus_candidate_raw == meta.focus_raw
+    assert meta.eye_length_preset_raw == 2500
+    assert meta.eye_length_preset == 'Long'
+    assert meta.quality_ui == 32
+    assert len(meta.rest) == 278
+    assert type10004_format.build(meta) == raw
+
+
+@pytest.mark.parametrize('radius', [6.2, 7.7, 9.0])
+def test_corneal_radius_offsets(radius):
+    study_raw = bytearray(68)
+    struct.pack_into('<d', study_raw, 1, 123)
+    struct.pack_into('<d', study_raw, 17, radius)
+    slice_raw = bytearray(600)
+    struct.pack_into('<d', slice_raw, 457, radius)
+
+    study = type7_format.parse(study_raw)
+
+    assert study.c_curve_mm == radius
+    assert Type39(raw=bytes(slice_raw)).corneal_radius_mm == radius
+    assert type7_format.build(study) == study_raw
+
+
+def test_short_localizer_settings_have_no_corneal_radius():
+    assert Type39(raw=bytes(464)).corneal_radius_mm is None
 
 
 def _type9_container(firstname, surname, patient_id):
