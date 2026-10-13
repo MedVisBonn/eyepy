@@ -3,7 +3,7 @@ name: Quality
 on:
   workflow_call:
   pull_request:
-    branches: [master]
+    branches: [master, dev]
   push:
     branches: [dev]
 

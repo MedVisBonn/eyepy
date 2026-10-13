@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from contextlib import AbstractContextManager
+from copy import deepcopy
 import dataclasses
 import datetime
 from io import BufferedReader
@@ -30,6 +31,8 @@ from eyepy.io.utils import find_float
 from eyepy.io.utils import find_int
 from eyepy.io.utils import get_bscan_spacing
 
+from .e2e_calibration import E2EOpticalModel
+from .e2e_calibration import inverse_localizer_registration
 from .e2e_format import ContainerHeader
 from .e2e_format import containerheader_format
 from .e2e_format import DataContainer
@@ -46,11 +49,11 @@ logger = logging.getLogger(__name__)
 # Occurence of type ids. This is used by the inspect function.
 type_occurence = {
     'E2EFileStructure': [0, 9011],
-    'E2EPatientStructure': [9, 17, 29, 31, 52, 9010],
+    'E2EPatientStructure': [6, 9, 17, 29, 31, 52, 9010],
     'E2EStudyStructure': [7, 10, 13, 30, 53, 58, 1000, 9000, 9001],
     'E2ESeriesStructure': [
         2, 3, 11, 54, 59, 61, 62, 1000, 1001, 1003, 1008, 9005, 9006, 9007,
-        9008, 10005, 10009, 10010, 10011, 10013, 10025, 1073741824, 1073751824,
+        9008, 10005, 10009, 10010, 10011, 10013, 10020, 10025, 10090, 1073741824, 1073751824,
         1073751825, 1073751826
     ],
     'E2ESliceStructure': [
@@ -60,7 +63,6 @@ type_occurence = {
 }
 
 HEYEX_TIMEZONE_SUFFIX = 'UTC+1'
-MEDIUM_EYE_LENGTH_UM_PER_DEG = 289.6
 
 
 def _format_version(raw: bytes) -> str:
@@ -280,7 +282,7 @@ class E2EFolder():
     @property
     def data(self) -> Any:
         """Return the data."""
-        if not self._data:
+        if self._data is None:
             parsed = self._parse_data()
             self._data = parsed.item
             self._header = parsed.header
@@ -289,7 +291,7 @@ class E2EFolder():
     @property
     def header(self) -> ContainerHeader:
         """Return the data header."""
-        if not self._header:
+        if self._header is None:
             parsed = self._parse_data()
             self._data = parsed.item
             self._header = parsed.header
@@ -302,8 +304,21 @@ class E2EFolder():
         or during initialization of the HeE2eReader. Otherwise the E2E
         file is not open.
         """
+        if self.is_inline:
+            raise ValueError('Inline E2E index values have no container payload')
         self.file_object.seek(self.start)
-        return datacontainer_format.parse_stream(self.file_object)
+        header = self.file_object.read(containerheader_format.sizeof())
+        if len(header) != containerheader_format.sizeof():
+            raise EOFError('Truncated E2E container header')
+        if containerheader_format.parse(header).size != self.size:
+            raise ValueError('E2E directory/container payload sizes disagree')
+        # Bound GreedyBytes to this container rather than the rest of the file.
+        return datacontainer_format.parse(header + self.get_bytes())
+
+    @property
+    def is_inline(self) -> bool:
+        """Small directory start values encode inline data, not file offsets."""
+        return self.start < 88
 
     def parse_spec(self, data_construct: cs.Construct, offset: int = 0) -> Any:
         """Parse a data specification.
@@ -328,8 +343,13 @@ class E2EFolder():
         file is not open.
         """
         if self._bytes is None:
+            if self.is_inline:
+                raise ValueError('Inline E2E index values have no container payload')
             self.file_object.seek(self.start + containerheader_format.sizeof())
             self._bytes = self.file_object.read(self.size)
+            if len(self._bytes) != self.size:
+                self._bytes = None
+                raise EOFError('Truncated E2E container payload')
         return self._bytes
 
 
@@ -363,7 +383,7 @@ class E2ESliceStructure(E2EStructureMixin):
     def get_layers(self) -> dict[int, np.ndarray]:
         """Return the layers as a dictionary of layer id and layer data."""
         layers = {}
-        for layer_folder in self.folders[TypesEnum.layer_annotation]:
+        for layer_folder in self.folders.get(TypesEnum.layer_annotation, []):
             layers[layer_folder.data.id] = layer_folder.data.data
         return layers
 
@@ -374,7 +394,7 @@ class E2ESliceStructure(E2EStructureMixin):
         indicates whether the B-scan layer was manually changed.
         """
         manual_flags = {}
-        for layer_folder in self.folders[TypesEnum.layer_annotation]:
+        for layer_folder in self.folders.get(TypesEnum.layer_annotation, []):
             layer_data = layer_folder.data
             manual_flags[layer_data.id] = bool(layer_data.manual_edit_raw)
         return manual_flags
@@ -425,6 +445,10 @@ class E2ESliceStructure(E2EStructureMixin):
             'art_mode': meta.art_mode,
             'quality_ui': meta.quality_ui,
             'focus_candidate_raw': meta.focus_candidate_raw,
+            'focus_raw': meta.focus_raw,
+            'focus_diopters': meta.focus_diopters,
+            'eye_length_preset_raw': meta.eye_length_preset_raw,
+            'eye_length_preset': meta.eye_length_preset,
             'oct_controller_fw_version': meta.oct_controller_fw_version,
             'oct_camera_fw_version': meta.oct_camera_fw_version,
             'oct_camera_fpga_version': meta.oct_camera_fpga_version,
@@ -652,30 +676,206 @@ class E2ESeriesStructure(E2EStructureMixin):
         return items[0].focus_candidate_raw
 
     def _derive_scan_focus_diopters(self) -> float | None:
-        raw_value = self.get_focus_candidate_raw()
-        if raw_value is None:
+        items = self._bscanmeta_items()
+        if not items:
             return None
-        return 1.079 * math.copysign(max(abs(raw_value) - 3.505, 0.0), raw_value)
+        value = items[0].focus_diopters
+        return value if math.isfinite(value) else None
 
-    def get_x_scale_derivation(self) -> dict[str, float | None]:
+    def get_progression_key(self) -> tuple[str, int] | None:
+        """Current progression UUID and exact examination timestamp key."""
+        folder = self._first_series_folder(10005)
+        if folder is None or folder.size != 24:
+            return None
+        data = folder.data
+        return data.progression_id, data.examination_time_raw
+
+    def get_registration_metadata(self) -> dict[str, Any] | None:
+        """Decode the observed version-3 Type 10025 reference/affine layout.
+
+        The high flag bit is retained without assuming it means follow-
+        up. Unsupported layouts remain explicit rather than yielding a
+        guessed key.
+        """
+        folder = self._first_series_folder(10025)
+        if folder is None:
+            return None
+        raw = folder.get_bytes()
+        if len(raw) != 100:
+            return {'status': 'unsupported', 'payload_bytes': len(raw)}
+        version, flags = struct.unpack_from('<2I', raw)
+        if version != 3 or flags & 0x7fffffff != len(raw):
+            return {'status': 'unsupported', 'version': version, 'size_flags': flags}
+        data = folder.data
+        return {'status': 'decoded', 'version': version,
+                'size_flags': flags, 'high_bit': bool(flags & 0x80000000),
+                'progression_id': data.progression_id,
+                'reference_time_raw': data.reference_time_raw,
+                'affine': list(data.transform),
+                'translation_unit': 'centered localizer pixels',
+                'source': 'Type10025@series:UUID+8,time+24,affine+32'}
+
+    def get_reference_key(self) -> tuple[str, int] | None:
+        """Return the recorded reference key, without interpreting Type 6
+        order."""
+        registration = self.get_registration_metadata()
+        if registration is None or registration['status'] != 'decoded':
+            return None
+        return registration['progression_id'], registration['reference_time_raw']
+
+    def _calibration_source(self, reference_series=None):
+        registration = self.get_registration_metadata()
+        if registration is None:
+            if reference_series is not None and reference_series is not self:
+                raise ValueError('Series has no recorded reference key to validate')
+            return self, 'not_recorded'
+        if registration['status'] != 'decoded':
+            return None, 'unsupported_registration'
+        reference_key = self.get_reference_key()
+        if reference_series is not None:
+            if reference_series.get_progression_key() != reference_key:
+                raise ValueError('Supplied reference does not match the recorded progression/time key')
+            return reference_series, 'resolved'
+        if reference_key == self.get_progression_key():
+            return self, 'self_reference'
+        folder = self._first_series_folder(10005)
+        if folder is not None:
+            resolved = folder.reader.resolve_reference(self)
+            if resolved is not None:
+                return resolved, 'resolved'
+        return None, 'unresolved'
+
+    def get_corneal_radius_metadata(self) -> dict[str, Any]:
+        """Prefer acquisition Type 39 radius; fall back to the matching study
+        eye."""
+        radii = []
+        for sl in self._sorted_slices():
+            for folder in sl.folders.get(39, []):
+                value = folder.data.corneal_radius_mm
+                if value is not None:
+                    radii.append(value)
+        study_values = []
+        laterality = self.laterality() if self.folders.get(TypesEnum.laterality) else None
+        for folder in self._folders_for(self.study, 7):
+            record = folder.data
+            if str(record.eye_side) == laterality:
+                value = record.c_curve_mm
+                if math.isfinite(value) and value > 0:
+                    study_values.append(value)
+        values = radii or study_values
+        unique = set(values)
+        return {'corneal_radius_mm': values[0] if len(unique) == 1 else None,
+                'source': ('Type39@bscan+offset457:float64' if radii else
+                           'Type7@study+offset17:float64' if study_values else None),
+                'constant_across_records': len(unique) == 1,
+                'study_radius_mm': study_values[0] if len(set(study_values)) == 1 else None,
+                'acquisition_study_conflict': bool(radii and study_values and set(radii) != set(study_values))}
+
+    def get_reference_angles(self, localizer_angle_deg: float = 30) -> np.ndarray:
+        """Return endpoints in the recorded reference frame, still in degrees.
+
+        The default 30-degree localizer field is an assumption retained
+        from the original reader. Supply the actual field for other
+        acquisitions.
+        """
+        angles = np.array([((m.start_x, m.start_y), (m.end_x, m.end_y))
+                           for m in self._bscanmeta_items()], dtype=float).reshape(-1, 2, 2)
+        registration = self.get_registration_metadata()
+        if registration is None:
+            return angles
+        if registration['status'] != 'decoded':
+            raise ValueError('Unsupported E2E localizer registration layout')
+        localizer = self._first_series_folder(TypesEnum.image)
+        if localizer is None:
+            raise ValueError('A localizer width is required to undo registration')
+        return inverse_localizer_registration(angles, registration['affine'],
+                                               localizer_angle_deg, localizer.data.width)
+
+    def get_calibration_metadata(self, optical_model: E2EOpticalModel | None = None,
+                                 reference_series=None,
+                                 localizer_angle_deg: float = 30) -> dict[str, Any]:
+        """Return decoded inputs and optional, explicitly approximate scaling.
+
+        A follow-up with an unavailable reference never uses its current
+        focus as a silent substitute. Models and the localizer field
+        assumption are retained in provenance. Preset codes are not
+        measured axial lengths.
+        """
+        if not math.isfinite(localizer_angle_deg) or localizer_angle_deg <= 0:
+            raise ValueError('Localizer angular field must be finite and positive')
+        items = self._bscanmeta_items()
+        current = {'focus_raw': self.get_focus_candidate_raw(),
+                   'focus_diopters': self._derive_scan_focus_diopters(),
+                   'focus_source': 'Type10004@bscan0+offset136:float64',
+                   'focus_conversion': 'raw * float32(1.043) / 1000',
+                   'focus_constant_across_bscans': bool(items) and len({m.focus_raw for m in items}) == 1,
+                   'eye_length_preset_raw': items[0].eye_length_preset_raw if items else None,
+                   'eye_length_preset': items[0].eye_length_preset if items else None,
+                   **self.get_corneal_radius_metadata()}
+        reference, status = self._calibration_source(reference_series)
+        effective = None
+        if reference is not None and reference._bscanmeta_items():
+            effective = {'focus_diopters': reference._derive_scan_focus_diopters(),
+                         **reference.get_corneal_radius_metadata()}
+        result = {'status': 'inputs_only', 'current_inputs': current,
+                  'effective_inputs': effective, 'reference_status': status,
+                  'progression_key': self.get_progression_key(),
+                  'reference_key': self.get_reference_key(),
+                  'registration': self.get_registration_metadata(),
+                  'localizer_angle_deg': localizer_angle_deg,
+                  'localizer_angle_source': 'caller supplied or default 30-degree assumption',
+                  'optical_model': optical_model.as_dict() if optical_model is not None else None,
+                  'mm_per_degree': None, 'scale_x_mm_per_pixel': None,
+                  'source': 'full stored width and reference-frame angular span'}
+        if optical_model is None or not items:
+            return result
+        if effective is None or effective['focus_diopters'] is None or effective['corneal_radius_mm'] is None:
+            result['status'] = 'unavailable_calibration_inputs'
+            return result
+        if len({m.focus_raw for m in reference._bscanmeta_items()}) != 1:
+            result['status'] = 'nonuniform_reference_focus'
+            return result
+        if any(m.scan_pattern in (2, 5) for m in items):
+            raise ValueError('Approximate metric calibration requires linear or raster scans')
+        angles = self.get_reference_angles(localizer_angle_deg)
+        widths = np.array([m.size_x for m in items])
+        if np.any(widths <= 0):
+            raise ValueError('Full stored image width must be positive')
+        scales_deg = np.linalg.norm(angles[:, 1] - angles[:, 0], axis=1) / widths
+        if not np.isfinite(scales_deg).all() or np.any(scales_deg <= 0):
+            raise ValueError('Invalid angular span or full stored image width')
+        if not np.allclose(scales_deg, scales_deg[0], rtol=1e-6, atol=0):
+            raise ValueError('Nonuniform lateral sampling cannot use one EyeVolume scale')
+        coefficient = optical_model.mm_per_degree(effective['corneal_radius_mm'], effective['focus_diopters'])
+        result.update(status='approximate', mm_per_degree=coefficient,
+                      scale_x_mm_per_pixel=float(scales_deg[0] * coefficient))
+        return result
+
+    def get_x_scale_derivation(self, optical_model: E2EOpticalModel | None = None,
+                               reference_series=None,
+                               localizer_angle_deg: float = 30) -> dict[str, Any]:
         items = self._bscanmeta_items()
         if not items:
             return {
                 'angular_width_deg': None,
                 'img_size_width': None,
-                'constant_um_per_deg': MEDIUM_EYE_LENGTH_UM_PER_DEG,
+                'constant_um_per_deg': None,
                 'scaling_x_um_per_pixel': None,
             }
 
         bscan_meta = items[0]
-        angular_width_deg = abs(bscan_meta.end_x - bscan_meta.start_x)
-        scaling_x = (angular_width_deg / bscan_meta.imgSizeWidth *
-                     MEDIUM_EYE_LENGTH_UM_PER_DEG)
+        angular_width_deg = math.hypot(bscan_meta.end_x - bscan_meta.start_x,
+                                      bscan_meta.end_y - bscan_meta.start_y)
+        calibration = self.get_calibration_metadata(optical_model, reference_series, localizer_angle_deg)
+        scale = calibration['scale_x_mm_per_pixel']
+        coefficient = calibration['mm_per_degree']
         return {
             'angular_width_deg': angular_width_deg,
             'img_size_width': bscan_meta.imgSizeWidth,
-            'constant_um_per_deg': MEDIUM_EYE_LENGTH_UM_PER_DEG,
-            'scaling_x_um_per_pixel': scaling_x,
+            'full_image_width': bscan_meta.size_x,
+            'constant_um_per_deg': None if coefficient is None else coefficient * 1000,
+            'scaling_x_um_per_pixel': None if scale is None else scale * 1000,
+            'calibration': calibration,
         }
 
     def _oct_quality_db(self, bscan_index: int | None) -> int | None:
@@ -704,6 +904,9 @@ class E2ESeriesStructure(E2EStructureMixin):
     def _build_heyex_metadata(
         self,
         bscan_index: int | None = None,
+        optical_model: E2EOpticalModel | None = None,
+        reference_series=None,
+        localizer_angle_deg: float = 30,
     ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
         patient_folder = self._first_patient_folder(TypesEnum.patient)
         patient_data = patient_folder.data if patient_folder is not None else None
@@ -711,7 +914,7 @@ class E2ESeriesStructure(E2EStructureMixin):
         exam_time = _format_time(exam_time_iso)
         focus_diopters = self._derive_scan_focus_diopters()
         focus_text = _format_scan_focus(focus_diopters)
-        x_scale_info = self.get_x_scale_derivation()
+        x_scale_info = self.get_x_scale_derivation(optical_model, reference_series, localizer_angle_deg)
         scaling_x = x_scale_info['scaling_x_um_per_pixel']
         bscan_meta = self._bscanmeta_items()[0] if self._bscanmeta_items() else None
         localizer_folder = self._first_series_folder(TypesEnum.image)
@@ -727,19 +930,27 @@ class E2ESeriesStructure(E2EStructureMixin):
         scaling_z = None
         pattern_height_deg = self._bscan_vertical_span_deg()
         if bscan_meta is not None:
-            oct_scan_angle = abs(bscan_meta.end_x - bscan_meta.start_x)
+            oct_scan_angle = math.hypot(bscan_meta.end_x - bscan_meta.start_x,
+                                        bscan_meta.end_y - bscan_meta.start_y)
             size_x = bscan_meta.size_x
             size_z = bscan_meta.size_y
             scaling_z = bscan_meta.scale_y * 1000
 
-        pattern_height_mm = (None if pattern_height_deg is None else
-                             pattern_height_deg * MEDIUM_EYE_LENGTH_UM_PER_DEG /
-                             1000)
+        coefficient = x_scale_info['constant_um_per_deg']
+        if coefficient is not None:
+            endpoints = self.get_reference_angles(localizer_angle_deg)
+            oct_scan_angle = float(np.linalg.norm(endpoints[0, 1] - endpoints[0, 0]))
+            centers = endpoints.mean(axis=1)
+            pattern_height_deg = float(np.linalg.norm(centers[-1] - centers[0]))
+        pattern_height_mm = (None if pattern_height_deg is None or coefficient is None else
+                             pattern_height_deg * coefficient / 1000)
         distance_between_bscans_um = None
-        if pattern_height_deg is not None and self.n_bscans > 1:
+        if pattern_height_deg is not None and coefficient is not None and self.n_bscans > 1:
             distance_between_bscans_um = (
-                pattern_height_deg * MEDIUM_EYE_LENGTH_UM_PER_DEG /
+                pattern_height_deg * coefficient /
                 (self.n_bscans - 1))
+        ir_scale = (None if coefficient is None or localizer_size_x is None else
+                    coefficient * localizer_angle_deg / localizer_size_x)
 
         model_codes = self._type39_codes()
         camera_model_code = None
@@ -787,12 +998,12 @@ class E2ESeriesStructure(E2EStructureMixin):
                 'Application': self._application(),
             },
             'IR Image': {
-                'Scan Angle': '30°' if localizer_size_x is not None else None,
-                'Size X': _format_px_mm(localizer_size_x, scaling_x)
+                'Scan Angle': f'{localizer_angle_deg:g}°' if localizer_size_x is not None else None,
+                'Size X': _format_px_mm(localizer_size_x, ir_scale)
                 if localizer_size_x is not None else None,
-                'Size Y': _format_px_mm(localizer_size_y, scaling_x)
+                'Size Y': _format_px_mm(localizer_size_y, ir_scale)
                 if localizer_size_y is not None else None,
-                'Scaling': None if scaling_x is None else f'{scaling_x:.2f} µm/pixel',
+                'Scaling': None if ir_scale is None else f'{ir_scale:.2f} µm/pixel',
                 'ART Mode': None if ir_art_mode is None else
                 f'ON ({ir_art_mode} images averaged)',
                 'ART Normalization': None,
@@ -821,7 +1032,7 @@ class E2ESeriesStructure(E2EStructureMixin):
                 'ART Mode': None if oct_art_mode is None else
                 f'ON ({oct_art_mode} images averaged)',
                 'A-Scan Rate': None,
-                'Eye Length': None,
+                'Eye Length': bscan_meta.eye_length_preset if bscan_meta is not None else None,
                 'Quality': None if oct_quality_db is None else f'{oct_quality_db} dB',
                 'EDI Mode': None,
                 'EVI Mode': None,
@@ -881,7 +1092,7 @@ class E2ESeriesStructure(E2EStructureMixin):
             },
             'General Parameters': {
                 'Resolution Mode': None,
-                'Scan Focus': 'provisional derived from Type10004@bscan0+offset140:float32',
+                'Scan Focus': 'empirical conversion of Type10004@bscan0+offset136:float64',
                 'Camera Objective': None,
                 'Internal Target': None,
                 'External Target': None,
@@ -893,7 +1104,7 @@ class E2ESeriesStructure(E2EStructureMixin):
                 'Scan Angle': 'derived from current localizer field size assumption',
                 'Size X': 'derived from localizer width and provisional Scaling',
                 'Size Y': 'derived from localizer height and provisional Scaling',
-                'Scaling': 'provisional derived from Type10004.start_x/end_x/imgSizeWidth',
+                'Scaling': 'explicit optical model and declared localizer field; unavailable by default',
                 'ART Mode': 'Type39@slice0+offset376:uint8',
                 'ART Normalization': None,
                 'Sensitivity (DC/DC)': 'Type39@slice0+offset8:uint8',
@@ -909,12 +1120,12 @@ class E2ESeriesStructure(E2EStructureMixin):
                 'Scan Angle': 'derived from Type10004.start_x/end_x',
                 'Size X': 'Type10004.size_x plus provisional Scaling X',
                 'Size Z': 'Type10004.size_y and Type10004.scale_y',
-                'Scaling X': 'provisional derived from Type10004.start_x/end_x/imgSizeWidth',
+                'Scaling X': 'explicit optical model, reference-frame span and full Type10004.size_x; unavailable by default',
                 'Scaling Z': 'Type10004.scale_y',
                 'ART Mode': None if bscan_index is None else
                 f'Type10004@bscan{bscan_index}+offset120:uint32',
                 'A-Scan Rate': None,
-                'Eye Length': None,
+                'Eye Length': 'Type10004@bscan0+offset144:float64 preset code, not measured axial length',
                 'Quality': None if bscan_index is None else
                 f'Type10004@bscan{bscan_index}+offset156:float32',
                 'EDI Mode': None,
@@ -925,7 +1136,7 @@ class E2ESeriesStructure(E2EStructureMixin):
             'OCT Scan Pattern': {
                 'Number of B-Scans': 'Type10004.n_bscans',
                 'Pattern Size': 'derived from Type10004 centers and provisional Scaling X',
-                'Distance between B-Scans': 'derived from Type10004 centers and provisional Medium eye-length constant',
+                'Distance between B-Scans': 'reference-frame centers and explicit optical model; unavailable by default',
             },
             'Device': {
                 'Camera Model': 'Type13@study',
@@ -948,47 +1159,46 @@ class E2ESeriesStructure(E2EStructureMixin):
     def get_heyex_metadata(
         self,
         bscan_index: int | None = None,
+        **calibration_options,
     ) -> dict[str, dict[str, Any]]:
-        metadata, _ = self._build_heyex_metadata(bscan_index=bscan_index)
+        metadata, _ = self._build_heyex_metadata(bscan_index=bscan_index, **calibration_options)
         return metadata
 
     def get_heyex_metadata_sources(
         self,
         bscan_index: int | None = None,
+        **calibration_options,
     ) -> dict[str, dict[str, Any]]:
-        _, sources = self._build_heyex_metadata(bscan_index=bscan_index)
+        _, sources = self._build_heyex_metadata(bscan_index=bscan_index, **calibration_options)
         return sources
 
-    def get_eyevolume_e2e_metadata(self) -> dict[str, Any]:
+    def get_eyevolume_e2e_metadata(self, **calibration_options) -> dict[str, Any]:
         """Return a compact E2E metadata bundle suitable for EyeVolumeMeta."""
         return {
-            'heyex': self.get_heyex_metadata(),
-            'heyex_sources': self.get_heyex_metadata_sources(),
+            'heyex': self.get_heyex_metadata(**calibration_options),
+            'heyex_sources': self.get_heyex_metadata_sources(**calibration_options),
             'heyex_bscan_oct': [
-                self.get_heyex_metadata(bscan_index=i)['OCT Image']
+                self.get_heyex_metadata(bscan_index=i, **calibration_options)['OCT Image']
                 for i in range(self.n_bscans)
             ],
             'heyex_bscan_oct_sources': [
-                self.get_heyex_metadata_sources(bscan_index=i)['OCT Image']
+                self.get_heyex_metadata_sources(bscan_index=i, **calibration_options)['OCT Image']
                 for i in range(self.n_bscans)
             ],
             'findings': {
                 'scan_focus': {
                     'raw_candidate': self.get_focus_candidate_raw(),
                     'derived_diopters': self._derive_scan_focus_diopters(),
-                    'source': 'Type10004@bscan0+offset140:float32',
-                    'status': 'provisional',
-                    'formula':
-                    'focus_D ≈ 1.079 * sign(v) * (abs(v) - 3.505)',
+                    'source': 'Type10004@bscan0+offset136:float64',
+                    'status': 'empirically verified for supplied acquisitions',
+                    'formula': 'focus_D = raw * float32(1.043) / 1000',
                 },
                 'scaling_x': {
-                    **self.get_x_scale_derivation(),
-                    'source':
-                    'derived from Type10004.start_x/end_x/imgSizeWidth',
-                    'status': 'provisional',
-                    'formula':
-                    'Scaling X ≈ (end_x - start_x) / imgSizeWidth * 289.6',
+                    **self.get_x_scale_derivation(**calibration_options),
+                    'source': 'reference-frame angular span / full Type10004.size_x',
+                    'status': 'requires explicit approximate optical model',
                 },
+                'calibration': self.get_calibration_metadata(**calibration_options),
                 'oct_firmware_assignment': {
                     'oct_controller_fw_offset': 124,
                     'oct_camera_fw_offset': 128,
@@ -1062,8 +1272,17 @@ class E2ESeriesStructure(E2EStructureMixin):
             text += '\n'
         return text
 
-    def get_volume(self) -> EyeVolume:
-        """Return EyeVolume object for the series."""
+    def get_volume(self, *, optical_model: E2EOpticalModel | None = None,
+                   reference_series: E2ESeriesStructure | None = None,
+                   localizer_angle_deg: float = 30) -> EyeVolume:
+        """Return an EyeVolume, optionally using explicit approximate calibration.
+
+        Args:
+            optical_model: None keeps pixel units; a model opts into approximate mm.
+            reference_series: External reference whose exact recorded key must match.
+            localizer_angle_deg: Declared square localizer field for calibration;
+                30 degrees is an assumption, not a decoded universal field.
+        """
         ## Check if scan is a volume scan
         volume_meta = self.get_meta()
 
@@ -1077,10 +1296,44 @@ class E2ESeriesStructure(E2EStructureMixin):
             msg = f'The EyeVolume object does not support scan pattern 5 (Radial scan - star pattern).'
             raise ValueError(msg)
 
-        data = self.get_bscans()
+        if optical_model is not None:
+            options = dict(optical_model=optical_model, reference_series=reference_series,
+                           localizer_angle_deg=localizer_angle_deg)
+            calibration = self.get_calibration_metadata(**options)
+            if calibration['status'] != 'approximate':
+                raise ValueError(f"Metric calibration unavailable: {calibration['reference_status']}; {calibration['status']}")
 
-        volume_meta = self.get_meta()
+        data = self.get_bscans()
+        volume_meta = deepcopy(self.get_meta())
         localizer = self.get_localizer()
+        if optical_model is not None:
+            coefficient = calibration['mm_per_degree']
+            calibration_source, _ = self._calibration_source(reference_series)
+            # Reference-frame endpoints must be paired with the reference
+            # localizer, not overlaid on an unwarped follow-up image.
+            localizer = calibration_source.get_localizer()
+            angles = self.get_reference_angles(localizer_angle_deg)
+            centers = angles.mean(axis=1)
+            spacings = np.linalg.norm(np.diff(centers, axis=0), axis=1) * coefficient
+            if len(spacings) and not np.allclose(spacings, spacings[0], rtol=1e-5, atol=1e-9):
+                raise ValueError('Nonuniform raster spacing cannot use one EyeVolume scale')
+            axial = [m.scale_y for m in self._bscanmeta_items()]
+            if not np.isfinite(axial).all() or np.any(np.asarray(axial) <= 0) or not np.allclose(axial, axial[0]):
+                raise ValueError('Invalid or nonuniform axial sampling')
+            volume_meta['scale_x'] = calibration['scale_x_mm_per_pixel']
+            volume_meta['scale_y'] = axial[0]
+            volume_meta['scale_z'] = float(spacings.mean()) if len(spacings) else 0
+            volume_meta['scale_unit'] = 'mm'
+            for meta, endpoints in zip(volume_meta['bscan_meta'], angles):
+                start, end = (endpoints + localizer_angle_deg / 2) * coefficient
+                meta['start_pos'], meta['end_pos'] = tuple(start), tuple(end)
+                meta['pos_unit'] = 'mm'
+            localizer = EyeEnface(localizer.data, deepcopy(localizer.meta))
+            localizer.meta['scale_x'] = coefficient * localizer_angle_deg / localizer.size_x
+            localizer.meta['scale_y'] = coefficient * localizer_angle_deg / localizer.size_y
+            localizer.meta['scale_unit'] = 'mm'
+            volume_meta['e2e_metadata'] = self.get_eyevolume_e2e_metadata(**options)
+            volume_meta['e2e_metadata']['findings']['calibration']['localizer_frame'] = 'effective reference'
         volume = EyeVolume(
             data=data,
             meta=volume_meta,
@@ -1104,7 +1357,7 @@ class E2ESeriesStructure(E2EStructureMixin):
     @property
     def n_bscans(self) -> int:
         """Return the number of B-scans in the series."""
-        return len(self.substructure)
+        return len(self._bscanmeta_items())
 
     def get_bscans(self) -> np.ndarray:
         volume_meta = self.get_meta()
@@ -1112,12 +1365,8 @@ class E2ESeriesStructure(E2EStructureMixin):
         size_y = volume_meta['bscan_meta'][0]['size_y']
 
         data = np.zeros((self.n_bscans, size_y, size_x), dtype=np.float32)
-        for ind, sl in self.slices.items():
+        for i, sl in enumerate(s for s in self._sorted_slices() if TypesEnum.bscanmeta in s.folders):
             bscan = sl.get_bscan()
-            i = ind // 2 if len(
-                self.get_bscan_meta()
-            ) != 1 else 0  # Slice id for single B-scan Volumes is 2 and not 0 in the e2e file.
-
             data[i] = bscan
 
         return data
@@ -1128,25 +1377,18 @@ class E2ESeriesStructure(E2EStructureMixin):
         slice_layers = {}
         layer_ids = set()
 
-        for ind, sl in self.slices.items():
+        for ind, sl in enumerate(s for s in self._sorted_slices() if TypesEnum.bscanmeta in s.folders):
             layers = sl.get_layers()
             [layer_ids.add(k) for k in layers.keys()]
-            slice_layers[ind // 2] = layers
+            slice_layers[ind] = layers
 
         layers = {}
         size_x = self.get_bscan_meta()[0]['size_x']
         for i in layer_ids:
             layer = np.full((self.n_bscans, size_x), np.nan)
-            if self.n_bscans == 1:
-                layer[0, :] = slice_layers[1][i]
-                layers[i] = layer
-
-            else:
-                for sl in range(self.n_bscans):
-                    try:
-                        layer[sl, :] = slice_layers[sl][i]
-                    except KeyError:
-                        pass
+            for sl in range(self.n_bscans):
+                if i in slice_layers[sl]:
+                    layer[sl, :] = slice_layers[sl][i]
 
             layer[layer >= 3.0e+38] = np.nan
             layers[i] = layer
@@ -1162,23 +1404,16 @@ class E2ESeriesStructure(E2EStructureMixin):
         slice_layer_manual = {}
         layer_ids = set()
 
-        for ind, sl in self.slices.items():
+        for ind, sl in enumerate(s for s in self._sorted_slices() if TypesEnum.bscanmeta in s.folders):
             manual_flags = sl.get_layer_manual_flags()
             layer_ids.update(manual_flags.keys())
-            slice_layer_manual[ind // 2] = manual_flags
+            slice_layer_manual[ind] = manual_flags
 
         manual_maps = {}
         for i in layer_ids:
             manual = [None] * self.n_bscans
-            if self.n_bscans == 1:
-                manual[0] = slice_layer_manual[1].get(i)
-                manual_maps[i] = manual
-            else:
-                for sl in range(self.n_bscans):
-                    try:
-                        manual[sl] = slice_layer_manual[sl][i]
-                    except KeyError:
-                        pass
+            for sl in range(self.n_bscans):
+                manual[sl] = slice_layer_manual[sl].get(i)
 
             manual_maps[i] = manual
 
@@ -1499,6 +1734,26 @@ class HeE2eReader(AbstractContextManager):
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.file_object.close()
+
+    def resolve_reference(self, series: E2ESeriesStructure,
+                          additional_series=()) -> E2ESeriesStructure | None:
+        """Match a reference by progression UUID and exact timestamp key.
+
+        External series must belong to readers kept open while accessing
+        their payloads. Missing references return None; ambiguous
+        matches raise. Type 6 membership order and Type 10025's high bit
+        are not substitutes.
+        """
+        key = series.get_reference_key()
+        if key is None:
+            return None
+        if series.get_progression_key() == key:
+            return series
+        matches = {id(candidate): candidate for candidate in (*self.series, *additional_series)
+                   if candidate.get_progression_key() == key}
+        if len(matches) > 1:
+            raise ValueError('Ambiguous E2E progression/reference timestamp key')
+        return next(iter(matches.values()), None)
 
     def find_int(self,
                  value: int,

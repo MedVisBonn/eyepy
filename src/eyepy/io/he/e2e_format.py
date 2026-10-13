@@ -1,7 +1,10 @@
 import dataclasses
 import datetime
 import logging
+import math
+import struct
 import typing as t
+import uuid
 
 import construct as cs
 from construct_typed import csfield
@@ -184,7 +187,7 @@ class TypeMixin:
 class Type10004(DataclassMixin, TypeMixin):
     """B-scan Metadata Metadata for a single B-scan.
 
-    Size: 428 bytes
+    Size: variable (438 bytes in the investigated exports)
 
     Notes:
     The current Bscan-Meta structure builds on the implementation found in [LibE2E](https://github.com/neurodial/LibE2E/blob/d26d2d9db64c5f765c0241ecc22177bb0c440c87/E2E/dataelements/bscanmetadataelement.cpp#L75).
@@ -193,10 +196,10 @@ class Type10004(DataclassMixin, TypeMixin):
     unknown0: int = csfield(cs.Int32ul, )
     size_y: int = csfield(cs.Int32ul, doc='Bscan height')
     size_x: int = csfield(cs.Int32ul, doc='Bscan width')
-    start_x: float = csfield(cs.Float32l, doc='Start X coordinate of Bscan')
-    start_y: float = csfield(cs.Float32l, doc='Start Y coordinate of Bscan')
-    end_x: float = csfield(cs.Float32l, doc='End X coordinate of Bscan')
-    end_y: float = csfield(cs.Float32l, doc='End Y coordinate of Bscan')
+    start_x: float = csfield(cs.Float32l, doc='Start X in centered degrees')
+    start_y: float = csfield(cs.Float32l, doc='Start Y in centered degrees')
+    end_x: float = csfield(cs.Float32l, doc='End X in centered degrees')
+    end_y: float = csfield(cs.Float32l, doc='End Y in centered degrees')
     zero1: int = csfield(cs.Int32ul)
     unknown1: float = csfield(cs.Float32l)
     scale_y: float = csfield(cs.Float32l, doc='Scale of Bscan y-axis (height)')
@@ -243,17 +246,32 @@ class Type10004(DataclassMixin, TypeMixin):
     oct_controller_fw_raw: bytes = csfield(cs.Bytes(4))
     oct_camera_fw_raw: bytes = csfield(cs.Bytes(4))
     oct_camera_fpga_raw: bytes = csfield(cs.Bytes(4))
-    unknown7: bytes = csfield(cs.Bytes(4))
-    focus_candidate_raw: float = csfield(
-        cs.Float32l,
-        doc='Strong provisional candidate for scan focus.',
-    )
-    unknown8: bytes = csfield(cs.Bytes(12))
+    focus_raw: float = csfield(cs.Float64l, doc='Raw focus at payload offset 136')
+    eye_length_preset_raw: float = csfield(
+        cs.Float64l, doc='Preset code at offset 144, not measured axial length')
+    unknown8: bytes = csfield(cs.Bytes(4))
     quality_ui: float = csfield(
         cs.Float32l,
         doc='Per-B-scan quality value used by the HEYEX OCT metadata export.',
     )
     rest: bytes = csfield(cs.GreedyBytes)
+
+    @property
+    def focus_candidate_raw(self) -> float:
+        """Compatibility name for the corrected float64 focus field."""
+        return self.focus_raw
+
+    @property
+    def focus_diopters(self) -> float:
+        """Empirical conversion verified against nine acquisition references."""
+        factor = struct.unpack('<f', struct.pack('<f', 1.043))[0] / 1000
+        return self.focus_raw * factor
+
+    @property
+    def eye_length_preset(self) -> str | None:
+        """Return the observed preset label; raw units remain unknown."""
+        return {-2500: 'Short', 0: 'Medium', 2500: 'Long',
+                5000: 'Extra Long'}.get(self.eye_length_preset_raw)
 
     @staticmethod
     def _format_version(raw: bytes) -> str:
@@ -285,19 +303,65 @@ class Type7(DataclassMixin, TypeMixin):
     """
 
     eye_side: LateralityEnum = csfield(TEnum(cs.Int8ul, LateralityEnum))
-    c_curve_mm: float = csfield(cs.Float64l)
-    refraction_dpt: float = csfield(cs.Float64l)
-    cylinder_dpt: float = csfield(cs.Float64l)
-    axis_deg: float = csfield(cs.Float64l)
-    pupil_size_mm: float = csfield(cs.Float64l)
-    iop_mmHg: float = csfield(cs.Float64l)
-    vfield_mean: float = csfield(cs.Float64l)
-    vfield_var: float = csfield(cs.Float64l)
-    corrective_lens: int = csfield(cs.Int16ul)
-    rest: bytes = csfield(cs.Bytes(1))
+    unknown0: float = csfield(cs.Float64l)
+    unknown1: float = csfield(cs.Float64l)
+    c_curve_mm: float = csfield(
+        cs.Float64l, doc='Corneal radius in mm at unaligned payload offset 17')
+    rest: bytes = csfield(cs.Bytes(43))
 
 
 type7_format = DataclassStruct(Type7)
+
+
+@dataclasses.dataclass
+class Type2(DataclassMixin, TypeMixin):
+    """Thumbnail image.
+
+    Size: variable
+
+    Notes:
+    Investigated payloads have a 16-byte opaque prefix and a 128x128 JPEG.
+    Numeric coincidences within the JPEG are not scalar metadata fields.
+    """
+
+    prefix: bytes = csfield(cs.Bytes(16))
+    image_bytes: bytes = csfield(cs.GreedyBytes)
+
+
+type2_format = DataclassStruct(Type2)
+
+
+@dataclasses.dataclass
+class Type6(DataclassMixin, TypeMixin):
+    """Candidate progression-group membership.
+
+    Size: variable
+
+    Notes:
+    Observed layout: terminated UTF-16LE label, uint16 count, then 18-byte
+    entries. Membership does not establish reference direction or ordering.
+    """
+
+    raw: bytes = csfield(cs.Bytes(cs.this._.header.size))
+
+    def membership(self) -> dict:
+        """Decode the observed list layout, preserving undecoded entry fields."""
+        end = next((i for i in range(0, len(self.raw) - 1, 2)
+                    if self.raw[i:i + 2] == b'\0\0'), None)
+        if end is None or end + 4 > len(self.raw):
+            raise ValueError('Unsupported Type 6 label/count layout')
+        count = struct.unpack_from('<H', self.raw, end + 2)[0]
+        start = end + 4
+        if len(self.raw) != start + count * 18:
+            raise ValueError('Unsupported Type 6 membership entry layout')
+        names = ('patient_id', 'study_id', 'series_id', 'unknown', 'ind')
+        entries = [dict(zip(names, struct.unpack_from('<4iH', self.raw, start + i * 18)))
+                   for i in range(count)]
+        return {'label': self.raw[:end].decode('utf-16-le'), 'members': entries,
+                'status': 'observed membership; reference direction unverified'}
+
+
+type6_format = DataclassStruct(Type6)
 
 
 @dataclasses.dataclass
@@ -329,6 +393,62 @@ class Type1073741824(DataclassMixin, TypeMixin):
 
 
 type1073741824_format = DataclassStruct(Type1073741824)
+
+
+@dataclasses.dataclass
+class Type1073751824(Type1073741824):
+    """Auxiliary image data.
+
+    Size: variable
+
+    Notes:
+    Observed 1600x128 uint8 array with the standard 20-byte image header.
+    Its particular image/preview role is not established.
+    """
+
+
+@dataclasses.dataclass
+class Type1073751825(Type1073741824):
+    """Auxiliary image data.
+
+    Size: variable
+
+    Notes:
+    Observed 1600x128 uint8 array with the standard 20-byte image header.
+    """
+
+
+@dataclasses.dataclass
+class Type1073751826(Type1073741824):
+    """Auxiliary image data.
+
+    Size: variable
+
+    Notes:
+    Standard image header and uint8 data; geometric role remains unknown.
+    """
+
+
+type1073751824_format = DataclassStruct(Type1073751824)
+type1073751825_format = DataclassStruct(Type1073751825)
+type1073751826_format = DataclassStruct(Type1073751826)
+
+
+@dataclasses.dataclass
+class Type10020(DataclassMixin, TypeMixin):
+    """Opaque record observed after opening an acquisition in HEYEX.
+
+    Size: variable (20 bytes in the supplied before/after pair)
+
+    Notes:
+    Added at series level in one pair; does not alter its EyeVolume content.
+    Field meanings remain unknown, so no display/calibration role is assumed.
+    """
+
+    raw: bytes = csfield(cs.Bytes(cs.this._.header.size))
+
+
+type10020_format = DataclassStruct(Type10020)
 
 
 @dataclasses.dataclass
@@ -639,10 +759,21 @@ class Type10025(DataclassMixin, TypeMixin):
     Notes:
     """
 
-    unknown: bytes = csfield(cs.Bytes(24))
-    windate: int = csfield(DateTime)
+    version: int = csfield(cs.Int32ul)
+    size_flags: int = csfield(cs.Int32ul, doc='Low 31 bits: payload size; high bit unknown')
+    progression_id_raw: bytes = csfield(cs.Bytes(16), doc='Windows byte-order UUID')
+    reference_time_raw: int = csfield(cs.Int64ul, doc='Reference timestamp key; preserve all bits')
     transform: t.List[float] = csfield(
-        cs.Array(6, cs.Float32l), doc='Parameters of affine transformation')
+        cs.Array(6, cs.Float32l), doc='2x3 affine: linear part on centered angles, translation in centered localizer pixels')
+    rest: bytes = csfield(cs.GreedyBytes)
+
+    @property
+    def progression_id(self) -> str:
+        return uuid.UUID(bytes_le=self.progression_id_raw).hex
+
+    @property
+    def windate(self) -> str:
+        return DateTime.parse(struct.pack('<Q', self.reference_time_raw))
 type10025_format = DataclassStruct(Type10025)
 
 
@@ -654,6 +785,14 @@ class Type39(DataclassMixin, TypeMixin):
     """
 
     raw: bytes = csfield(cs.Bytes(cs.this._.header.size))
+
+    @property
+    def corneal_radius_mm(self) -> float | None:
+        """Radius at offset 457, confirmed by controlled 9.0/6.2 mm exports."""
+        if len(self.raw) < 465:
+            return None
+        value = struct.unpack_from('<d', self.raw, 457)[0]
+        return value if math.isfinite(value) and value > 0 else None
 type39_format = DataclassStruct(Type39)
 
 
@@ -664,13 +803,27 @@ class Type10005(DataclassMixin, TypeMixin):
     Size: 24 bytes
     """
 
-    unknown: bytes = csfield(cs.Bytes(16))
-    examination_time: str = csfield(DateTime)
+    progression_id_raw: bytes = csfield(cs.Bytes(16), doc='Windows byte-order progression UUID')
+    examination_time_raw: int = csfield(cs.Int64ul, doc='Current series timestamp key')
+
+    @property
+    def progression_id(self) -> str:
+        return uuid.UUID(bytes_le=self.progression_id_raw).hex
+
+    @property
+    def examination_time(self) -> str:
+        return DateTime.parse(struct.pack('<Q', self.examination_time_raw))
 
 
 type10005_format = DataclassStruct(Type10005)
 
 item_switch = cs.Switch(cs.this.header.type, {
+    2: type2_format,
+    6: type6_format,
+    10020: type10020_format,
+    1073751824: type1073751824_format,
+    1073751825: type1073751825_format,
+    1073751826: type1073751826_format,
     TypesEnum.patient: type9_format,
     TypesEnum.application_data: type13_format,
     TypesEnum.laterality: type11_format,
@@ -896,8 +1049,8 @@ __e2efile_structures__ = [
     ContainerHeader,
 ]
 __all_types__ = [
-    Type3, Type5, Type7, Type9, Type11, Type13, Type17, Type39, Type59,
+    Type2, Type3, Type5, Type6, Type7, Type9, Type11, Type13, Type17, Type39, Type59,
     Type9000, Type9001, Type9005, Type9006, Type9007, Type9008, Type10004,
-    Type10005, Type10010, Type10012, Type10013, Type10019, Type10025,
-    Type1073741824
+    Type10005, Type10010, Type10012, Type10013, Type10019, Type10020, Type10025,
+    Type1073741824, Type1073751824, Type1073751825, Type1073751826
 ]

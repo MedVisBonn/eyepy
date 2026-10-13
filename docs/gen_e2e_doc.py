@@ -117,7 +117,7 @@ for t in types:
                 size = f.metadata['subcon'].sizeof()
             except Exception:
                 size = 'variable'
-            t_annotation = type_annotations[name]
+            t_annotation = type_annotations.get(name, f.type)
             parses_to = _get_parses_to(t_annotation)
 
             print(f'{offset}|{name}|{size}|{parses_to}|{description}', file=fd)
