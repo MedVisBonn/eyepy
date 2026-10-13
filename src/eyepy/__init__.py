@@ -29,7 +29,7 @@
 
 __author__ = """Olivier Morelle"""
 __email__ = 'oli4morelle@gmail.com'
-__version__ = '0.20.1'
+__version__ = '0.21.0'
 
 from typing import TYPE_CHECKING
 
