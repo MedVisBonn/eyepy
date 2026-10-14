@@ -424,7 +424,10 @@ class E2ESliceStructure(E2EStructureMixin):
             'unknown5': meta.unknown5,
             'art_mode': meta.art_mode,
             'quality_ui': meta.quality_ui,
-            'focus_candidate_raw': meta.focus_candidate_raw,
+            'focus_raw': meta.focus_raw,
+            'focus_diopters': meta.focus_diopters,
+            'eye_length_preset_raw': meta.eye_length_preset_raw,
+            'eye_length_preset': meta.eye_length_preset,
             'oct_controller_fw_version': meta.oct_controller_fw_version,
             'oct_camera_fw_version': meta.oct_camera_fw_version,
             'oct_camera_fpga_version': meta.oct_camera_fpga_version,
@@ -645,17 +648,15 @@ class E2ESeriesStructure(E2EStructureMixin):
             return None
         return datetime.datetime.fromisoformat(exam_time).date().isoformat()
 
-    def get_focus_candidate_raw(self) -> float | None:
+    def get_focus_raw(self) -> float | None:
         items = self._bscanmeta_items()
         if not items:
             return None
-        return items[0].focus_candidate_raw
+        return items[0].focus_raw
 
     def _derive_scan_focus_diopters(self) -> float | None:
-        raw_value = self.get_focus_candidate_raw()
-        if raw_value is None:
-            return None
-        return 1.079 * math.copysign(max(abs(raw_value) - 3.505, 0.0), raw_value)
+        items = self._bscanmeta_items()
+        return items[0].focus_diopters if items else None
 
     def get_x_scale_derivation(self) -> dict[str, float | None]:
         items = self._bscanmeta_items()
@@ -881,7 +882,7 @@ class E2ESeriesStructure(E2EStructureMixin):
             },
             'General Parameters': {
                 'Resolution Mode': None,
-                'Scan Focus': 'provisional derived from Type10004@bscan0+offset140:float32',
+                'Scan Focus': 'Type10004@bscan0+offset136:float64 * 1.043 / 1000',
                 'Camera Objective': None,
                 'Internal Target': None,
                 'External Target': None,
@@ -974,12 +975,12 @@ class E2ESeriesStructure(E2EStructureMixin):
             ],
             'findings': {
                 'scan_focus': {
-                    'raw_candidate': self.get_focus_candidate_raw(),
-                    'derived_diopters': self._derive_scan_focus_diopters(),
-                    'source': 'Type10004@bscan0+offset140:float32',
-                    'status': 'provisional',
+                    'focus_raw': self.get_focus_raw(),
+                    'focus_diopters': self._derive_scan_focus_diopters(),
+                    'source': 'Type10004@bscan0+offset136:float64',
+                    'status': 'validated against HEYEX focus values',
                     'formula':
-                    'focus_D ≈ 1.079 * sign(v) * (abs(v) - 3.505)',
+                    'focus_diopters = focus_raw * 1.043 / 1000',
                 },
                 'scaling_x': {
                     **self.get_x_scale_derivation(),

@@ -184,7 +184,7 @@ class TypeMixin:
 class Type10004(DataclassMixin, TypeMixin):
     """B-scan Metadata Metadata for a single B-scan.
 
-    Size: 428 bytes
+    Size: variable (438 bytes in the investigated exports)
 
     Notes:
     The current Bscan-Meta structure builds on the implementation found in [LibE2E](https://github.com/neurodial/LibE2E/blob/d26d2d9db64c5f765c0241ecc22177bb0c440c87/E2E/dataelements/bscanmetadataelement.cpp#L75).
@@ -243,17 +243,29 @@ class Type10004(DataclassMixin, TypeMixin):
     oct_controller_fw_raw: bytes = csfield(cs.Bytes(4))
     oct_camera_fw_raw: bytes = csfield(cs.Bytes(4))
     oct_camera_fpga_raw: bytes = csfield(cs.Bytes(4))
-    unknown7: bytes = csfield(cs.Bytes(4))
-    focus_candidate_raw: float = csfield(
-        cs.Float32l,
-        doc='Strong provisional candidate for scan focus.',
+    focus_raw: float = csfield(
+        cs.Float64l,
+        doc='Scan focus at offset 136; multiply by 1.043 / 1000 for diopters.',
     )
-    unknown8: bytes = csfield(cs.Bytes(12))
+    eye_length_preset_raw: float = csfield(
+        cs.Float64l,
+        doc='Eye-length preset at offset 144; not a measured axial length.',
+    )
+    unknown8: bytes = csfield(cs.Bytes(4))
     quality_ui: float = csfield(
         cs.Float32l,
         doc='Per-B-scan quality value used by the HEYEX OCT metadata export.',
     )
     rest: bytes = csfield(cs.GreedyBytes)
+
+    @property
+    def focus_diopters(self) -> float:
+        return self.focus_raw * 1.043 / 1000
+
+    @property
+    def eye_length_preset(self) -> str | None:
+        return {-2500: 'Short', 0: 'Medium', 2500: 'Long',
+                5000: 'Extra Long'}.get(self.eye_length_preset_raw)
 
     @staticmethod
     def _format_version(raw: bytes) -> str:
@@ -277,24 +289,38 @@ type10004_format = DataclassStruct(Type10004)
 
 @dataclasses.dataclass
 class Type7(DataclassMixin, TypeMixin):
-    """Measurements Global measurements of the eye.
+    """Measurements Study-level Eye Data for one eye.
 
     Size: 68 bytes
 
     Notes:
+    The numeric fields match the HEYEX Eye Data dialog in controlled exports.
+    Their stored order differs from the dialog's order. A two-byte corrective
+    lens code precedes the final double, the pupil diameter.
     """
 
-    eye_side: LateralityEnum = csfield(TEnum(cs.Int8ul, LateralityEnum))
-    c_curve_mm: float = csfield(cs.Float64l)
-    refraction_dpt: float = csfield(cs.Float64l)
-    cylinder_dpt: float = csfield(cs.Float64l)
-    axis_deg: float = csfield(cs.Float64l)
-    pupil_size_mm: float = csfield(cs.Float64l)
-    iop_mmHg: float = csfield(cs.Float64l)
-    vfield_mean: float = csfield(cs.Float64l)
-    vfield_var: float = csfield(cs.Float64l)
-    corrective_lens: int = csfield(cs.Int16ul)
-    rest: bytes = csfield(cs.Bytes(1))
+    eye_side: LateralityEnum = csfield(
+        TEnum(cs.Int8ul, LateralityEnum), doc='ASCII L/R eye record at offset 0.')
+    iop_mmHg: float = csfield(cs.Float64l,
+                             doc='Intraocular pressure in mmHg at offset 1.')
+    refraction_dpt: float = csfield(
+        cs.Float64l, doc='Clinical refraction in diopters at offset 9; separate from scan focus.')
+    corneal_radius_mm: float = csfield(
+        cs.Float64l, doc='Corneal radius in mm at offset 17, labeled C-Curve in HEYEX.')
+    vfield_mean: float = csfield(cs.Float64l,
+                                doc='HEYEX VFieldMean at offset 25; UI does not specify units.')
+    vfield_var: float = csfield(cs.Float64l,
+                               doc='HEYEX VFieldVar at offset 33; UI does not specify units.')
+    cylinder_dpt: float = csfield(cs.Float64l,
+                                 doc='Cylinder in diopters at offset 41.')
+    axis_deg: float = csfield(
+        cs.Float64l, doc='Cylinder axis in degrees at offset 49.')
+    corrective_lens: int = csfield(
+        cs.Int16ul, doc='Code at offset 57: 0 None, 1 Glasses, 2 Hard Contact Lenses, 3 Soft Contact Lenses.')
+    pupil_size_mm: float = csfield(
+        cs.Float64l, doc='Pupil diameter in mm at unaligned offset 59.')
+    rest: bytes = csfield(cs.Bytes(1),
+                          doc='Unknown trailing byte at offset 67; observed value 1.')
 
 
 type7_format = DataclassStruct(Type7)
@@ -654,6 +680,14 @@ class Type39(DataclassMixin, TypeMixin):
     """
 
     raw: bytes = csfield(cs.Bytes(cs.this._.header.size))
+
+    @property
+    def corneal_radius_mm(self) -> float | None:
+        """Corneal radius at offset 457, if present in this payload version."""
+        if len(self.raw) < 465:
+            return None
+        return cs.Float64l.parse(self.raw[457:465])
+
 type39_format = DataclassStruct(Type39)
 
 
