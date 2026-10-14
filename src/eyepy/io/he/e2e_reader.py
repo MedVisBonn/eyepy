@@ -424,7 +424,6 @@ class E2ESliceStructure(E2EStructureMixin):
             'unknown5': meta.unknown5,
             'art_mode': meta.art_mode,
             'quality_ui': meta.quality_ui,
-            'focus_candidate_raw': meta.focus_candidate_raw,
             'focus_raw': meta.focus_raw,
             'focus_diopters': meta.focus_diopters,
             'eye_length_preset_raw': meta.eye_length_preset_raw,
@@ -649,11 +648,11 @@ class E2ESeriesStructure(E2EStructureMixin):
             return None
         return datetime.datetime.fromisoformat(exam_time).date().isoformat()
 
-    def get_focus_candidate_raw(self) -> float | None:
+    def get_focus_raw(self) -> float | None:
         items = self._bscanmeta_items()
         if not items:
             return None
-        return items[0].focus_candidate_raw
+        return items[0].focus_raw
 
     def _derive_scan_focus_diopters(self) -> float | None:
         items = self._bscanmeta_items()
@@ -976,8 +975,8 @@ class E2ESeriesStructure(E2EStructureMixin):
             ],
             'findings': {
                 'scan_focus': {
-                    'raw_candidate': self.get_focus_candidate_raw(),
-                    'derived_diopters': self._derive_scan_focus_diopters(),
+                    'focus_raw': self.get_focus_raw(),
+                    'focus_diopters': self._derive_scan_focus_diopters(),
                     'source': 'Type10004@bscan0+offset136:float64',
                     'status': 'validated against HEYEX focus values',
                     'formula':

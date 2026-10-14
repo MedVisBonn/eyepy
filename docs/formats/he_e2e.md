@@ -68,7 +68,16 @@ after the 60-byte container header. All three fields are little-endian float64:
 
 The eye-length preset is a category, not a measured axial length. Unknown values
 remain available as `eye_length_preset_raw` and return `None` for the category.
-Type39 returns no radius when the payload is shorter than 465 bytes.
+Both Type7 and Type39 expose the radius as `corneal_radius_mm`. Type7 holds
+study-level eye records; Type39 holds slice/localizer settings. The radius
+appears in all 28 Type7 eye records and all 1502 exported B-scan Type39 records
+across the 14 investigated files. The two locations agree on 7.7, 9.0 or 6.2 mm.
+Both eyes have identical radius settings in these examples, so conflicting
+radius values between eyes or storage locations remain untested.
+
+Type39 returns no radius when the payload is shorter than 465 bytes. This is
+defensive handling: every investigated payload is 497 or 501 bytes long, and
+we have no example of a missing radius or a short payload version.
 
 Earlier versions read only the upper float32 half of the focus field at offset
 140 and applied an empirical conversion. Reading the full float64 at offset 136
@@ -76,9 +85,61 @@ reproduces the investigated HEYEX focus values to their displayed precision.
 The exports suggest that the vendor uses float32 precision for the factor
 `1.043`. Using the ordinary decimal constant changes focus by less than
 0.00000003 D across these samples and avoids unnecessary precision conversions.
-`focus_candidate_raw` remains an alias, but now returns the corrected float64
-value. Type7's previously guessed measurement labels have been removed; its
-corneal radius is at offset 17, rather than offset 1.
+Use `focus_raw` for the stored value and `focus_diopters` for the conversion.
+The former `focus_candidate_raw` alias and duplicate metadata key are removed.
+The series accessor is now `get_focus_raw()`; the `scan_focus` findings record
+uses the keys `focus_raw` and `focus_diopters`.
+
+### Type7 measurements
+
+Type7 stores one 68-byte Eye Data record per eye at study level. Its fields
+match the HEYEX Eye Data dialog, but their stored order differs from the UI.
+Three controlled exports with distinct integer, one-decimal and two-decimal
+settings verify the measurement fields and lens codes. The edited OD values
+match their screenshots exactly; the OS record remains unchanged. All six
+complete payloads reconstruct byte-for-byte from the reference values.
+
+| Payload offset | Field | Encoding | Evidence |
+| --- | --- | --- | --- |
+| 0 | `eye_side` | uint8 | ASCII L/R eye record |
+| 1 | `iop_mmHg` | float64 | IOP in mmHg |
+| 9 | `refraction_dpt` | float64 | Clinical refraction in diopters |
+| 17 | `corneal_radius_mm` | float64 | Controlled 9.0/6.2 mm settings validate the radius |
+| 25 | `vfield_mean` | float64 | HEYEX VFieldMean; UI units unspecified |
+| 33 | `vfield_var` | float64 | HEYEX VFieldVar; UI units unspecified |
+| 41 | `cylinder_dpt` | float64 | Cylinder in diopters |
+| 49 | `axis_deg` | float64 | Cylinder axis in degrees |
+| 57 | `corrective_lens` | uint16 slot | Lens-selection code |
+| 59 | `pupil_size_mm` | float64 | Pupil diameter in mm |
+| 67 | `rest` | 1 byte | Meaning unknown; observed value 1 |
+
+Lens codes match all four UI selections: **0 None**, **1 Glasses**,
+**2 Hard Contact Lenses**, **3 Soft Contact Lenses**. Their high byte is zero
+in these examples, so uint16 storage cannot be distinguished from uint8 plus
+padding; the complete two-byte slot is retained. The pupil double begins at
+unaligned byte 59, after this slot. Earlier parsers assumed eight consecutive
+doubles, misplacing the pupil value and reading its final bytes as a lens code.
+The final byte remains raw because its meaning is unknown.
+
+Access both eyes through the study hierarchy:
+
+```python
+from eyepy.io import HeE2eReader
+from eyepy.io.he.e2e_format import TypesEnum
+
+with HeE2eReader("filename.E2E") as reader:
+    for study in reader.studies:
+        for folder in study.folders.get(TypesEnum.measurements, []):
+            eye_data = folder.data
+            print(eye_data.eye_side.name, eye_data.refraction_dpt,
+                  eye_data.cylinder_dpt, eye_data.corneal_radius_mm)
+```
+
+Clinical `refraction_dpt` is separate from Type10004 acquisition scan focus.
+The edited Eye Data records do not change the stored acquisition focus,
+Type39 localizer settings or OCT image payloads in the controlled exports.
+The mappings above are verified for these samples; other export versions and
+negative refraction/cylinder values have not been tested.
 
 ## Access other data stored in E2E files
 
@@ -199,7 +260,7 @@ When an E2E series is converted to an [`EyeVolume`][eyepy.core.EyeVolume], the s
 | `General Parameters -> Examination Time` | `series` | `Type10005@series+offset16` |
 | `General Parameters -> Examined Structure` | `series` | `Type9005` |
 | `General Parameters -> Application` | `study/series` | `Type13`, with fallback to `Type9005` |
-| `General Parameters -> Scan Focus` | `bscan/provisional` | `Type10004@offset140` as `float32`, converted empirically |
+| `General Parameters -> Scan Focus` | `bscan/derived` | `Type10004@offset136` as `float64`, multiplied by `1.043 / 1000` |
 | `IR Image -> ART Mode` | `bscan` | `Type39@offset376` |
 | `IR Image -> Sensitivity (DC/DC)` | `bscan` | `Type39@offset8` |
 | `IR Image -> Total Sensitivity` | `bscan` | `Type39@offset116` |
@@ -222,14 +283,8 @@ When an E2E series is converted to an [`EyeVolume`][eyepy.core.EyeVolume], the s
 
 ### Provisional Mappings
 
-`Scan Focus` currently uses the strongest candidate field found:
-
-```text
-v = Type10004@offset140 as float32
-focus_D ≈ 1.079 * sign(v) * (abs(v) - 3.505)
-```
-
-This fit matches our examples closely, but it is still empirical and should be treated as provisional.
+`Scan Focus` is converted from the complete stored float64 value. Its offset,
+conversion and validation are described in [Decoded optical settings](#decoded-optical-settings).
 
 `Scaling X` in `µm/pixel` also appears to be derived rather than stored directly:
 

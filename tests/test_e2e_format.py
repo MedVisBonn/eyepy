@@ -43,7 +43,6 @@ def test_focus_uses_full_float64_without_shifting_quality(focus):
     meta = type10004_format.parse(raw)
 
     assert meta.focus_diopters == pytest.approx(focus)
-    assert meta.focus_candidate_raw == meta.focus_raw
     assert meta.eye_length_preset_raw == 2500
     assert meta.eye_length_preset == 'Long'
     assert meta.quality_ui == 32
@@ -61,13 +60,40 @@ def test_corneal_radius_offsets(radius):
 
     study = type7_format.parse(study_raw)
 
-    assert study.c_curve_mm == radius
+    assert study.corneal_radius_mm == radius
     assert Type39(raw=bytes(slice_raw)).corneal_radius_mm == radius
     assert type7_format.build(study) == study_raw
 
 
 def test_short_localizer_settings_have_no_corneal_radius():
     assert Type39(raw=bytes(464)).corneal_radius_mm is None
+
+
+@pytest.mark.parametrize('eye,values,lens,pupil', [
+    ('R', (5, 1, 6.2, 6, 7, 2, 3), 1, 4),
+    ('R', (3.4, 7.3, 6.2, 2.9, 1.1, 6.9, 5.2), 2, 4.6),
+    ('R', (3.44, 7.38, 6.2, 2.93, 1.14, 6.97, 5.26), 3, 4.65),
+    ('L', (0, 0, 6.2, 0, 0, 0, 0), 0, 0),
+])
+def test_type7_fields_match_controlled_eye_data(eye, values, lens, pupil):
+    # Non-identifying values from the controlled Eye Data screenshots.
+    # Seven doubles precede the lens code; the pupil double follows it.
+    raw = struct.pack('<B7dHdB', ord(eye), *values, lens, pupil, 1)
+
+    study = type7_format.parse(raw)
+
+    assert study.eye_side.name == ('OD' if eye == 'R' else 'OS')
+    assert study.iop_mmHg == values[0]
+    assert study.refraction_dpt == values[1]
+    assert study.corneal_radius_mm == values[2]
+    assert study.vfield_mean == values[3]
+    assert study.vfield_var == values[4]
+    assert study.cylinder_dpt == values[5]
+    assert study.axis_deg == values[6]
+    assert study.corrective_lens == lens
+    assert study.pupil_size_mm == pupil
+    assert study.rest == bytes([1])
+    assert type7_format.build(study) == raw
 
 
 def _type9_container(firstname, surname, patient_id):

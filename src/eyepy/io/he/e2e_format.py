@@ -263,11 +263,6 @@ class Type10004(DataclassMixin, TypeMixin):
         return self.focus_raw * 1.043 / 1000
 
     @property
-    def focus_candidate_raw(self) -> float:
-        """Compatibility alias for the corrected, full float64 focus field."""
-        return self.focus_raw
-
-    @property
     def eye_length_preset(self) -> str | None:
         return {-2500: 'Short', 0: 'Medium', 2500: 'Long',
                 5000: 'Extra Long'}.get(self.eye_length_preset_raw)
@@ -294,19 +289,38 @@ type10004_format = DataclassStruct(Type10004)
 
 @dataclasses.dataclass
 class Type7(DataclassMixin, TypeMixin):
-    """Measurements Global measurements of the eye.
+    """Measurements Study-level Eye Data for one eye.
 
     Size: 68 bytes
 
     Notes:
+    The numeric fields match the HEYEX Eye Data dialog in controlled exports.
+    Their stored order differs from the dialog's order. A two-byte corrective
+    lens code precedes the final double, the pupil diameter.
     """
 
-    eye_side: LateralityEnum = csfield(TEnum(cs.Int8ul, LateralityEnum))
-    unknown0: float = csfield(cs.Float64l)
-    unknown1: float = csfield(cs.Float64l)
-    c_curve_mm: float = csfield(cs.Float64l,
-                              doc='Corneal radius in mm at offset 17.')
-    rest: bytes = csfield(cs.Bytes(43))
+    eye_side: LateralityEnum = csfield(
+        TEnum(cs.Int8ul, LateralityEnum), doc='ASCII L/R eye record at offset 0.')
+    iop_mmHg: float = csfield(cs.Float64l,
+                             doc='Intraocular pressure in mmHg at offset 1.')
+    refraction_dpt: float = csfield(
+        cs.Float64l, doc='Clinical refraction in diopters at offset 9; separate from scan focus.')
+    corneal_radius_mm: float = csfield(
+        cs.Float64l, doc='Corneal radius in mm at offset 17, labeled C-Curve in HEYEX.')
+    vfield_mean: float = csfield(cs.Float64l,
+                                doc='HEYEX VFieldMean at offset 25; UI does not specify units.')
+    vfield_var: float = csfield(cs.Float64l,
+                               doc='HEYEX VFieldVar at offset 33; UI does not specify units.')
+    cylinder_dpt: float = csfield(cs.Float64l,
+                                 doc='Cylinder in diopters at offset 41.')
+    axis_deg: float = csfield(
+        cs.Float64l, doc='Cylinder axis in degrees at offset 49.')
+    corrective_lens: int = csfield(
+        cs.Int16ul, doc='Code at offset 57: 0 None, 1 Glasses, 2 Hard Contact Lenses, 3 Soft Contact Lenses.')
+    pupil_size_mm: float = csfield(
+        cs.Float64l, doc='Pupil diameter in mm at unaligned offset 59.')
+    rest: bytes = csfield(cs.Bytes(1),
+                          doc='Unknown trailing byte at offset 67; observed value 1.')
 
 
 type7_format = DataclassStruct(Type7)
