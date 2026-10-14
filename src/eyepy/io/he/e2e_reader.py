@@ -14,6 +14,7 @@ import sys
 from textwrap import indent
 import traceback
 from typing import Any, Optional, Union
+import warnings
 
 import construct as cs
 import numpy as np
@@ -35,6 +36,7 @@ from .e2e_format import containerheader_format
 from .e2e_format import DataContainer
 from .e2e_format import datacontainer_format
 from .e2e_format import e2e_format
+from .e2e_format import Type39
 from .e2e_format import Type10004
 from .e2e_format import type10004_format
 from .e2e_format import Type10025
@@ -60,7 +62,6 @@ type_occurence = {
 }
 
 HEYEX_TIMEZONE_SUFFIX = 'UTC+1'
-MEDIUM_EYE_LENGTH_UM_PER_DEG = 289.6
 
 
 def _format_version(raw: bytes) -> str:
@@ -658,24 +659,71 @@ class E2ESeriesStructure(E2EStructureMixin):
         items = self._bscanmeta_items()
         return items[0].focus_diopters if items else None
 
+    def get_corneal_radius_mm(self) -> float | None:
+        """Read the slice setting, falling back to the matching study eye."""
+        raw = self._first_type39_raw()
+        radius = Type39(raw=raw).corneal_radius_mm if raw is not None else None
+        if radius is None:
+            laterality = self.folders[TypesEnum.laterality][0].data.laterality
+            for folder in self._folders_for(self.study, TypesEnum.measurements):
+                if folder.data.eye_side == laterality:
+                    radius = folder.data.corneal_radius_mm
+                    break
+        if radius is None or not math.isfinite(radius) or radius <= 0:
+            return None
+        return radius
+
+    def get_localizer_field_deg(self) -> int | None:
+        """Read the nominal localizer field from Type5 payload offset 24."""
+        for structure in [self, *self._sorted_slices()]:
+            for folder in self._folders_for(structure, 5):
+                raw = folder.get_bytes()
+                if len(raw) < 26:
+                    continue
+                field_deg = struct.unpack_from('<H', raw, 24)[0]
+                if 0 < field_deg < 180:
+                    return field_deg
+        return None
+
+    def _localizer_field_deg(self) -> int:
+        """Use 30 degrees only when the stored field is unavailable."""
+        return self.get_localizer_field_deg() or 30
+
+    def _mm_per_degree(self) -> float:
+        """Approximate optical conversion; see the E2E metric-scaling docs."""
+        radius = self.get_corneal_radius_mm()
+        focus = self._derive_scan_focus_diopters()
+        radius = radius if radius is not None else 7.7
+        focus = focus if focus is not None and math.isfinite(focus) else 0.0
+        denominator = 17.21 / radius + 1.247 + focus / 17.455
+        if not math.isfinite(denominator) or denominator <= 0:
+            raise ValueError('E2E optical settings give a non-positive scale.')
+        return 1.02302 / denominator
+
     def get_x_scale_derivation(self) -> dict[str, float | None]:
         items = self._bscanmeta_items()
         if not items:
             return {
                 'angular_width_deg': None,
                 'img_size_width': None,
-                'constant_um_per_deg': MEDIUM_EYE_LENGTH_UM_PER_DEG,
+                'mm_per_degree': None,
                 'scaling_x_um_per_pixel': None,
             }
 
         bscan_meta = items[0]
-        angular_width_deg = abs(bscan_meta.end_x - bscan_meta.start_x)
-        scaling_x = (angular_width_deg / bscan_meta.imgSizeWidth *
-                     MEDIUM_EYE_LENGTH_UM_PER_DEG)
+        angular_width_deg = math.hypot(bscan_meta.end_x - bscan_meta.start_x,
+                                       bscan_meta.end_y - bscan_meta.start_y)
+        mm_per_degree = self._mm_per_degree()
+        scaling_x = angular_width_deg / bscan_meta.size_x * mm_per_degree * 1000
+        focus = self._derive_scan_focus_diopters()
         return {
             'angular_width_deg': angular_width_deg,
             'img_size_width': bscan_meta.imgSizeWidth,
-            'constant_um_per_deg': MEDIUM_EYE_LENGTH_UM_PER_DEG,
+            'image_width_px': bscan_meta.size_x,
+            'mm_per_degree': mm_per_degree,
+            'corneal_radius_mm': self.get_corneal_radius_mm(),
+            'focus_diopters': (
+                focus if focus is not None and math.isfinite(focus) else None),
             'scaling_x_um_per_pixel': scaling_x,
         }
 
@@ -721,6 +769,11 @@ class E2ESeriesStructure(E2EStructureMixin):
         if localizer_folder is not None and localizer_folder.data.type == 33620481:
             localizer_size_x = localizer_folder.data.width
             localizer_size_y = localizer_folder.data.height
+        localizer_field_deg = self._localizer_field_deg()
+        ir_scale_x = (localizer_field_deg * self._mm_per_degree() * 1000 / localizer_size_x
+                      if localizer_size_x else None)
+        ir_scale_y = (localizer_field_deg * self._mm_per_degree() * 1000 / localizer_size_y
+                      if localizer_size_y else None)
 
         oct_scan_angle = None
         size_x = None
@@ -734,12 +787,11 @@ class E2ESeriesStructure(E2EStructureMixin):
             scaling_z = bscan_meta.scale_y * 1000
 
         pattern_height_mm = (None if pattern_height_deg is None else
-                             pattern_height_deg * MEDIUM_EYE_LENGTH_UM_PER_DEG /
-                             1000)
+                             pattern_height_deg * self._mm_per_degree())
         distance_between_bscans_um = None
         if pattern_height_deg is not None and self.n_bscans > 1:
             distance_between_bscans_um = (
-                pattern_height_deg * MEDIUM_EYE_LENGTH_UM_PER_DEG /
+                pattern_height_deg * self._mm_per_degree() * 1000 /
                 (self.n_bscans - 1))
 
         model_codes = self._type39_codes()
@@ -788,12 +840,12 @@ class E2ESeriesStructure(E2EStructureMixin):
                 'Application': self._application(),
             },
             'IR Image': {
-                'Scan Angle': '30°' if localizer_size_x is not None else None,
-                'Size X': _format_px_mm(localizer_size_x, scaling_x)
+                'Scan Angle': f'{localizer_field_deg}°' if localizer_size_x is not None else None,
+                'Size X': _format_px_mm(localizer_size_x, ir_scale_x)
                 if localizer_size_x is not None else None,
-                'Size Y': _format_px_mm(localizer_size_y, scaling_x)
+                'Size Y': _format_px_mm(localizer_size_y, ir_scale_y)
                 if localizer_size_y is not None else None,
-                'Scaling': None if scaling_x is None else f'{scaling_x:.2f} µm/pixel',
+                'Scaling': None if ir_scale_x is None else f'{ir_scale_x:.2f} µm/pixel',
                 'ART Mode': None if ir_art_mode is None else
                 f'ON ({ir_art_mode} images averaged)',
                 'ART Normalization': None,
@@ -891,10 +943,10 @@ class E2ESeriesStructure(E2EStructureMixin):
                 'Application': 'Type13@study (fallback Type9005@series[0])',
             },
             'IR Image': {
-                'Scan Angle': 'derived from current localizer field size assumption',
+                'Scan Angle': 'Type5@offset24:uint16' if self.get_localizer_field_deg() is not None else 'fallback:30 degrees',
                 'Size X': 'derived from localizer width and provisional Scaling',
                 'Size Y': 'derived from localizer height and provisional Scaling',
-                'Scaling': 'provisional derived from Type10004.start_x/end_x/imgSizeWidth',
+                'Scaling': 'approximate optical model and localizer field',
                 'ART Mode': 'Type39@slice0+offset376:uint8',
                 'ART Normalization': None,
                 'Sensitivity (DC/DC)': 'Type39@slice0+offset8:uint8',
@@ -910,7 +962,7 @@ class E2ESeriesStructure(E2EStructureMixin):
                 'Scan Angle': 'derived from Type10004.start_x/end_x',
                 'Size X': 'Type10004.size_x plus provisional Scaling X',
                 'Size Z': 'Type10004.size_y and Type10004.scale_y',
-                'Scaling X': 'provisional derived from Type10004.start_x/end_x/imgSizeWidth',
+                'Scaling X': 'approximate optical model and full Type10004.size_x',
                 'Scaling Z': 'Type10004.scale_y',
                 'ART Mode': None if bscan_index is None else
                 f'Type10004@bscan{bscan_index}+offset120:uint32',
@@ -926,7 +978,7 @@ class E2ESeriesStructure(E2EStructureMixin):
             'OCT Scan Pattern': {
                 'Number of B-Scans': 'Type10004.n_bscans',
                 'Pattern Size': 'derived from Type10004 centers and provisional Scaling X',
-                'Distance between B-Scans': 'derived from Type10004 centers and provisional Medium eye-length constant',
+                'Distance between B-Scans': 'derived from Type10004 centers and approximate optical model',
             },
             'Device': {
                 'Camera Model': 'Type13@study',
@@ -962,6 +1014,7 @@ class E2ESeriesStructure(E2EStructureMixin):
 
     def get_eyevolume_e2e_metadata(self) -> dict[str, Any]:
         """Return a compact E2E metadata bundle suitable for EyeVolumeMeta."""
+        localizer_field_deg = self.get_localizer_field_deg()
         return {
             'heyex': self.get_heyex_metadata(),
             'heyex_sources': self.get_heyex_metadata_sources(),
@@ -974,6 +1027,10 @@ class E2ESeriesStructure(E2EStructureMixin):
                 for i in range(self.n_bscans)
             ],
             'findings': {
+                'localizer_field': {
+                    'field_deg': self._localizer_field_deg(),
+                    'source': 'Type5@offset24:uint16' if localizer_field_deg is not None else 'fallback:30 degrees',
+                },
                 'scan_focus': {
                     'focus_raw': self.get_focus_raw(),
                     'focus_diopters': self._derive_scan_focus_diopters(),
@@ -985,10 +1042,11 @@ class E2ESeriesStructure(E2EStructureMixin):
                 'scaling_x': {
                     **self.get_x_scale_derivation(),
                     'source':
-                    'derived from Type10004.start_x/end_x/imgSizeWidth',
-                    'status': 'provisional',
+                    'derived from Type10004 endpoints, size_x, focus, and corneal radius',
+                    'status': 'approximate',
                     'formula':
-                    'Scaling X ≈ (end_x - start_x) / imgSizeWidth * 289.6',
+                    'scale_x_mm = angular_width_deg / size_x * 1.02302 / '
+                    '(17.21 / radius_mm + 1.247 + focus_diopters / 17.455)',
                 },
                 'oct_firmware_assignment': {
                     'oct_controller_fw_offset': 124,
@@ -1213,20 +1271,18 @@ class E2ESeriesStructure(E2EStructureMixin):
     def localizer_meta(self, height, width) -> EyeEnfaceMeta:
         """Return EyeEnfaceMeta object for the localizer image."""
         if self._localizer_meta is None:
+            field_deg = self._localizer_field_deg()
             self._localizer_meta = EyeEnfaceMeta(
-                scale_x=30 / width,  # Give scale in degrees per pixel
-                scale_y=30 / height,
-                scale_unit='°',
+                scale_x=field_deg * self._mm_per_degree() / width,
+                scale_y=field_deg * self._mm_per_degree() / height,
+                scale_unit='mm',
                 modality=self.enface_modality(),
                 laterality=self.laterality(),
-                field_size=None,
+                field_size=field_deg,
                 scan_focus=None,
                 visit_date=None,
                 exam_time=None,
             )
-        logger.info(
-            'The localizer scale is currently hardcoded and not read from the E2E file. If you know how or where to find the scale information let us know by opening an issue.'
-        )
         return self._localizer_meta
 
     def get_localizer(self) -> EyeEnface:
@@ -1253,8 +1309,8 @@ class E2ESeriesStructure(E2EStructureMixin):
         except KeyError:
             if self.n_bscans == 1:
                 slice_struct = self.slices[2]
-                return EyeEnface(slice_struct.get_localizer(),
-                                 self.localizer_meta())
+                data = slice_struct.get_localizer()
+                return EyeEnface(data, self.localizer_meta(*data.shape))
             else:
                 raise ValueError(
                     'There is no localizer/fundus image in the E2E file.')
@@ -1271,13 +1327,30 @@ class E2ESeriesStructure(E2EStructureMixin):
     def get_meta(self) -> EyeVolumeMeta:
         """Return EyeVolumeMeta object for the series."""
         if self._meta is None:
-            bscan_meta = self.get_bscan_meta()
+            warnings.warn(
+                'E2E lateral scales in mm are estimated using an approximate optical '
+                'model and may differ from HEYEX. Missing optical settings use a 7.7 mm '
+                'corneal radius and 0 D focus; missing or invalid localizer fields '
+                'use 30 degrees. See the E2E metric-scaling documentation.',
+                UserWarning,
+                stacklevel=2,
+            )
+            mm_per_degree = self._mm_per_degree()
+            field_deg = self._localizer_field_deg()
+            bscan_meta = [meta.copy() for meta in self.get_bscan_meta()]
+            for meta in bscan_meta:
+                for key in ('start_pos', 'end_pos'):
+                    # E2E angles are centered; metric localizer coordinates
+                    # start at the upper-left corner of the localizer field.
+                    meta[key] = tuple(
+                        (np.asarray(meta[key]) + field_deg / 2) * mm_per_degree)
+                meta['pos_unit'] = 'mm'
             self._meta = EyeVolumeMeta(
-                scale_x=1,  #0.0114,  # Todo: Where is this in E2E?
-                scale_y=1,  #bscan_meta[0]["scale_y"],
-                scale_z=1,  #get_bscan_spacing(bscan_meta) if
-                #(bscan_meta[0]["scan_pattern"] not in [1, 2]) else 0.03,
-                scale_unit='px',
+                scale_x=(self.get_x_scale_derivation()['scaling_x_um_per_pixel']
+                         / 1000),
+                scale_y=bscan_meta[0]['scale_y'],
+                scale_z=get_bscan_spacing(bscan_meta) if len(bscan_meta) > 1 else 0,
+                scale_unit='mm',
                 laterality=self.laterality(),
                 visit_date=None,
                 exam_time=None,

@@ -40,17 +40,17 @@ The [`HeE2eReader`][eyepy.io.he.e2e_reader.HeE2eReader] provides a convenient in
 from eyepy.io import HeE2eReader
 
 with HeE2eReader("filename.E2E") as e2e_reader: # (1)
-    volumes = e2e_reader.volume
+    volumes = e2e_reader.volumes
 
-with HeE2eReader("filename.E2E", single=True) as e2e_reader: # (2)
+with HeE2eReader("filename.E2E") as e2e_reader: # (2)
     volume = e2e_reader.volume
 ```
 
-1.  `e2e_reader.volume` returns `List[EyeVolume]`
+1.  `e2e_reader.volumes` returns `List[EyeVolume]`
 2.  `e2e_reader.volume` returns the first Series as `EyeVolume` object
 
 !!! Warning Limitations of EyeVolume objects created from E2E files
-    + Currently we can not read scale Information for the localizer images as well as the x-scale of the B-scans. Hence quantifications can not be transformed to metric units.
+    + Lateral scales and positions use estimated millimeters by default. Import warns that these use an approximate optical model and may differ from HEYEX. See [Metric scaling](#metric-scaling) for the calculation and uncertainty.
     + Also we know that in the E2E file B-scans are not registered with each other. This B-scan registration information has also not been found yet. This might cause problems when downstream analysis expects B-scans to be registered.
 
     If you know how to read this information from the E2E file, please let us know by opening an [issue](https://github.com/MedVisBonn/eyepy/issues)
@@ -140,6 +140,178 @@ The edited Eye Data records do not change the stored acquisition focus,
 Type39 localizer settings or OCT image payloads in the controlled exports.
 The mappings above are verified for these samples; other export versions and
 negative refraction/cylinder values have not been tested.
+
+## Metric scaling
+
+`eyepy.import_heyex_e2e(path)` and `HeE2eReader.volume` return volumes with
+`scale_unit='mm'`. The localizer and B-scan positions also use millimeters.
+Each volume emits a `UserWarning` when its metric metadata is first computed.
+
+### Optical conversion
+
+We estimate millimeters per degree from the stored corneal radius `R` in mm
+and scan focus `focus_diopters`:
+
+```python
+mm_per_degree = 1.02302 / (17.21 / R + 1.247 + focus_diopters / 17.455)
+```
+
+The denominator follows the ocular magnification model in **Garway-Heath DF
+et al. (1998),** [*Measurement of optic disc size: equivalence of methods to
+correct for ocular magnification*](https://doi.org/10.1136/bjo.82.6.643),
+*British Journal of Ophthalmology* 82(6):643–649. The appendix on page 649
+derives the expression from anterior corneal radius and ametropia (principal
+point refraction in diopters). [Free full text](https://pmc.ncbi.nlm.nih.gov/articles/PMC1722616/).
+
+The additional multiplier **1.02302** and the use of acquisition scan focus in
+the refraction input follow the
+[FoveaAnalysis implementation](https://github.com/halirutan/FoveaAnalysis/blob/5b3cb4a3e5021043f20cd41a87655b1b996f082a/FoveaAnalysis/Modeling.m#L89-L125).
+A published derivation of that multiplier has not been identified. The paper
+does not establish that E2E scan focus is equivalent to its refraction input.
+The paper provides the optical model but does not independently validate this
+OCT adaptation. The exact HEYEX calculation has not been established, and the
+model constants have not been identified in the E2E payloads.
+
+The [decoded optical settings](#decoded-optical-settings) describe the byte
+offsets. We prefer the corneal radius in the slice's Type39 settings. If it is
+unavailable, we use the Type7 measurement for the matching eye in the study.
+An absent, non-finite or non-positive radius defaults to **7.7 mm**. An absent
+or non-finite focus defaults to **0 D**. A non-positive optical denominator
+raises `ValueError`. The eye-length preset does not enter this formula because
+its relation to magnification remains unverified.
+
+Type7 clinical refraction is not substituted for acquisition scan focus.
+Cylinder, axis, pupil diameter, IOP, visual-field values and corrective-lens
+selection do not enter this estimate. Editing these fields in the controlled
+exports leaves the stored acquisition radius, focus and image geometry unchanged.
+
+### Volume scales and positions
+
+Let `q = mm_per_degree`. The Type10004 start/end coordinates are centered
+angles in degrees. Let `field_deg` be the localizer field described below.
+We compute:
+
+```python
+angular_width = hypot(end_x - start_x, end_y - start_y)
+scale_x = angular_width * q / size_x
+scale_y = stored_axial_scale
+start_pos_mm = ((start_x + field_deg / 2) * q, (start_y + field_deg / 2) * q)
+end_pos_mm = ((end_x + field_deg / 2) * q, (end_y + field_deg / 2) * q)
+```
+
+`size_x` is the full stored B-scan width at byte 8. `imgSizeWidth` at byte 60
+can count only filled A-scans, so using it would change the physical scale
+when image coverage changes. We divide by `size_x`, rather than `size_x - 1`,
+following the sampling convention supported by the paired exports.
+The volume's `scale_x` and `scale_y` use the first B-scan's settings.
+
+`scale_y` is read directly from the float32 at byte 36 in mm/pixel; it does
+not depend on the optical approximation. `scale_z` is the mean distance between
+adjacent B-scan endpoints after conversion to mm, using `get_bscan_spacing`.
+For a single B-scan there is no measured spacing: `scale_z=0`, so it does not
+imply a physical volume thickness.
+
+### Stored localizer field
+
+The nominal IR/localizer field is **uint16 little-endian at Type5 payload
+offset 24**. Neighboring uint16 values at 12 and 14 store the localizer width
+and height. The reader uses the actual image header for pixel dimensions.
+This field is separate from the OCT endpoint span: the investigated 20° OCT
+scans have a 30° localizer.
+
+`series.get_localizer_field_deg()` reads the first valid Type5 record from
+the series, then its B-scans. A payload shorter than 26 bytes, a zero field,
+or a field of 180° or greater is treated as unavailable. If no valid record
+is found, the conversion uses **30°** and metadata identifies that fallback.
+
+All 1502 Type5 records in the 14 supplied exports contain 30° and 1536×1536
+pixels. Their dimensions match the image headers; their field and dimensions
+also match seven E2E/XML pair comparisons covering five distinct XML exports.
+The same field is decoded and used by
+[OCT-Converter](https://github.com/marksgraham/OCT-Converter/blob/cb73c60aad505cc9b34d3f9ee4c44ce4888dd8f9/oct_converter/readers/binary_structs/e2e_binary.py#L88-L97).
+Other localizer fields and non-square images have not been verified with real
+exports. Synthetic tests cover 20° and 55° fields and missing/invalid records.
+
+The stored field determines the localizer scales:
+
+```python
+localizer_scale_x = field_deg * q / localizer_width
+localizer_scale_y = field_deg * q / localizer_height
+```
+
+Adding half the field to the centered B-scan coordinates places their origin
+at the upper-left corner of this field. A single nominal field is applied to
+both axes, following the inspected
+[coordinate conversion](https://github.com/marksgraham/OCT-Converter/blob/cb73c60aad505cc9b34d3f9ee4c44ce4888dd8f9/oct_converter/readers/scan_geometry.py#L54-L68).
+Converting both positions and localizer
+scales by the same factor preserves the OCT-to-localizer pixel transform.
+`series.get_bscan_meta()` retains the original angular positions; the returned
+volume receives copies with `pos_unit='mm'`. Raw `start_x`, `start_y`, `end_x`
+and `end_y` remain in degrees in the additional metadata.
+
+### XML precision and observed agreement
+
+In the investigated exports, XML `ScaleX` is rounded to **0.0001 mm/pixel**
+(0.1 µm/pixel), while start/end coordinates are rounded to **0.001 mm** (1 µm).
+The approximation reproduces the rounded `ScaleX` values in the three
+acquisitions listed below. Removing the multiplier lowers the estimate by
+**2.2502%**, a change visible even at the precision of `ScaleX`. For the
+30° acquisition with a 7.7 mm radius and 0.90 D focus:
+
+| Multiplier | Estimated mm/pixel | Rounded like XML |
+| --- | --- | --- |
+| 1.02302 | 0.00565449 | 0.0057 |
+| 1 | 0.00552725 | 0.0055 |
+
+The matching XML `ScaleX` is 0.0057 mm/pixel. Across the three acquisitions
+below, a multiplier of 1 instead underestimates the coordinate-implied scale
+by about **2.24–2.25%**.
+
+The smaller residuals with 1.02302 are invisible in rounded `ScaleX`. We
+constrain the scale using Y positions across the raster, taking the stored E2E angles as
+inputs and assuming a uniform linear conversion with an unknown coordinate
+origin. Allowing each XML coordinate ±0.5 µm for nearest-value rounding gives:
+
+| OCT span / radius / focus | Scale difference versus coordinate-compatible values | Largest X/Y coordinate difference |
+| --- | --- | --- |
+| 30° / 7.7 mm / 0.90 D | 0.0004–0.0011% lower | 0.54 µm |
+| 20° / 9.0 mm / −1.51 D | 0.0027–0.0049% higher | 0.80 µm |
+| 20° / 6.2 mm / −0.49 D | 0.0069–0.0088% higher | 0.95 µm |
+
+All three localizer fields are 30°. The last column compares both X and Y
+components of the start/end positions.
+
+Multiple rounded positions constrain the scale more precisely than a single
+position. In each of these three acquisitions, the estimate falls outside the
+rounding-compatible range even when the coordinate origin is free. For
+example, two positions in the 30° scan have an XML separation of 3.258 mm,
+permitting 3.257–3.259 mm after rounding uncertainty. The estimate is
+3.256987 mm, about 0.013 µm below that range.
+
+Under these assumptions, XML rounding alone does not explain the complete
+residual. Rounding of model constants or internal numerical details could
+contribute, but their contribution has not been established. These numbers
+measure agreement with exported geometry; they are not independent measurements
+of anatomical accuracy or a general error bound for other scans.
+
+### Uncertainty and inspection
+
+The calculation uses the current acquisition's optical settings and stored
+angles; registration information is not interpreted. It does not reproduce
+every export's HEYEX geometry. The stored localizer field has been verified
+for the supplied 30° square images; other fields, devices and export versions
+remain untested. Axial sampling
+is read directly from the file and does not use this optical approximation.
+
+The inputs and computed conversion are available through
+`series.get_x_scale_derivation()` and
+`volume.meta['e2e_metadata']['findings']['scaling_x']`, whose status is
+`'approximate'`. A `None` radius or focus in that record indicates that the
+documented default was used. The import warning states that lateral scales
+are estimated using an approximate optical model and may differ from HEYEX.
+The used field is in `volume.localizer.meta['field_size']` and
+`volume.meta['e2e_metadata']['findings']['localizer_field']`. The latter gives
+the source as `Type5@offset24:uint16` or `fallback:30 degrees`.
 
 ## Access other data stored in E2E files
 
@@ -268,10 +440,10 @@ When an E2E series is converted to an [`EyeVolume`][eyepy.core.EyeVolume], the s
 | `OCT Image -> Quality` | `bscan` | `Type10004@offset156` |
 | `OCT Image -> Acquisition Time` | `bscan` | `Type10004.acquisitionTime` |
 | `OCT Image -> Scaling Z` | `bscan` | `Type10004.scale_y` |
-| `OCT Image -> Scaling X` | `derived/provisional` | `Type10004.start_x`, `end_x`, and `imgSizeWidth` |
+| `OCT Image -> Scaling X` | `derived/provisional` | Type10004 endpoint distance and full `size_x`, with the approximate optical conversion |
 | `OCT Scan Pattern -> Number of B-Scans` | `bscan` | `Type10004.n_bscans` |
-| `OCT Scan Pattern -> Pattern Size` | `derived/provisional` | angular span from `Type10004`, converted with the current `Medium` eye-length constant |
-| `OCT Scan Pattern -> Distance between B-Scans` | `derived/provisional` | vertical span from `Type10004`, converted with the current `Medium` eye-length constant |
+| `OCT Scan Pattern -> Pattern Size` | `derived/provisional` | angular span from `Type10004`, with the approximate optical conversion |
+| `OCT Scan Pattern -> Distance between B-Scans` | `derived/provisional` | vertical span from `Type10004`, with the approximate optical conversion |
 | `Device -> Camera Model` | `study` | `Type13` |
 | `Device -> Camera Model Code` | `bscan` | ASCII model codes embedded in `Type39` |
 | `Device -> Camera/Power/Touch serial numbers` | `bscan` | `Type39@offset104`, `108`, `112` |
@@ -286,13 +458,9 @@ When an E2E series is converted to an [`EyeVolume`][eyepy.core.EyeVolume], the s
 `Scan Focus` is converted from the complete stored float64 value. Its offset,
 conversion and validation are described in [Decoded optical settings](#decoded-optical-settings).
 
-`Scaling X` in `µm/pixel` also appears to be derived rather than stored directly:
-
-```text
-Scaling X ≈ (end_x - start_x) / imgSizeWidth * 289.6
-```
-
-The constant `289.6 µm/degree` is the current best fit for the `Medium` eye-length preset. Additional paired files are still needed to confirm the conversion for `Short` and `Long`.
+`Scaling X` in the HEYEX metadata view is reported in µm/pixel. It uses the
+same radius/focus estimate as the volume's mm/pixel scale, multiplied by 1000.
+See [Metric scaling](#metric-scaling) for the expression, inputs and uncertainty.
 
 ### Current Caveats
 
