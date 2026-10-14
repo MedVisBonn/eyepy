@@ -980,7 +980,7 @@ class E2ESeriesStructure(E2EStructureMixin):
                     'source': 'Type10004@bscan0+offset136:float64',
                     'status': 'validated against HEYEX focus values',
                     'formula':
-                    'focus_D = focus_raw * 1.043 / 1000',
+                    'focus_diopters = focus_raw * 1.043 / 1000',
                 },
                 'scaling_x': {
                     **self.get_x_scale_derivation(),
