@@ -1305,8 +1305,8 @@ class E2ESeriesStructure(E2EStructureMixin):
         """Return EyeVolumeMeta object for the series."""
         if self._meta is None:
             warnings.warn(
-                'E2E lateral scales in mm are estimates: the vendor calibration '
-                'is not fully decoded. Missing optical settings use a 7.7 mm '
+                'E2E lateral scales in mm are estimated using an approximate optical '
+                'model and may differ from HEYEX. Missing optical settings use a 7.7 mm '
                 'corneal radius and 0 D focus; the localizer field is assumed '
                 'to be 30 degrees. See the E2E metric-scaling documentation.',
                 UserWarning,

@@ -49,7 +49,7 @@ def test_default_volume_uses_consistent_mm_and_preserves_alignment(series):
     q = 0.2895099745331661  # R=7.7 mm, F=0.9 D, independently evaluated.
     angular = series.get_bscan_meta()
 
-    with pytest.warns(UserWarning, match='vendor calibration'):
+    with pytest.warns(UserWarning, match='approximate optical model'):
         volume = series.get_volume()
 
     assert volume.scale_unit == volume.localizer.scale_unit == 'mm'
