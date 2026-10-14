@@ -467,12 +467,15 @@ class Type3(DataclassMixin, TypeMixin):
 type3_format = DataclassStruct(Type3)
 @dataclasses.dataclass
 class Type5(DataclassMixin, TypeMixin):
-    """Type 5.
+    """Localizer Image Info Fundus/IR metadata associated with a B-scan.
 
     Size: 59 bytes
 
     Notes:
-    We don't know what this data is used for, only that the 3rd byte indicates the laterality of the eye.
+    The 3rd byte indicates laterality. Localizer width, height and nominal
+    field in degrees are uint16 little-endian at offsets 12, 14 and 24.
+    The reader accesses the field from the bounded payload; the remaining
+    layout is not decoded here.
     """
 
     unknown: bytes = csfield(cs.Bytes(2))
