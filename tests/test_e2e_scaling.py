@@ -10,6 +10,15 @@ from eyepy.io.he.e2e_reader import E2ESeriesStructure
 from eyepy.io.he.e2e_reader import E2ESliceStructure
 
 
+def localizer_info(field_deg):
+    raw = bytearray(59)
+    struct.pack_into('<H', raw, 2, ord('R'))
+    struct.pack_into('<2H', raw, 12, 64, 32)
+    struct.pack_into('<H', raw, 24, field_deg)
+    raw[26:28] = b'\xff\xff'  # The field is two bytes, not four.
+    return bytes(raw)
+
+
 @pytest.fixture
 def series():
     """Two 20-degree B-scans with incomplete filled-A-scan coverage."""
@@ -39,6 +48,7 @@ def series():
         sl.folders[TypesEnum.localizer_settings] = [
             SimpleNamespace(get_bytes=lambda: bytes(settings))
         ]
+        sl.folders[5] = [SimpleNamespace(get_bytes=lambda: localizer_info(30))]
         sl.folders[TypesEnum.layer_annotation] = []
         sl.get_bscan = lambda: np.zeros((4, 16))
         result.substructure[sl.id] = sl
@@ -69,6 +79,56 @@ def test_default_volume_uses_consistent_mm_and_preserves_alignment(series):
     assert info['image_width_px'] == 16  # Not the 12 filled A-scans.
     assert info['corneal_radius_mm'] == 7.7
     assert info['focus_diopters'] == pytest.approx(0.9)
+
+
+@pytest.mark.parametrize('field_deg', [20, 55])
+def test_stored_localizer_field_controls_scale_origin_and_alignment(series, field_deg):
+    for sl in series.slices.values():
+        sl.folders[5] = [SimpleNamespace(get_bytes=lambda: localizer_info(field_deg))]
+    q = 0.2895099745331661
+    half_field = field_deg / 2
+
+    with pytest.warns(UserWarning, match='approximate optical model'):
+        volume = series.get_volume()
+
+    assert series.get_localizer_field_deg() == field_deg
+    assert volume.scale_x == pytest.approx(20 * q / 16)
+    assert volume.localizer.scale_x == pytest.approx(field_deg * q / 64)
+    assert volume.localizer.scale_y == pytest.approx(field_deg * q / 32)
+    assert volume.localizer.meta['field_size'] == field_deg
+    assert volume.meta['bscan_meta'][0]['start_pos'] == pytest.approx(
+        ((half_field - 10) * q, (half_field - 1) * q))
+    expected = np.array([
+        [(half_field - 10) / field_deg * 64, (half_field + 1) / field_deg * 32],
+        [(half_field + 10) / field_deg * 64, (half_field - 1) / field_deg * 32],
+    ])
+    np.testing.assert_allclose(volume.localizer_transform([[0, 0], [15, 1]]), expected, atol=1e-12)
+    assert volume.meta['e2e_metadata']['findings']['localizer_field'] == {
+        'field_deg': field_deg, 'source': 'Type5@offset24:uint16'}
+    assert series.get_heyex_metadata()['IR Image']['Scan Angle'] == f'{field_deg}°'
+    assert series.get_heyex_metadata_sources()['IR Image']['Scan Angle'] == 'Type5@offset24:uint16'
+
+
+def test_localizer_field_can_be_stored_at_series_level(series):
+    series.folders[5] = [SimpleNamespace(get_bytes=lambda: localizer_info(55))]
+    assert series.get_localizer_field_deg() == 55
+
+
+@pytest.mark.parametrize('raw', [None, bytes(25), localizer_info(0),
+                                 localizer_info(180), localizer_info(286),
+                                 localizer_info(65535)])
+def test_missing_short_or_invalid_localizer_field_uses_documented_fallback(series, raw):
+    for sl in series.slices.values():
+        sl.folders[5] = [] if raw is None else [SimpleNamespace(get_bytes=lambda: raw)]
+
+    with pytest.warns(UserWarning, match='localizer fields use 30 degrees'):
+        volume = series.get_volume()
+
+    assert series.get_localizer_field_deg() is None
+    assert volume.localizer.meta['field_size'] == 30
+    assert volume.localizer.scale_x == pytest.approx(30 * 0.2895099745331661 / 64)
+    assert volume.meta['e2e_metadata']['findings']['localizer_field'] == {
+        'field_deg': 30, 'source': 'fallback:30 degrees'}
 
 
 @pytest.mark.parametrize(('radius', 'focus', 'expected_q'), [

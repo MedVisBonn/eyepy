@@ -188,14 +188,15 @@ exports leaves the stored acquisition radius, focus and image geometry unchanged
 ### Volume scales and positions
 
 Let `q = mm_per_degree`. The Type10004 start/end coordinates are centered
-angles in degrees. We compute:
+angles in degrees. Let `field_deg` be the localizer field described below.
+We compute:
 
 ```python
 angular_width = hypot(end_x - start_x, end_y - start_y)
 scale_x = angular_width * q / size_x
 scale_y = stored_axial_scale
-start_pos_mm = ((start_x + 15) * q, (start_y + 15) * q)
-end_pos_mm = ((end_x + 15) * q, (end_y + 15) * q)
+start_pos_mm = ((start_x + field_deg / 2) * q, (start_y + field_deg / 2) * q)
+end_pos_mm = ((end_x + field_deg / 2) * q, (end_y + field_deg / 2) * q)
 ```
 
 `size_x` is the full stored B-scan width at byte 8. `imgSizeWidth` at byte 60
@@ -210,15 +211,39 @@ adjacent B-scan endpoints after conversion to mm, using `get_bscan_spacing`.
 For a single B-scan there is no measured spacing: `scale_z=0`, so it does not
 imply a physical volume thickness.
 
-We assume a **30° × 30° localizer field**, as the previous E2E reader did:
+### Stored localizer field
+
+The nominal IR/localizer field is **uint16 little-endian at Type5 payload
+offset 24**. Neighboring uint16 values at 12 and 14 store the localizer width
+and height. The reader uses the actual image header for pixel dimensions.
+This field is separate from the OCT endpoint span: the investigated 20° OCT
+scans have a 30° localizer.
+
+`series.get_localizer_field_deg()` reads the first valid Type5 record from
+the series, then its B-scans. A payload shorter than 26 bytes, a zero field,
+or a field of 180° or greater is treated as unavailable. If no valid record
+is found, the conversion uses **30°** and metadata identifies that fallback.
+
+All 1502 Type5 records in the 14 supplied exports contain 30° and 1536×1536
+pixels. Their dimensions match the image headers; their field and dimensions
+also match seven E2E/XML pair comparisons covering five distinct XML exports.
+The same field is decoded and used by
+[OCT-Converter](https://github.com/marksgraham/OCT-Converter/blob/cb73c60aad505cc9b34d3f9ee4c44ce4888dd8f9/oct_converter/readers/binary_structs/e2e_binary.py#L88-L97).
+Other localizer fields and non-square images have not been verified with real
+exports. Synthetic tests cover 20° and 55° fields and missing/invalid records.
+
+The stored field determines the localizer scales:
 
 ```python
-localizer_scale_x = 30 * q / localizer_width
-localizer_scale_y = 30 * q / localizer_height
+localizer_scale_x = field_deg * q / localizer_width
+localizer_scale_y = field_deg * q / localizer_height
 ```
 
-Adding 15° to the centered B-scan coordinates places their origin at the
-upper-left corner of this field. Converting both positions and localizer
+Adding half the field to the centered B-scan coordinates places their origin
+at the upper-left corner of this field. A single nominal field is applied to
+both axes, following the inspected
+[coordinate conversion](https://github.com/marksgraham/OCT-Converter/blob/cb73c60aad505cc9b34d3f9ee4c44ce4888dd8f9/oct_converter/readers/scan_geometry.py#L54-L68).
+Converting both positions and localizer
 scales by the same factor preserves the OCT-to-localizer pixel transform.
 `series.get_bscan_meta()` retains the original angular positions; the returned
 volume receives copies with `pos_unit='mm'`. Raw `start_x`, `start_y`, `end_x`
@@ -243,15 +268,18 @@ below, a multiplier of 1 instead underestimates the coordinate-implied scale
 by about **2.24–2.25%**.
 
 The smaller residuals with 1.02302 are invisible in rounded `ScaleX`. We
-estimate them from the coordinates together, taking the stored E2E angles as
+constrain the scale using Y positions across the raster, taking the stored E2E angles as
 inputs and assuming a uniform linear conversion with an unknown coordinate
 origin. Allowing each XML coordinate ±0.5 µm for nearest-value rounding gives:
 
-| Acquisition: field / radius / focus | Scale difference versus coordinate-compatible values | Largest X/Y coordinate difference |
+| OCT span / radius / focus | Scale difference versus coordinate-compatible values | Largest X/Y coordinate difference |
 | --- | --- | --- |
 | 30° / 7.7 mm / 0.90 D | 0.0004–0.0011% lower | 0.54 µm |
 | 20° / 9.0 mm / −1.51 D | 0.0027–0.0049% higher | 0.80 µm |
 | 20° / 6.2 mm / −0.49 D | 0.0069–0.0088% higher | 0.95 µm |
+
+All three localizer fields are 30°. The last column compares both X and Y
+components of the start/end positions.
 
 Multiple rounded positions constrain the scale more precisely than a single
 position. In each of these three acquisitions, the estimate falls outside the
@@ -270,8 +298,9 @@ of anatomical accuracy or a general error bound for other scans.
 
 The calculation uses the current acquisition's optical settings and stored
 angles; registration information is not interpreted. It does not reproduce
-every export's HEYEX geometry. The 30° localizer field assumption also remains
-unverified for other field sizes, devices and export versions. Axial sampling
+every export's HEYEX geometry. The stored localizer field has been verified
+for the supplied 30° square images; other fields, devices and export versions
+remain untested. Axial sampling
 is read directly from the file and does not use this optical approximation.
 
 The inputs and computed conversion are available through
@@ -280,6 +309,9 @@ The inputs and computed conversion are available through
 `'approximate'`. A `None` radius or focus in that record indicates that the
 documented default was used. The import warning states that lateral scales
 are estimated using an approximate optical model and may differ from HEYEX.
+The used field is in `volume.localizer.meta['field_size']` and
+`volume.meta['e2e_metadata']['findings']['localizer_field']`. The latter gives
+the source as `Type5@offset24:uint16` or `fallback:30 degrees`.
 
 ## Access other data stored in E2E files
 
