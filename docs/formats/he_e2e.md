@@ -50,7 +50,7 @@ with HeE2eReader("filename.E2E") as e2e_reader: # (2)
 2.  `e2e_reader.volume` returns the first Series as `EyeVolume` object
 
 !!! Warning Limitations of EyeVolume objects created from E2E files
-    + Lateral scales and positions use estimated millimeters by default. Import emits a warning because the vendor's calibration is not fully decoded. See [Metric scaling](#metric-scaling) for the calculation and uncertainty.
+    + Lateral scales and positions use estimated millimeters by default. Import warns that these use an approximate optical model and may differ from HEYEX. See [Metric scaling](#metric-scaling) for the calculation and uncertainty.
     + Also we know that in the E2E file B-scans are not registered with each other. This B-scan registration information has also not been found yet. This might cause problems when downstream analysis expects B-scans to be registered.
 
     If you know how to read this information from the E2E file, please let us know by opening an [issue](https://github.com/MedVisBonn/eyepy/issues)
@@ -156,11 +156,21 @@ and scan focus `focus_diopters`:
 mm_per_degree = 1.02302 / (17.21 / R + 1.247 + focus_diopters / 17.455)
 ```
 
-This is the optical expression and instrument factor used in the
+The denominator follows the ocular magnification model in **Garway-Heath DF
+et al. (1998),** [*Measurement of optic disc size: equivalence of methods to
+correct for ocular magnification*](https://doi.org/10.1136/bjo.82.6.643),
+*British Journal of Ophthalmology* 82(6):643–649. The appendix on page 649
+derives the expression from anterior corneal radius and ametropia (principal
+point refraction in diopters). [Free full text](https://pmc.ncbi.nlm.nih.gov/articles/PMC1722616/).
+
+The additional multiplier **1.02302** and the use of acquisition scan focus in
+the refraction input follow the
 [FoveaAnalysis implementation](https://github.com/halirutan/FoveaAnalysis/blob/5b3cb4a3e5021043f20cd41a87655b1b996f082a/FoveaAnalysis/Modeling.m#L89-L125).
-Those constants have not been identified in the E2E payloads or confirmed as
-Heidelberg's exact formula. This transparent approximation avoids fitting new
-constants to the same small set of exports used for validation.
+A published derivation of that multiplier has not been identified. The paper
+does not establish that E2E scan focus is equivalent to its refraction input.
+The paper provides the optical model but does not independently validate this
+OCT adaptation. The exact HEYEX calculation has not been established, and the
+model constants have not been identified in the E2E payloads.
 
 The [decoded optical settings](#decoded-optical-settings) describe the byte
 offsets. We prefer the corneal radius in the slice's Type39 settings. If it is
@@ -214,23 +224,62 @@ scales by the same factor preserves the OCT-to-localizer pixel transform.
 volume receives copies with `pos_unit='mm'`. Raw `start_x`, `start_y`, `end_x`
 and `end_y` remain in degrees in the additional metadata.
 
+### XML precision and observed agreement
+
+In the investigated exports, XML `ScaleX` is rounded to **0.0001 mm/pixel**
+(0.1 µm/pixel), while start/end coordinates are rounded to **0.001 mm** (1 µm).
+The approximation reproduces the rounded `ScaleX` values in the three
+acquisitions listed below. Removing the multiplier lowers the estimate by
+**2.2502%**, a change visible even at the precision of `ScaleX`. For the
+30° acquisition with a 7.7 mm radius and 0.90 D focus:
+
+| Multiplier | Estimated mm/pixel | Rounded like XML |
+| --- | --- | --- |
+| 1.02302 | 0.00565449 | 0.0057 |
+| 1 | 0.00552725 | 0.0055 |
+
+The matching XML `ScaleX` is 0.0057 mm/pixel. Across the three acquisitions
+below, a multiplier of 1 instead underestimates the coordinate-implied scale
+by about **2.24–2.25%**.
+
+The smaller residuals with 1.02302 are invisible in rounded `ScaleX`. We
+estimate them from the coordinates together, taking the stored E2E angles as
+inputs and assuming a uniform linear conversion with an unknown coordinate
+origin. Allowing each XML coordinate ±0.5 µm for nearest-value rounding gives:
+
+| Acquisition: field / radius / focus | Scale difference versus coordinate-compatible values | Largest X/Y coordinate difference |
+| --- | --- | --- |
+| 30° / 7.7 mm / 0.90 D | 0.0004–0.0011% lower | 0.54 µm |
+| 20° / 9.0 mm / −1.51 D | 0.0027–0.0049% higher | 0.80 µm |
+| 20° / 6.2 mm / −0.49 D | 0.0069–0.0088% higher | 0.95 µm |
+
+Multiple rounded positions constrain the scale more precisely than a single
+position. In each of these three acquisitions, the estimate falls outside the
+rounding-compatible range even when the coordinate origin is free. For
+example, two positions in the 30° scan have an XML separation of 3.258 mm,
+permitting 3.257–3.259 mm after rounding uncertainty. The estimate is
+3.256987 mm, about 0.013 µm below that range.
+
+Under these assumptions, XML rounding alone does not explain the complete
+residual. Rounding of model constants or internal numerical details could
+contribute, but their contribution has not been established. These numbers
+measure agreement with exported geometry; they are not independent measurements
+of anatomical accuracy or a general error bound for other scans.
+
 ### Uncertainty and inspection
 
-The approximation reproduces the displayed lateral scales for the tested
-20° and 30° raster acquisitions with corneal radii of 6.2, 7.7 and 9.0 mm.
-However, comparison with the more precise XML coordinates reveals residual
-differences, and the calculation does not reproduce every export's vendor
-geometry. It uses the current acquisition's optical settings and stored
-angles; registration information is not interpreted by this calculation.
-The localizer field assumption also remains unverified for other field sizes.
-There is no validated general error bound for other devices or export versions.
+The calculation uses the current acquisition's optical settings and stored
+angles; registration information is not interpreted. It does not reproduce
+every export's HEYEX geometry. The 30° localizer field assumption also remains
+unverified for other field sizes, devices and export versions. Axial sampling
+is read directly from the file and does not use this optical approximation.
 
 The inputs and computed conversion are available through
 `series.get_x_scale_derivation()` and
 `volume.meta['e2e_metadata']['findings']['scaling_x']`, whose status is
 `'approximate'`. A `None` radius or focus in that record indicates that the
-documented default was used. Estimated units enable metric calculations, but
-do not make them an exact reconstruction of the vendor's calibration.
+documented default was used. The import warning states that lateral scales
+are estimated using an approximate optical model and may differ from HEYEX.
 
 ## Access other data stored in E2E files
 
