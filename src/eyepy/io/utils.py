@@ -14,6 +14,7 @@ import numpy as np
 
 if TYPE_CHECKING:
     from skimage.transform import AffineTransform
+    from skimage.transform import SimilarityTransform
 
 from eyepy.core.eyemeta import EyeBscanMeta
 
@@ -109,7 +110,7 @@ def _compute_localizer_oct_transform(
     volume_meta: MutableMapping,
     enface_meta: MutableMapping,
     volume_shape: tuple[int, int, int],
-) -> AffineTransform:
+) -> AffineTransform | SimilarityTransform:
     bscan_meta = volume_meta['bscan_meta']
     size_z, size_y, size_x = volume_shape
     # Points in oct space as row/column indices
@@ -139,6 +140,11 @@ def _compute_localizer_oct_transform(
     src = np.flip(src, axis=1)
 
     from skimage import transform
+
+    if size_z == 1:
+        # One B-scan supplies only two distinct points, insufficient for an
+        # affine fit. A similarity fit preserves its endpoints and is invertible.
+        return transform.estimate_transform('similarity', src[:2], dst[:2])
 
     # src = src[:, [1, 0]]
     return transform.estimate_transform('affine', src, dst)

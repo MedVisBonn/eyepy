@@ -14,7 +14,7 @@ This table describes E2E conversion to
 | Scan type | Support | Scope and limitations |
 | --- | --- | --- |
 | Multi-slice structural OCT volumes | Supported | Raster volumes, IR localizers and available layer annotations; validated on 14 supplied exports. |
-| Single-slice structural OCT volumes | Not reliably supported | The supplied export with a slice-local localizer fails to load. The fix in [PR #83](https://github.com/MedVisBonn/eyepy/pull/83) is separate and has not yet been merged. |
+| Single-slice structural OCT volumes | Supported | Straight B-scans with a series- or slice-local localizer, available layers and manual edit flags; validated on the supplied single-slice export. |
 | Circular scans | Unsupported | Circular B-scans (scan pattern 2) are rejected by the EyeVolume importer. |
 | Radial scans | Unsupported | Star-pattern scans (scan pattern 5) are rejected by the EyeVolume importer. |
 | OCTA volumes | Unsupported | E2E angiography/flow data are not decoded. |
@@ -128,6 +128,11 @@ paired exports.
 and successive end positions after conversion to mm. It describes spacing
 between B-scans. For one B-scan, `scale_z = 0`; no through-slice spacing
 was measured.
+
+For a single B-scan, its two endpoints determine a localizer transform with
+rotation, translation and uniform scale. The perpendicular direction is a
+mathematical extension, not measured inter-slice spacing. Multi-slice volumes
+retain their affine fit.
 
 For example, `R = 7.7 mm`, `F = 0.90 D`, a 30° OCT span and `W = 1536`
 give `q ≈ 0.289510 mm/degree`, a width of `8.68530 mm`, and
