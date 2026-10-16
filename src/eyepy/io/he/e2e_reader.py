@@ -1115,9 +1115,8 @@ class E2ESeriesStructure(E2EStructureMixin):
         data = np.zeros((self.n_bscans, size_y, size_x), dtype=np.float32)
         for ind, sl in self.slices.items():
             bscan = sl.get_bscan()
-            i = ind // 2 if len(
-                self.get_bscan_meta()
-            ) != 1 else 0  # Slice id for single B-scan Volumes is 2 and not 0 in the e2e file.
+            # A single B-scan can have slice ID 0 or 2 in the E2E file.
+            i = 0 if self.n_bscans == 1 else ind // 2
 
             data[i] = bscan
 
@@ -1139,7 +1138,7 @@ class E2ESeriesStructure(E2EStructureMixin):
         for i in layer_ids:
             layer = np.full((self.n_bscans, size_x), np.nan)
             if self.n_bscans == 1:
-                layer[0, :] = slice_layers[1][i]
+                layer[0, :] = next(iter(slice_layers.values()))[i]
                 layers[i] = layer
 
             else:
@@ -1172,7 +1171,7 @@ class E2ESeriesStructure(E2EStructureMixin):
         for i in layer_ids:
             manual = [None] * self.n_bscans
             if self.n_bscans == 1:
-                manual[0] = slice_layer_manual[1].get(i)
+                manual[0] = next(iter(slice_layer_manual.values())).get(i)
                 manual_maps[i] = manual
             else:
                 for sl in range(self.n_bscans):
@@ -1252,9 +1251,9 @@ class E2ESeriesStructure(E2EStructureMixin):
                                                  width=folders[0].data.width))
         except KeyError:
             if self.n_bscans == 1:
-                slice_struct = self.slices[2]
-                return EyeEnface(slice_struct.get_localizer(),
-                                 self.localizer_meta())
+                slice_struct = next(iter(self.slices.values()))
+                data = slice_struct.get_localizer()
+                return EyeEnface(data, self.localizer_meta(*data.shape))
             else:
                 raise ValueError(
                     'There is no localizer/fundus image in the E2E file.')
