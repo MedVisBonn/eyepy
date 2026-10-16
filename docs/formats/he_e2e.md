@@ -55,6 +55,19 @@ with HeE2eReader("filename.E2E", single=True) as e2e_reader: # (2)
 
     If you know how to read this information from the E2E file, please let us know by opening an [issue](https://github.com/MedVisBonn/eyepy/issues)
 
+## Single B-scans
+
+A single straight B-scan is loaded as an `EyeVolume` with shape
+`(1, height, width)`, including its localizer, layer annotations and manual
+edit flags. The localizer can be stored with the slice instead of the series;
+single-slice exports can use slice ID 0 or 2.
+
+The two B-scan endpoints determine a localizer transform with rotation,
+translation and uniform scale. This avoids the underdetermined affine fit
+for one line. The transform's perpendicular direction is a mathematical
+extension, not measured spacing between B-scans. Volumes with multiple
+B-scans retain their affine fit.
+
 ## Decoded optical settings
 
 The following offsets are relative to the start of the container payload,
