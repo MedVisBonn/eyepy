@@ -362,7 +362,7 @@ class HeVolWriter:
                  shift=0,
                  iv_transformation=[0, 0, 0, 0, 0, 0],
                  layer_segmentations=self._segmentations_from_bscan(bscan),
-                 data=to_vol_intensity(bscan.data.astype(np.float32)))
+                 data=to_vol_intensity(bscan.data))
             for bscan in self.volume
         ]
 
