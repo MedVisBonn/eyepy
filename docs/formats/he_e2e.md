@@ -72,8 +72,11 @@ Both Type7 and Type39 expose the radius as `corneal_radius_mm`. Type7 holds
 study-level eye records; Type39 holds slice/localizer settings. The radius
 appears in all 28 Type7 eye records and all 1502 exported B-scan Type39 records
 across the 14 investigated files. The two locations agree on 7.7, 9.0 or 6.2 mm.
-Both eyes have identical radius settings in these examples, so conflicting
-radius values between eyes or storage locations remain untested.
+The reader checks that all available Type39 slice radii and Type7 records for
+the scanned eye agree exactly. A mismatch, non-finite radius or non-positive
+radius raises a descriptive `ValueError`. The other eye's radius is not part
+of this comparison. Conflicts are covered by synthetic tests; the real
+exports contain no conflicts for the scanned eye.
 
 Type39 returns no radius when the payload is shorter than 465 bytes. This is
 defensive handling: every investigated payload is 497 or 501 bytes long, and
@@ -173,11 +176,14 @@ OCT adaptation. The exact HEYEX calculation has not been established, and the
 model constants have not been identified in the E2E payloads.
 
 The [decoded optical settings](#decoded-optical-settings) describe the byte
-offsets. We prefer the corneal radius in the slice's Type39 settings. If it is
-unavailable, we use the Type7 measurement for the matching eye in the study.
-An absent, non-finite or non-positive radius defaults to **7.7 mm**. An absent
-or non-finite focus defaults to **0 D**. A non-positive optical denominator
-raises `ValueError`. The eye-length preset does not enter this formula because
+offsets. We read corneal radius from the decoded Type39 slice settings and
+Type7 measurements for the matching eye in the study. All available values
+must be finite, positive and identical; inconsistent radii make the file
+invalid for conversion. Only an absent radius defaults to **7.7 mm**. An
+absent or non-finite focus defaults to **0 D**. A non-positive optical
+denominator raises `ValueError`. Scaling validation errors are preserved by
+`import_heyex_e2e()`, `reader.volume` and `reader.volumes`.
+The eye-length preset does not enter this formula because
 its relation to magnification remains unverified.
 
 Type7 clinical refraction is not substituted for acquisition scan focus.
@@ -220,7 +226,9 @@ This field is separate from the OCT endpoint span: the investigated 20° OCT
 scans have a 30° localizer.
 
 `series.get_localizer_field_deg()` reads the first Type5 record from the
-series, then its B-scans. A missing record, a payload shorter than 26 bytes,
+series, then its B-scans. Type5's binary format exposes `laterality`, `width`,
+`height` and `field_deg`, preserving unknown bytes and bounding the payload
+by its container size. A missing record, a payload shorter than 26 bytes,
 a zero field, or a field of 180° or greater raises a `ValueError` describing
 the problem. An invalid series-level record is rejected even if a B-scan
 has another record. The reader does not assume a default localizer field.

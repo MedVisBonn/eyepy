@@ -157,6 +157,7 @@ class TypesEnum(EnumBase):
     application_data = EnumValue(13)
     laterality = EnumValue(11)
     diagnose = EnumValue(17)
+    localizer_info = EnumValue(5)
     localizer_settings = EnumValue(39)
     bscanmeta = EnumValue(10004)
     examination_time = EnumValue(10005)
@@ -474,12 +475,18 @@ class Type5(DataclassMixin, TypeMixin):
     Notes:
     The 3rd byte indicates laterality. Localizer width, height and nominal
     field in degrees are uint16 little-endian at offsets 12, 14 and 24.
-    The reader accesses the field from the bounded payload; the remaining
-    layout is not decoded here.
+    Unknown regions are retained as bytes. The container bounds this payload
+    so the trailing bytes do not consume the next record.
     """
 
     unknown: bytes = csfield(cs.Bytes(2))
     laterality: LateralityEnum = csfield(TEnum(cs.Int8ul, LateralityEnum))
+    unknown1: bytes = csfield(cs.Bytes(9))
+    width: int = csfield(cs.Int16ul, doc='Localizer width in pixels at offset 12.')
+    height: int = csfield(cs.Int16ul, doc='Localizer height in pixels at offset 14.')
+    unknown2: bytes = csfield(cs.Bytes(8))
+    field_deg: int = csfield(cs.Int16ul, doc='Nominal localizer field in degrees at offset 24.')
+    rest: bytes = csfield(cs.GreedyBytes)
 
 
 type5_format = DataclassStruct(Type5)
@@ -708,6 +715,7 @@ class Type10005(DataclassMixin, TypeMixin):
 type10005_format = DataclassStruct(Type10005)
 
 item_switch = cs.Switch(cs.this.header.type, {
+    TypesEnum.localizer_info: cs.FixedSized(cs.this.header.size, type5_format),
     TypesEnum.patient: type9_format,
     TypesEnum.application_data: type13_format,
     TypesEnum.laterality: type11_format,

@@ -36,7 +36,6 @@ from .e2e_format import containerheader_format
 from .e2e_format import DataContainer
 from .e2e_format import datacontainer_format
 from .e2e_format import e2e_format
-from .e2e_format import Type39
 from .e2e_format import Type10004
 from .e2e_format import type10004_format
 from .e2e_format import Type10025
@@ -46,8 +45,9 @@ from .vol_reader import SEG_MAPPING
 logger = logging.getLogger(__name__)
 
 
-class _LocalizerFieldError(ValueError):
-    """Missing or invalid Type5 field required for metric conversion."""
+class _E2EScalingError(ValueError):
+    """Missing, invalid or inconsistent metadata required for metric
+    conversion."""
 
 
 # Occurence of type ids. This is used by the inspect function.
@@ -665,38 +665,52 @@ class E2ESeriesStructure(E2EStructureMixin):
         return items[0].focus_diopters if items else None
 
     def get_corneal_radius_mm(self) -> float | None:
-        """Read the slice setting, falling back to the matching study eye."""
-        raw = self._first_type39_raw()
-        radius = Type39(raw=raw).corneal_radius_mm if raw is not None else None
-        if radius is None:
-            laterality = self.folders[TypesEnum.laterality][0].data.laterality
-            for folder in self._folders_for(self.study, TypesEnum.measurements):
-                if folder.data.eye_side == laterality:
-                    radius = folder.data.corneal_radius_mm
-                    break
-        if radius is None or not math.isfinite(radius) or radius <= 0:
-            return None
+        """Read the radius, requiring agreement across slices and the study
+        eye."""
+        radii = []
+        for slice_structure in self._sorted_slices():
+            for folder in self._folders_for(slice_structure, TypesEnum.localizer_settings):
+                radii.append(('Type39', folder.data.corneal_radius_mm))
+        laterality = self.folders[TypesEnum.laterality][0].data.laterality
+        for folder in self._folders_for(self.study, TypesEnum.measurements):
+            if folder.data.eye_side == laterality:
+                radii.append(('Type7', folder.data.corneal_radius_mm))
+
+        radius = None
+        for source, value in radii:
+            if value is None:
+                continue
+            if not math.isfinite(value) or value <= 0:
+                raise _E2EScalingError(
+                    f'Invalid E2E corneal radius in {source}: {value!r} mm; '
+                    'expected a finite positive value.')
+            if radius is not None and value != radius:
+                raise _E2EScalingError(
+                    'Inconsistent E2E corneal radii for the scanned eye: '
+                    f'{radius!r} mm and {value!r} mm ({source}). '
+                    'Type39 slice settings and matching Type7 eye records must agree.')
+            radius = value
         return radius
 
     def get_localizer_field_deg(self) -> int:
         """Read Type5's localizer field, raising ValueError if unavailable or
         invalid."""
         for structure in [self, *self._sorted_slices()]:
-            for folder in self._folders_for(structure, 5):
-                raw = folder.get_bytes()
-                if len(raw) < 26:
-                    raise _LocalizerFieldError(
-                        'Cannot determine the E2E localizer field of view: '
-                        f'Type5 payload has {len(raw)} bytes; expected at least '
-                        '26 bytes to read the field at offset 24.')
-                field_deg = struct.unpack_from('<H', raw, 24)[0]
+            for folder in self._folders_for(structure, TypesEnum.localizer_info):
+                try:
+                    field_deg = folder.data.field_deg
+                except cs.ConstructError as error:
+                    raise _E2EScalingError(
+                        'Cannot decode E2E Type5 localizer metadata: '
+                        f'payload has {len(folder.get_bytes())} bytes; expected '
+                        'at least 26 bytes with the field at offset 24.') from error
                 if not 0 < field_deg < 180:
-                    raise _LocalizerFieldError(
+                    raise _E2EScalingError(
                         'Invalid E2E localizer field of view: '
                         f'Type5 field at offset 24 is {field_deg} degrees; '
                         'expected 0 < field < 180.')
                 return field_deg
-        raise _LocalizerFieldError(
+        raise _E2EScalingError(
             'Cannot determine the E2E localizer field of view: '
             'no Type5 record was found in the series or its B-scans.')
 
@@ -708,8 +722,22 @@ class E2ESeriesStructure(E2EStructureMixin):
         focus = focus if focus is not None and math.isfinite(focus) else 0.0
         denominator = 17.21 / radius + 1.247 + focus / 17.455
         if not math.isfinite(denominator) or denominator <= 0:
-            raise ValueError('E2E optical settings give a non-positive scale.')
+            raise _E2EScalingError('E2E optical settings give a non-positive scale.')
         return 1.02302 / denominator
+
+    def _angular_width_deg(self) -> float:
+        meta = self._bscanmeta_item(0)
+        return math.hypot(meta.end_x - meta.start_x, meta.end_y - meta.start_y)
+
+    def _x_scale_mm(self) -> float:
+        """Compute the volume's lateral scale directly in mm per pixel."""
+        angular_width = self._angular_width_deg()
+        width = self._bscanmeta_item(0).size_x
+        if not math.isfinite(angular_width) or angular_width <= 0 or width <= 0:
+            raise _E2EScalingError(
+                'Invalid E2E B-scan geometry: angular span and image width '
+                'must be finite and positive.')
+        return angular_width / width * self._mm_per_degree()
 
     def get_x_scale_derivation(self) -> dict[str, float | None]:
         items = self._bscanmeta_items()
@@ -722,20 +750,17 @@ class E2ESeriesStructure(E2EStructureMixin):
             }
 
         bscan_meta = items[0]
-        angular_width_deg = math.hypot(bscan_meta.end_x - bscan_meta.start_x,
-                                       bscan_meta.end_y - bscan_meta.start_y)
         mm_per_degree = self._mm_per_degree()
-        scaling_x = angular_width_deg / bscan_meta.size_x * mm_per_degree * 1000
         focus = self._derive_scan_focus_diopters()
         return {
-            'angular_width_deg': angular_width_deg,
+            'angular_width_deg': self._angular_width_deg(),
             'img_size_width': bscan_meta.imgSizeWidth,
             'image_width_px': bscan_meta.size_x,
             'mm_per_degree': mm_per_degree,
             'corneal_radius_mm': self.get_corneal_radius_mm(),
             'focus_diopters': (
                 focus if focus is not None and math.isfinite(focus) else None),
-            'scaling_x_um_per_pixel': scaling_x,
+            'scaling_x_um_per_pixel': self._x_scale_mm() * 1000,
         }
 
     def _oct_quality_db(self, bscan_index: int | None) -> int | None:
@@ -1359,8 +1384,7 @@ class E2ESeriesStructure(E2EStructureMixin):
                         (np.asarray(meta[key]) + field_deg / 2) * mm_per_degree)
                 meta['pos_unit'] = 'mm'
             self._meta = EyeVolumeMeta(
-                scale_x=(self.get_x_scale_derivation()['scaling_x_um_per_pixel']
-                         / 1000),
+                scale_x=self._x_scale_mm(),
                 scale_y=bscan_meta[0]['scale_y'],
                 scale_z=get_bscan_spacing(bscan_meta) if len(bscan_meta) > 1 else 0,
                 scale_unit='mm',
@@ -1697,7 +1721,7 @@ class HeE2eReader(AbstractContextManager):
         for s in self.series:
             try:
                 return s.get_volume()
-            except _LocalizerFieldError:
+            except _E2EScalingError:
                 raise
             except Exception as e:
                 # for compatibility with python <= 3.9, later work with only the exception as argument for format_exception
@@ -1719,7 +1743,7 @@ class HeE2eReader(AbstractContextManager):
         for s in self.series:
             try:
                 volumes.append(s.get_volume())
-            except _LocalizerFieldError:
+            except _E2EScalingError:
                 raise
             except Exception as e:
                 logger.debug(''.join(traceback.format_exception(e)))
