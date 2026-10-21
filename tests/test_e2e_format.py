@@ -1,3 +1,4 @@
+from io import BytesIO
 import struct
 
 import numpy as np
@@ -7,6 +8,7 @@ pytest.importorskip('construct_typed')
 
 from eyepy.io.he.e2e_format import chunk_format
 from eyepy.io.he.e2e_format import datacontainer_format
+from eyepy.io.he.e2e_format import type5_format
 from eyepy.io.he.e2e_format import type7_format
 from eyepy.io.he.e2e_format import Type39
 from eyepy.io.he.e2e_format import type10004_format
@@ -31,6 +33,30 @@ def test_chunk_seek_field_parses_without_becoming_an_init_argument():
 
     assert len(parsed.folders) == 1
     assert parsed.folders[0].type.name == 'patient'
+
+
+@pytest.mark.parametrize(('field_deg', 'length'), [(20, 26), (30, 59), (55, 80)])
+def test_type5_decodes_known_fields_and_preserves_bounded_payload(field_deg, length):
+    raw = bytearray(range(length))
+    raw[2] = ord('L')
+    struct.pack_into('<2H', raw, 12, 1536, 768)
+    struct.pack_into('<H', raw, 24, field_deg)
+    header = struct.pack('<12sIIIIIiiiiHHII', b'CONTAINER', 0, 0, 0,
+                         len(raw), 0, 1, 1, 1, 0, 0, 0, 5, 0)
+    stream = BytesIO(header + raw + b'next container')
+
+    container = datacontainer_format.parse_stream(stream)
+    info = container.item
+
+    assert info.laterality.name == 'OS'
+    assert (info.width, info.height, info.field_deg) == (1536, 768, field_deg)
+    assert info.unknown == raw[:2]
+    assert info.unknown1 == raw[3:12]
+    assert info.unknown2 == raw[16:24]
+    assert info.rest == raw[26:]
+    assert type5_format.build(info) == raw
+    assert datacontainer_format.build(container) == header + raw
+    assert stream.read() == b'next container'
 
 
 @pytest.mark.parametrize('focus', [-1.51, -1.09, -0.49, -0.06, 0, 0.36, 0.82, 0.90])

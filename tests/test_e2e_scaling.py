@@ -1,3 +1,4 @@
+from io import BytesIO
 import struct
 from types import SimpleNamespace
 
@@ -6,6 +7,7 @@ import pytest
 
 from eyepy.io.he.e2e_format import LateralityEnum
 from eyepy.io.he.e2e_format import TypesEnum
+from eyepy.io.he.e2e_reader import E2EFolder
 from eyepy.io.he.e2e_reader import E2ESeriesStructure
 from eyepy.io.he.e2e_reader import E2ESliceStructure
 from eyepy.io.he.e2e_reader import HeE2eReader
@@ -18,6 +20,14 @@ def localizer_info(field_deg):
     struct.pack_into('<H', raw, 24, field_deg)
     raw[26:28] = b'\xff\xff'  # The field is two bytes, not four.
     return bytes(raw)
+
+
+def record_folder(type_id, raw):
+    """A real folder backed by an in-memory E2E container."""
+    header = struct.pack('<12sIIIIIiiiiHHII', b'CONTAINER', 0, 0, 0,
+                         len(raw), 0, 1, 1, 1, 0, 0, 0, type_id, 0)
+    reader = SimpleNamespace(file_object=BytesIO(header + raw))
+    return E2EFolder(1, 1, 1, 0, 0, 0, type_id, len(raw), 0, reader)
 
 
 @pytest.fixture
@@ -47,9 +57,9 @@ def series():
             SimpleNamespace(get_bytes=lambda raw=raw: bytes(raw))
         ]
         sl.folders[TypesEnum.localizer_settings] = [
-            SimpleNamespace(get_bytes=lambda: bytes(settings))
+            record_folder(39, bytes(settings))
         ]
-        sl.folders[5] = [SimpleNamespace(get_bytes=lambda: localizer_info(30))]
+        sl.folders[5] = [record_folder(5, localizer_info(30))]
         sl.folders[TypesEnum.layer_annotation] = []
         sl.get_bscan = lambda: np.zeros((4, 16))
         result.substructure[sl.id] = sl
@@ -85,7 +95,7 @@ def test_default_volume_uses_consistent_mm_and_preserves_alignment(series):
 @pytest.mark.parametrize('field_deg', [20, 55])
 def test_stored_localizer_field_controls_scale_origin_and_alignment(series, field_deg):
     for sl in series.slices.values():
-        sl.folders[5] = [SimpleNamespace(get_bytes=lambda: localizer_info(field_deg))]
+        sl.folders[5] = [record_folder(5, localizer_info(field_deg))]
     q = 0.2895099745331661
     half_field = field_deg / 2
 
@@ -111,13 +121,13 @@ def test_stored_localizer_field_controls_scale_origin_and_alignment(series, fiel
 
 
 def test_localizer_field_can_be_stored_at_series_level(series):
-    series.folders[5] = [SimpleNamespace(get_bytes=lambda: localizer_info(55))]
+    series.folders[5] = [record_folder(5, localizer_info(55))]
     assert series.get_localizer_field_deg() == 55
 
 
 @pytest.mark.parametrize(('raw', 'message'), [
     (None, 'no Type5 record'),
-    (bytes(25), 'payload has 25 bytes; expected at least 26'),
+    (localizer_info(30)[:25], 'payload has 25 bytes; expected at least 26'),
     (localizer_info(0), 'offset 24 is 0 degrees'),
     (localizer_info(180), 'offset 24 is 180 degrees'),
     (localizer_info(286), 'offset 24 is 286 degrees'),
@@ -125,7 +135,7 @@ def test_localizer_field_can_be_stored_at_series_level(series):
 ])
 def test_missing_short_or_invalid_localizer_field_raises(series, raw, message):
     for sl in series.slices.values():
-        sl.folders[5] = [] if raw is None else [SimpleNamespace(get_bytes=lambda: raw)]
+        sl.folders[5] = [] if raw is None else [record_folder(5, raw)]
 
     with pytest.raises(ValueError, match=message):
         series.get_localizer_field_deg()
@@ -135,7 +145,7 @@ def test_missing_short_or_invalid_localizer_field_raises(series, raw, message):
 
 
 def test_invalid_series_field_is_not_masked_by_valid_slice_field(series):
-    series.folders[5] = [SimpleNamespace(get_bytes=lambda: localizer_info(0))]
+    series.folders[5] = [record_folder(5, localizer_info(0))]
     with pytest.raises(ValueError, match='offset 24 is 0 degrees'):
         series.get_localizer_field_deg()
 
@@ -176,13 +186,61 @@ def test_missing_optical_settings_use_documented_defaults(series, monkeypatch, f
     (LateralityEnum.OS, 9.0),
 ])
 def test_study_radius_fallback_selects_the_matching_eye(series, eye, expected_radius):
-    series._type39_raw_cache = bytes(464)
+    for sl in series.slices.values():
+        sl.folders[TypesEnum.localizer_settings] = [record_folder(39, bytes(464))]
     series.folders[TypesEnum.laterality][0].data.laterality = eye
     series.study = SimpleNamespace(folders={TypesEnum.measurements: [
         SimpleNamespace(data=SimpleNamespace(eye_side=LateralityEnum.OS, corneal_radius_mm=9.0)),
         SimpleNamespace(data=SimpleNamespace(eye_side=LateralityEnum.OD, corneal_radius_mm=6.2)),
     ]})
     assert series.get_corneal_radius_mm() == expected_radius
+
+
+def test_study_and_all_slices_must_have_the_same_radius(series):
+    series.study = SimpleNamespace(folders={TypesEnum.measurements: [
+        SimpleNamespace(data=SimpleNamespace(eye_side=LateralityEnum.OS, corneal_radius_mm=9.0)),
+        SimpleNamespace(data=SimpleNamespace(eye_side=LateralityEnum.OD, corneal_radius_mm=7.7)),
+    ]})
+    assert series.get_corneal_radius_mm() == 7.7
+    series.study.folders[TypesEnum.measurements][1].data.corneal_radius_mm = 9.0
+    with pytest.raises(ValueError, match='Inconsistent E2E corneal radii'):
+        series.get_corneal_radius_mm()
+
+
+@pytest.mark.parametrize(('radius', 'message'), [
+    (9.0, 'Inconsistent E2E corneal radii'),
+    (0.0, 'Invalid E2E corneal radius'),
+    (-1.0, 'Invalid E2E corneal radius'),
+    (float('nan'), 'Invalid E2E corneal radius'),
+    (float('inf'), 'Invalid E2E corneal radius'),
+])
+def test_invalid_or_inconsistent_slice_radius_is_rejected(series, radius, message):
+    raw = bytearray(600)
+    struct.pack_into('<d', raw, 457, radius)
+    series.slices[2].folders[TypesEnum.localizer_settings] = [record_folder(39, raw)]
+    with pytest.raises(ValueError, match=message):
+        series.get_corneal_radius_mm()
+
+
+@pytest.mark.parametrize('attribute', ['volume', 'volumes'])
+@pytest.mark.parametrize('failure', ['denominator', 'radius', 'geometry'])
+def test_reader_preserves_scaling_errors(series, monkeypatch, attribute, failure):
+    if failure == 'denominator':
+        monkeypatch.setattr(series, '_derive_scan_focus_diopters', lambda: -100)
+        message = 'non-positive scale'
+    elif failure == 'radius':
+        series.study = SimpleNamespace(folders={TypesEnum.measurements: [
+            SimpleNamespace(data=SimpleNamespace(eye_side=LateralityEnum.OD, corneal_radius_mm=9.0)),
+        ]})
+        message = 'Inconsistent E2E corneal radii'
+    else:
+        series._bscanmeta_item(0).end_x = -10
+        message = 'Invalid E2E B-scan geometry'
+    reader = HeE2eReader.__new__(HeE2eReader)
+    monkeypatch.setattr(HeE2eReader, 'series',
+                        property(lambda self: [E2ESeriesStructure(0), series]))
+    with pytest.warns(UserWarning), pytest.raises(ValueError, match=message):
+        getattr(reader, attribute)
 
 
 def test_single_bscan_has_no_measured_through_slice_spacing(series):
