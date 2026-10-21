@@ -219,10 +219,13 @@ and height. The reader uses the actual image header for pixel dimensions.
 This field is separate from the OCT endpoint span: the investigated 20° OCT
 scans have a 30° localizer.
 
-`series.get_localizer_field_deg()` reads the first valid Type5 record from
-the series, then its B-scans. A payload shorter than 26 bytes, a zero field,
-or a field of 180° or greater is treated as unavailable. If no valid record
-is found, the conversion uses **30°** and metadata identifies that fallback.
+`series.get_localizer_field_deg()` reads the first Type5 record from the
+series, then its B-scans. A missing record, a payload shorter than 26 bytes,
+a zero field, or a field of 180° or greater raises a `ValueError` describing
+the problem. An invalid series-level record is rejected even if a B-scan
+has another record. The reader does not assume a default localizer field.
+The error is preserved through `import_heyex_e2e()`, `reader.volume` and
+`reader.volumes`.
 
 All 1502 Type5 records in the 14 supplied exports contain 30° and 1536×1536
 pixels. Their dimensions match the image headers; their field and dimensions
@@ -311,7 +314,7 @@ documented default was used. The import warning states that lateral scales
 are estimated using an approximate optical model and may differ from HEYEX.
 The used field is in `volume.localizer.meta['field_size']` and
 `volume.meta['e2e_metadata']['findings']['localizer_field']`. The latter gives
-the source as `Type5@offset24:uint16` or `fallback:30 degrees`.
+the source as `Type5@offset24:uint16`.
 
 ## Access other data stored in E2E files
 
