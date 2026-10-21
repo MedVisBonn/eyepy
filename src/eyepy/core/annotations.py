@@ -277,6 +277,7 @@ class EyeVolumeLayerAnnotation:
         volume: EyeVolume,
         data: npt.NDArray[np.float64] | None = None,
         meta: dict | None = None,
+        raw_data: npt.NDArray | None = None,
         **kwargs: Any,
     ) -> None:
         """Layer annotation for a single layer in an EyeVolume.
@@ -285,12 +286,14 @@ class EyeVolumeLayerAnnotation:
             volume: EyeVolume object
             data: 2D array of shape (n_bscans, bscan_width) holding layer height values
             meta: dict with additional meta data
+            raw_data: Optional original imported heights before registration.
             **kwargs: additional meta data specified as parameters
 
         Returns:
             None
         """
         self.volume = volume
+        self._raw_data = None if raw_data is None else np.copy(raw_data)
         if data is None:
             self.data = np.full((volume.size_z, volume.size_x), np.nan)
         else:
@@ -312,6 +315,16 @@ class EyeVolumeLayerAnnotation:
             self.meta['name'] = 'Layer Annotation'
 
         self.meta['current_color'] = epconfig.layer_colors[self.name]
+
+    @property
+    def raw_data(self) -> np.ndarray:
+        """Copy of imported heights before registration, when available.
+
+        Editing registered heights does not change this original
+        snapshot. Annotations without an imported snapshot return a copy
+        of data.
+        """
+        return np.copy(self.data if self._raw_data is None else self._raw_data)
 
     @property
     def name(self) -> str:

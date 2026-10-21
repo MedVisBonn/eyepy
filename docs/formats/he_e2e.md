@@ -19,8 +19,9 @@ This table describes E2E conversion to
 | Radial scans | Unsupported | Star-pattern scans (scan pattern 5) are rejected by the EyeVolume importer. |
 | OCTA volumes | Unsupported | E2E angiography/flow data are not decoded. |
 
-B-scan registration is not applied by this reader. Lateral scales are
-estimated; the calculation and observed agreement are described below.
+Registered rendering uses stored normalization and registration metadata;
+missing or unsupported records warn and retain the raw view. Lateral scales
+are estimated; the calculation and observed agreement are described below.
 
 ## Read volumes
 
@@ -270,6 +271,137 @@ attached to `volume.meta["e2e_metadata"]`. For binary layouts, use the
 generated references for [Type5](he_e2e_types/Type5.md),
 [Type7](he_e2e_types/Type7.md), [Type39](he_e2e_types/Type39.md) and
 [Type10004](he_e2e_types/Type10004.md).
+
+## Original samples, registered intensities and display
+
+An E2E import with complete conversion metadata shows the registered HEYEX
+view by default. Conversion is lazy and preserves the original decoded data:
+
+```mermaid
+flowchart LR
+    raw[Original decoded samples] --> copy[raw_data copy]
+    raw --> gain[Gain, clipping, Q10]
+    gain --> spatial[Spatial sampling, Q10]
+    spatial --> linear[linear_data]
+    linear --> display[Display curve]
+    display --> view[data]
+```
+
+```python
+with HeE2eReader('scan.e2e') as reader:
+    volume = reader.volume
+
+original = volume.raw_data       # Decoded samples, original geometry and intensity.
+linear = volume.linear_data      # Normalized, registered float32 VOL intensities.
+display = volume.data            # Registered uint8 display.
+one_bscan = volume[0].data        # Converts only that B-scan.
+registration = volume.spatial_transform
+```
+
+`spatial_transform` is separate from `localizer_transform`, which maps the
+enface projection onto the localizer image. The B-scan transform records its
+gain vector and 2x3 affine matrices. It applies normalization before spatial
+sampling; the existing `intensity_transform` then converts the registered
+linear values to greys. Changing the display transform does not change the
+original samples or registration.
+
+### Decoding and normalization
+
+Each little-endian uint16 OCT word has a six-bit exponent and ten-bit
+mantissa. The mantissa bits are used in their stored order:
+
+```python
+exponent = word >> 10
+value = (1 + (word & 1023) / 1024) * 2 ** (exponent - 63)
+```
+
+Zero-exponent words decode to zero. The raw `0xFFFF` code remains represented
+by `1.9990234375` in `raw_data`; rendering fills it with zero before gain and
+interpolation. Earlier eyepy versions reversed the mantissa bits; re-import
+the E2E to obtain corrected decoded samples. Old `.eye` files do not contain
+the original E2E words or newly discovered conversion parameters.
+
+| Record | Payload offset | Verified computational role |
+| --- | ---: | --- |
+| Type10004 | 32, float32 | Normalization numerator; legacy field `unknown1` |
+| Type10004 | 68, uint32 | `aktImage`, index into the series table |
+| Type10010 | 12, uint32 | Number of normalization entries |
+| Type10010 | `16 + 4*aktImage`, float32 | Normalization denominator |
+| Type10012 | 4, 8, 12, 28, 32, 36, float32 | `a, b, tx, c, d, ty` |
+
+Offsets are relative to the container payload, after its 60-byte header.
+The gain is the numerator divided by the denominator. Their underlying
+physical meaning is unconfirmed; no fitted brightness multiplier is used.
+Normalization clips to [0, 1], then truncates the float32 fraction from
+23 to 10 bits (`Q10`).
+
+### Spatial sampling and numerical precision
+
+The observed matrices have `a=d=1`, `b=0`. They map registered output to raw
+source coordinates:
+
+```text
+source_x = x + tx
+source_y = y + c * (x - width/2) + ty
+```
+
+The implementation reproduces intermediate rounding as follows:
+
+1. Calculate `offset_y = float64(ty) - float64(c) * (width/2)`.
+2. Round `float64(y) + offset_y` to float32.
+3. Multiply `c*x` and add that rounded base before rounding the result once
+   to float32. Calculate `x+tx` in float32.
+4. Samples are inside for `-0.5 <= source_x < width-0.5` and
+   `-0.5 <= source_y < height-0.5`. Clamp inside samples to the edge pixel.
+5. Interpolate horizontally, then vertically. Each interpolation is
+   `float32(float64(a) + (float64(b)-float64(a))*float64(fraction))`.
+   Round after each stage, then apply Q10 to the final result.
+
+The casts reproduce observed precision loss. Casting the centring offset
+earlier, rounding the coordinate product separately, rounding `b-a` to
+float32 before interpolation, or interpolating displayed greys changes
+some output pixels. This establishes equivalent arithmetic for the tested
+exports; it does not identify the vendor's actual CPU/GPU implementation.
+
+Outside the half-pixel extent, registered linear data contains float32
+maximum (`0x7F7FFFFF`), matching VOL's finite missing-data sentinel. Display
+converts that sentinel to black. The [VOL display curve](he_vol.md) is shared
+by both formats. Its two coefficients remain an empirical global fit to
+default-display exports, rather than vendor specifications.
+
+### Annotations and saving
+
+Imported layer heights are mapped into the registered coordinates so they
+overlay `volume.data` and support quantification in that frame. Original
+decoded heights remain available through `volume.layers['ILM'].raw_data`;
+editing registered heights does not change that snapshot. Missing horizontal
+support remains NaN. Layer mapping agrees with matching VOL interiors to
+approximately 0.000101 pixel; vendor endpoint handling is not reproduced
+exactly (the observed maximum endpoint difference was approximately 0.298 pixel).
+
+`.eye` saves the original image array, the normalization/registration
+configuration, registered annotations and original imported layer snapshots.
+Loading reconstructs the same lazy pipeline and does not register the raw
+data twice. Older archives without a spatial transform keep their existing
+unregistered geometry. Updated eyepy is required to reproduce the registered
+view when loading these new archives.
+
+### Verification and limits
+
+The conversion reproduces every float32 pixel bit in all 460 matching VOL
+B-scans, including missing markers and borders. With the shared display
+curve, every RGB pixel in 412 ordinary XML-associated TIFFs matches, without
+a comparison mask. These data cover four VOL acquisitions and four TIFF
+datasets, including varying corneal-radius settings, at default HEYEX
+brightness and contrast.
+
+General affines with other a/b/d values, other display settings and software
+versions remain unverified. Missing, malformed or unsupported normalization
+or registration metadata produces a warning and retains the unregistered,
+unnormalized fallback view for the whole volume. The supplied single-slice
+export has neither Type10010 nor Type10012; its normalization remains unknown.
+The separate geometry difference in one follow-up XML export remains outside
+this conversion; its matching VOL is reproduced exactly.
 
 ## Acknowledgements
 

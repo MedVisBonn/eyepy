@@ -505,9 +505,10 @@ type10013_format = DataclassStruct(Type10013)
 class Type10012(DataclassMixin, TypeMixin):
     """Per-B-scan registration; coefficients match VOL iv_transformation.
 
-    Payload offsets 4, 8, 12, 28, 32, 36 store a, b, tx, c, d, ty.
-    The surrounding bytes remain undecoded.
+    Payload offsets 4, 8, 12, 28, 32, 36 store a, b, tx, c, d, ty. The
+    surrounding bytes remain undecoded.
     """
+
     unknown0: bytes = csfield(cs.Bytes(4))
     a: float = csfield(cs.Float32l)
     b: float = csfield(cs.Float32l)

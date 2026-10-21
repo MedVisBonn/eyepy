@@ -26,6 +26,7 @@ from eyepy.core.eyemeta import EyeBscanMeta
 from eyepy.core.eyemeta import EyeEnfaceMeta
 from eyepy.core.eyemeta import EyeVolumeMeta
 from eyepy.core.eyevolume import EyeVolume
+from eyepy.core.heidelberg import HeidelbergBscanTransform
 from eyepy.io.utils import _compute_localizer_oct_transform
 from eyepy.io.utils import find_float
 from eyepy.io.utils import find_int
@@ -38,6 +39,8 @@ from .e2e_format import datacontainer_format
 from .e2e_format import e2e_format
 from .e2e_format import Type10004
 from .e2e_format import type10004_format
+from .e2e_format import type10010_format
+from .e2e_format import type10012_format
 from .e2e_format import Type10025
 from .e2e_format import TypesEnum
 from .vol_reader import SEG_MAPPING
@@ -1167,6 +1170,51 @@ class E2ESeriesStructure(E2EStructureMixin):
             text += '\n'
         return text
 
+    def get_spatial_transform(self) -> HeidelbergBscanTransform | None:
+        """Decode normalization/registration, or warn and retain raw geometry.
+
+        Bounded payloads keep this independent of generic folder
+        parsing. A partial transform is never applied to only some
+        B-scans.
+        """
+        try:
+            tables = self.folders.get(10010, [])
+            if len(tables) != 1:
+                raise ValueError(
+                    'missing or ambiguous Type10010 normalization table')
+            table = type10010_format.parse(tables[0].get_bytes())
+            gains = np.full(self.n_bscans, np.nan)
+            matrices = np.full((self.n_bscans, 2, 3), np.nan, dtype=np.float32)
+            for slice_id, sl in self.slices.items():
+                index = 0 if self.n_bscans == 1 else slice_id // 2
+                if not 0 <= index < self.n_bscans:
+                    raise ValueError('B-scan ID is outside the image array')
+                meta = sl._get_bscanmeta_data()
+                if not 0 <= meta.aktImage < table.n_bscans:
+                    raise ValueError(
+                        'B-scan normalization index is outside Type10010')
+                numerator = meta.unknown1  # Type10004 float32 at payload offset32.
+                denominator = table.normalization[meta.aktImage]
+                if not (np.isfinite(numerator) and numerator > 0 and
+                        np.isfinite(denominator) and denominator > 0):
+                    raise ValueError(
+                        'invalid normalization numerator or denominator')
+                folders = sl.folders.get(10012, [])
+                if len(folders) != 1:
+                    raise ValueError(
+                        'missing or ambiguous Type10012 registration')
+                gains[index] = numerator / denominator
+                matrices[index] = type10012_format.parse(
+                    folders[0].get_bytes()).matrix
+            return HeidelbergBscanTransform(gains, matrices)
+        except (ValueError, IndexError, KeyError, cs.ConstructError) as exc:
+            warnings.warn(
+                f'E2E normalization/registration unavailable: {exc}. '
+                'Keeping the unregistered, unnormalized view; raw_data is preserved.',
+                RuntimeWarning,
+                stacklevel=2)
+            return None
+
     def get_volume(self) -> EyeVolume:
         """Return EyeVolume object for the series."""
         ## Check if scan is a volume scan
@@ -1184,24 +1232,33 @@ class E2ESeriesStructure(E2EStructureMixin):
 
         data = self.get_bscans()
 
-        volume_meta = self.get_meta()
+        volume_meta = self.get_meta().copy()
         localizer = self.get_localizer()
+        spatial_transform = self.get_spatial_transform()
+        if spatial_transform is not None:
+            volume_meta['intensity_transform'] = 'vol'
         volume = EyeVolume(
             data=data,
             meta=volume_meta,
             localizer=localizer,
             transformation=_compute_localizer_oct_transform(
                 volume_meta, localizer.meta, data.shape),
+            spatial_transform=spatial_transform,
         )
 
         layer_height_maps = self.get_layers()
         layer_manual_maps = self.get_layer_manual_maps()
         for name, i in SEG_MAPPING.items():
             if i in layer_height_maps:
+                raw_heights = layer_height_maps[i]
+                heights = (spatial_transform.transform_layers(raw_heights)
+                           if spatial_transform is not None else raw_heights)
                 volume.add_layer_annotation(
-                    layer_height_maps[i],
+                    heights,
                     name=name,
                     manual=layer_manual_maps.get(i),
+                    raw_data=raw_heights
+                    if spatial_transform is not None else None,
                 )
 
         return volume
