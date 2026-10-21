@@ -45,6 +45,11 @@ from .vol_reader import SEG_MAPPING
 
 logger = logging.getLogger(__name__)
 
+
+class _LocalizerFieldError(ValueError):
+    """Missing or invalid Type5 field required for metric conversion."""
+
+
 # Occurence of type ids. This is used by the inspect function.
 type_occurence = {
     'E2EFileStructure': [0, 9011],
@@ -673,21 +678,27 @@ class E2ESeriesStructure(E2EStructureMixin):
             return None
         return radius
 
-    def get_localizer_field_deg(self) -> int | None:
-        """Read the nominal localizer field from Type5 payload offset 24."""
+    def get_localizer_field_deg(self) -> int:
+        """Read Type5's localizer field, raising ValueError if unavailable or
+        invalid."""
         for structure in [self, *self._sorted_slices()]:
             for folder in self._folders_for(structure, 5):
                 raw = folder.get_bytes()
                 if len(raw) < 26:
-                    continue
+                    raise _LocalizerFieldError(
+                        'Cannot determine the E2E localizer field of view: '
+                        f'Type5 payload has {len(raw)} bytes; expected at least '
+                        '26 bytes to read the field at offset 24.')
                 field_deg = struct.unpack_from('<H', raw, 24)[0]
-                if 0 < field_deg < 180:
-                    return field_deg
-        return None
-
-    def _localizer_field_deg(self) -> int:
-        """Use 30 degrees only when the stored field is unavailable."""
-        return self.get_localizer_field_deg() or 30
+                if not 0 < field_deg < 180:
+                    raise _LocalizerFieldError(
+                        'Invalid E2E localizer field of view: '
+                        f'Type5 field at offset 24 is {field_deg} degrees; '
+                        'expected 0 < field < 180.')
+                return field_deg
+        raise _LocalizerFieldError(
+            'Cannot determine the E2E localizer field of view: '
+            'no Type5 record was found in the series or its B-scans.')
 
     def _mm_per_degree(self) -> float:
         """Approximate optical conversion; see the E2E metric-scaling docs."""
@@ -769,7 +780,7 @@ class E2ESeriesStructure(E2EStructureMixin):
         if localizer_folder is not None and localizer_folder.data.type == 33620481:
             localizer_size_x = localizer_folder.data.width
             localizer_size_y = localizer_folder.data.height
-        localizer_field_deg = self._localizer_field_deg()
+        localizer_field_deg = self.get_localizer_field_deg()
         ir_scale_x = (localizer_field_deg * self._mm_per_degree() * 1000 / localizer_size_x
                       if localizer_size_x else None)
         ir_scale_y = (localizer_field_deg * self._mm_per_degree() * 1000 / localizer_size_y
@@ -943,7 +954,7 @@ class E2ESeriesStructure(E2EStructureMixin):
                 'Application': 'Type13@study (fallback Type9005@series[0])',
             },
             'IR Image': {
-                'Scan Angle': 'Type5@offset24:uint16' if self.get_localizer_field_deg() is not None else 'fallback:30 degrees',
+                'Scan Angle': 'Type5@offset24:uint16',
                 'Size X': 'derived from localizer width and provisional Scaling',
                 'Size Y': 'derived from localizer height and provisional Scaling',
                 'Scaling': 'approximate optical model and localizer field',
@@ -1028,8 +1039,8 @@ class E2ESeriesStructure(E2EStructureMixin):
             ],
             'findings': {
                 'localizer_field': {
-                    'field_deg': self._localizer_field_deg(),
-                    'source': 'Type5@offset24:uint16' if localizer_field_deg is not None else 'fallback:30 degrees',
+                    'field_deg': localizer_field_deg,
+                    'source': 'Type5@offset24:uint16',
                 },
                 'scan_focus': {
                     'focus_raw': self.get_focus_raw(),
@@ -1271,7 +1282,7 @@ class E2ESeriesStructure(E2EStructureMixin):
     def localizer_meta(self, height, width) -> EyeEnfaceMeta:
         """Return EyeEnfaceMeta object for the localizer image."""
         if self._localizer_meta is None:
-            field_deg = self._localizer_field_deg()
+            field_deg = self.get_localizer_field_deg()
             self._localizer_meta = EyeEnfaceMeta(
                 scale_x=field_deg * self._mm_per_degree() / width,
                 scale_y=field_deg * self._mm_per_degree() / height,
@@ -1327,17 +1338,19 @@ class E2ESeriesStructure(E2EStructureMixin):
     def get_meta(self) -> EyeVolumeMeta:
         """Return EyeVolumeMeta object for the series."""
         if self._meta is None:
+            bscan_meta = [meta.copy() for meta in self.get_bscan_meta()]
+            if not bscan_meta:
+                raise ValueError('The E2E series contains no OCT B-scans.')
+            field_deg = self.get_localizer_field_deg()
             warnings.warn(
                 'E2E lateral scales in mm are estimated using an approximate optical '
                 'model and may differ from HEYEX. Missing optical settings use a 7.7 mm '
-                'corneal radius and 0 D focus; missing or invalid localizer fields '
-                'use 30 degrees. See the E2E metric-scaling documentation.',
+                'corneal radius and 0 D focus. '
+                'See the E2E metric-scaling documentation.',
                 UserWarning,
                 stacklevel=2,
             )
             mm_per_degree = self._mm_per_degree()
-            field_deg = self._localizer_field_deg()
-            bscan_meta = [meta.copy() for meta in self.get_bscan_meta()]
             for meta in bscan_meta:
                 for key in ('start_pos', 'end_pos'):
                     # E2E angles are centered; metric localizer coordinates
@@ -1684,6 +1697,8 @@ class HeE2eReader(AbstractContextManager):
         for s in self.series:
             try:
                 return s.get_volume()
+            except _LocalizerFieldError:
+                raise
             except Exception as e:
                 # for compatibility with python <= 3.9, later work with only the exception as argument for format_exception
                 exc_type, exc_value, exc_tb = sys.exc_info()
@@ -1704,6 +1719,8 @@ class HeE2eReader(AbstractContextManager):
         for s in self.series:
             try:
                 volumes.append(s.get_volume())
+            except _LocalizerFieldError:
+                raise
             except Exception as e:
                 logger.debug(''.join(traceback.format_exception(e)))
         return volumes

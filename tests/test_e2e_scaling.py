@@ -8,6 +8,7 @@ from eyepy.io.he.e2e_format import LateralityEnum
 from eyepy.io.he.e2e_format import TypesEnum
 from eyepy.io.he.e2e_reader import E2ESeriesStructure
 from eyepy.io.he.e2e_reader import E2ESliceStructure
+from eyepy.io.he.e2e_reader import HeE2eReader
 
 
 def localizer_info(field_deg):
@@ -114,21 +115,42 @@ def test_localizer_field_can_be_stored_at_series_level(series):
     assert series.get_localizer_field_deg() == 55
 
 
-@pytest.mark.parametrize('raw', [None, bytes(25), localizer_info(0),
-                                 localizer_info(180), localizer_info(286),
-                                 localizer_info(65535)])
-def test_missing_short_or_invalid_localizer_field_uses_documented_fallback(series, raw):
+@pytest.mark.parametrize(('raw', 'message'), [
+    (None, 'no Type5 record'),
+    (bytes(25), 'payload has 25 bytes; expected at least 26'),
+    (localizer_info(0), 'offset 24 is 0 degrees'),
+    (localizer_info(180), 'offset 24 is 180 degrees'),
+    (localizer_info(286), 'offset 24 is 286 degrees'),
+    (localizer_info(65535), 'offset 24 is 65535 degrees'),
+])
+def test_missing_short_or_invalid_localizer_field_raises(series, raw, message):
     for sl in series.slices.values():
         sl.folders[5] = [] if raw is None else [SimpleNamespace(get_bytes=lambda: raw)]
 
-    with pytest.warns(UserWarning, match='localizer fields use 30 degrees'):
-        volume = series.get_volume()
+    with pytest.raises(ValueError, match=message):
+        series.get_localizer_field_deg()
 
-    assert series.get_localizer_field_deg() is None
-    assert volume.localizer.meta['field_size'] == 30
-    assert volume.localizer.scale_x == pytest.approx(30 * 0.2895099745331661 / 64)
-    assert volume.meta['e2e_metadata']['findings']['localizer_field'] == {
-        'field_deg': 30, 'source': 'fallback:30 degrees'}
+    with pytest.raises(ValueError, match=message):
+        series.get_volume()
+
+
+def test_invalid_series_field_is_not_masked_by_valid_slice_field(series):
+    series.folders[5] = [SimpleNamespace(get_bytes=lambda: localizer_info(0))]
+    with pytest.raises(ValueError, match='offset 24 is 0 degrees'):
+        series.get_localizer_field_deg()
+
+
+@pytest.mark.parametrize('attribute', ['volume', 'volumes'])
+def test_reader_preserves_localizer_field_error_after_empty_series(
+        series, monkeypatch, attribute):
+    for sl in series.slices.values():
+        sl.folders[5] = []
+    reader = HeE2eReader.__new__(HeE2eReader)
+    monkeypatch.setattr(HeE2eReader, 'series',
+                        property(lambda self: [E2ESeriesStructure(0), series]))
+
+    with pytest.raises(ValueError, match='no Type5 record'):
+        getattr(reader, attribute)
 
 
 @pytest.mark.parametrize(('radius', 'focus', 'expected_q'), [
