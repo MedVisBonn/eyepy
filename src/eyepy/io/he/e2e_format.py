@@ -33,17 +33,10 @@ class BscanAdapter(cs.Adapter):
         Returns:
             float
         """
-        bits = f'{uint_16:016b}'[::-1]
-        # get mantissa and exponent
-        mantissa = bits[:10]
-        exponent = bits[10:]
-        exponent = exponent[::-1]
-
-        # convert to decimal representations
-        mantissa_sum = 1 + int(mantissa, 2) / pow(2, 10)
-        exponent_sum = int(exponent, 2) - 63
-        decimal_value = mantissa_sum * np.float_power(2, exponent_sum)
-        return decimal_value.astype(np.float32)
+        exponent = uint_16 >> 10
+        if exponent == 0:
+            return np.float32(0)
+        return np.float32(np.ldexp(1 + (uint_16 & 1023) / 1024, exponent - 63))
 
     def _make_LUT(self):
         LUT = []
@@ -52,16 +45,20 @@ class BscanAdapter(cs.Adapter):
         return np.array(LUT)
 
     def _make_inv_LUT(self):
-        return {f: i for i, f in enumerate(self.LUT)}
+        # Several zero-exponent words decode to zero; encode canonical 0x0000.
+        result = {}
+        for i, value in enumerate(self.LUT):
+            result.setdefault(value, i)
+        return result
 
     def _decode(self, obj: bytes, context, path):
         return self.LUT[np.ndarray(buffer=obj,
-                                   dtype=np.uint16,
+                                   dtype='<u2',
                                    shape=(context.height, context.width))]
 
     def _encode(self, obj: np.ndarray, context, path):
         return np.array([self.inv_LUT[f] for f in obj.flatten()],
-                        dtype=np.uint16).tobytes()
+                        dtype='<u2').tobytes()
 
 
 class LocalizerNIRAdapter(cs.Adapter):
@@ -506,31 +503,41 @@ class Type10013(DataclassMixin, TypeMixin):
 type10013_format = DataclassStruct(Type10013)
 @dataclasses.dataclass
 class Type10012(DataclassMixin, TypeMixin):
-    """Type 10012.
+    """Per-B-scan registration; coefficients match VOL iv_transformation.
 
-    Size: variable
-
-    Notes:
+    Payload offsets 4, 8, 12, 28, 32, 36 store a, b, tx, c, d, ty.
+    The surrounding bytes remain undecoded.
     """
+    unknown0: bytes = csfield(cs.Bytes(4))
+    a: float = csfield(cs.Float32l)
+    b: float = csfield(cs.Float32l)
+    tx: float = csfield(cs.Float32l)
+    unknown1: bytes = csfield(cs.Bytes(12))
+    c: float = csfield(cs.Float32l)
+    d: float = csfield(cs.Float32l)
+    ty: float = csfield(cs.Float32l)
+    rest: bytes = csfield(cs.GreedyBytes)
 
-    unknown0: bytes = csfield(cs.Bytes(28))
-    value_1: float = csfield(cs.Float32l)
-    unknown1: bytes = csfield(cs.Bytes(1))
-    value_2: float = csfield(cs.Float32l)
+    @property
+    def matrix(self):
+        return [[self.a, self.b, self.tx], [self.c, self.d, self.ty]]
 
 
 type10012_format = DataclassStruct(Type10012)
 @dataclasses.dataclass
 class Type10010(DataclassMixin, TypeMixin):
-    """Type 10010.
+    """Normalization denominators, indexed by Type10004.aktImage.
 
-    Size: variable
-
-    Notes:
+    The count is uint32 at offset 12. Float32 entries begin at offset
+    16. Unused table slots and trailing bytes are retained without
+    interpretation.
     """
 
     unknown: bytes = csfield(cs.Bytes(12))
     n_bscans: int = csfield(cs.Int32ul)
+    normalization: t.List[float] = csfield(
+        cs.Array(cs.this.n_bscans, cs.Float32l))
+    rest: bytes = csfield(cs.GreedyBytes)
 
 
 type10010_format = DataclassStruct(Type10010)
