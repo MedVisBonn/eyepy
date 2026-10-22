@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib import patches
     from skimage import transform
+    from eyepy.core.heidelberg import HeidelbergBscanTransform
 
 import logging
 
@@ -47,6 +48,7 @@ class EyeVolume:
         meta: EyeVolumeMeta | None = None,
         localizer: EyeEnface | None = None,
         transformation: GeometricTransform | None = None,
+        spatial_transform: HeidelbergBscanTransform | None = None,
     ) -> None:
         """
 
@@ -55,6 +57,8 @@ class EyeVolume:
             meta: Optional [EyeVolumeMeta][eyepy.core.eyemeta.EyeVolumeMeta] object.
             localizer:
             transformation:
+            spatial_transform: Optional B-scan normalization/registration,
+                applied lazily before the intensity display transform.
         """
         self._raw_data = data
         self._data = None
@@ -66,6 +70,16 @@ class EyeVolume:
             self.meta = self._default_meta(self._raw_data)
         else:
             self.meta = meta
+        if spatial_transform is None and 'spatial_transform' in self.meta:
+            from eyepy.core.heidelberg import HeidelbergBscanTransform
+            spatial_transform = HeidelbergBscanTransform.from_dict(
+                self.meta['spatial_transform'])
+        if spatial_transform is not None:
+            if len(spatial_transform.gains) != len(data):
+                raise ValueError(
+                    'Spatial transform must match the B-scan count')
+            self.meta['spatial_transform'] = spatial_transform.as_dict()
+        self._spatial_transform = spatial_transform
         if 'intensity_transform' not in self.meta:
             self.meta['intensity_transform'] = 'default'
         if 'par_algorithm' not in self.meta:
@@ -158,6 +172,12 @@ class EyeVolume:
                     'annotations/layers/meta.json',
                     json.dumps([l.meta for l in self._layers])
                 )
+                for i, layer in enumerate(self._layers):
+                    if layer._raw_data is not None:
+                        raw_layer_bytes = io.BytesIO()
+                        np.save(raw_layer_bytes, layer._raw_data)
+                        zipf.writestr(f'annotations/layers/raw_layer_{i}.npy',
+                                      raw_layer_bytes.getvalue())
 
             # Save slab annotations
             if len(self._slabs) > 0:
@@ -319,6 +339,16 @@ class EyeVolume:
                 layer_annotations = []
                 layers_meta = []
 
+            raw_layer_annotations = []
+            for i in range(len(layer_annotations)):
+                try:
+                    with zipf.open(
+                            f'annotations/layers/raw_layer_{i}.npy') as f:
+                        raw_layer_annotations.append(
+                            np.load(io.BytesIO(f.read())))
+                except KeyError:
+                    raw_layer_annotations.append(None)
+
             # Load slabs
             try:
                 with zipf.open('annotations/slabs/meta.json') as f:
@@ -443,8 +473,12 @@ class EyeVolume:
                 localizer=localizer,
                 transformation=transformation,
             )
-            for meta, annotation in zip(layers_meta, layer_annotations):
-                ev.add_layer_annotation(annotation, meta)
+            for meta, annotation, raw_annotation in zip(layers_meta,
+                                                        layer_annotations,
+                                                        raw_layer_annotations):
+                ev.add_layer_annotation(annotation,
+                                        meta,
+                                        raw_data=raw_annotation)
 
             for meta in slabs_meta:
                 ev.add_slab_annotation(meta)
@@ -630,6 +664,24 @@ class EyeVolume:
         return np.copy(self._raw_data)
 
     @property
+    def spatial_transform(self) -> HeidelbergBscanTransform | None:
+        """B-scan normalization/registration, distinct from
+        localizer_transform."""
+        return self._spatial_transform
+
+    @property
+    def linear_data(self) -> np.ndarray:
+        """Linear data after normalization and registration, before display.
+
+        E2E imports with complete metadata return registered VOL-
+        equivalent values. Formats storing display-encoded greys (e.g.
+        XML) retain those values. Original raw_data is never modified.
+        """
+        if self.spatial_transform is None:
+            return self.raw_data
+        return self.spatial_transform(self._raw_data)
+
+    @property
     def data(self) -> np.ndarray:
         """
 
@@ -637,7 +689,7 @@ class EyeVolume:
 
         """
         if self._data is None:
-            self._data = self.intensity_transform(np.copy(self._raw_data))
+            self._data = self.intensity_transform(self.linear_data)
         return self._data
 
     @property
@@ -648,7 +700,7 @@ class EyeVolume:
 
         """
         if self._data_par is None:
-            self._data_par = self.par_algorithm(np.copy(self._raw_data))
+            self._data_par = self.par_algorithm(self.linear_data)
         return self._data_par
 
     @property
@@ -859,15 +911,17 @@ class EyeVolume:
                 bscan.area_maps.pop(name)
 
     def add_layer_annotation(self,
-                             height_map: None | (npt.NDArray[
-                                 np.float64]) = None,
+                             height_map: None |
+                             (npt.NDArray[np.float64]) = None,
                              meta: dict | None = None,
+                             raw_data: np.ndarray | None = None,
                              **kwargs: Any) -> EyeVolumeLayerAnnotation:
         """
 
         Args:
             height_map: Height in shape (n_Bscans, Bscan_width) The first index refers to the bottom most B-scan
             meta: name, current_color, and knots
+            raw_data: Optional snapshot of imported heights before registration.
             **kwargs:
 
         Returns:
@@ -876,7 +930,10 @@ class EyeVolume:
         if meta is None:
             meta = {}
         meta.update(**kwargs)
-        layer_annotation = EyeVolumeLayerAnnotation(self, height_map, **meta)
+        layer_annotation = EyeVolumeLayerAnnotation(self,
+                                                    height_map,
+                                                    raw_data=raw_data,
+                                                    **meta)
         self._layers.append(layer_annotation)
         return layer_annotation
 

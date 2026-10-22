@@ -12,6 +12,11 @@ NDArrayBool = npt.NDArray[np.bool_]
 NDArrayInt = npt.NDArray[np.int64]
 NDArrayUByte = npt.NDArray[np.ubyte]
 
+# Empirical display thresholds, shared by the forward and representative
+# inverse mappings. See docs/formats/he_vol.md for provenance and limits.
+_HEYEX_LOG_SLOPE = 30.776116889447362
+_HEYEX_LOG_OFFSET = 0.001931325892041094
+
 
 class DynamicDefaultDict(dict):
     """A defaultdict for which the factory function has access to the missing
@@ -60,44 +65,39 @@ def vol_intensity_transform(data: NDArrayFloat) -> NDArrayUByte:
 
 
 def from_vol_intensity(data: NDArrayFloat) -> NDArrayUByte:
-    selection_0 = data == np.finfo(np.float32).max
-    selection_data = data <= 1
+    """Render linear VOL intensities using the empirically verified HEYEX curve.
 
-    new = np.log(data[selection_data] + 2.44e-04)
-    new = (new + 8.3) / 8.285
-
-    data[selection_data] = new
-    data[selection_0] = 0
-    data = np.clip(data, 0, 1)
-
-    from skimage.util import img_as_ubyte
-
-    return img_as_ubyte(data).astype(np.ubyte)
+    The global coefficients were fitted to five default-display VOL/TIFF
+    pairs and verified on 218 B-scans. They are not vendor
+    specifications. Missing values render black. The input array is
+    never modified.
+    """
+    values = np.asarray(data, dtype=np.float64)
+    valid = np.isfinite(values) & (values != np.finfo(np.float32).max)
+    values = np.where(valid, np.clip(values, 0, 1), 0)
+    gray = np.floor(_HEYEX_LOG_SLOPE * np.log1p(4096 * values) +
+                    _HEYEX_LOG_OFFSET)
+    return np.clip(gray, 0, 255).astype(np.ubyte)
 
 def from_e2e_intensity(data: NDArrayFloat32) -> NDArrayUByte:
-    selection_0 = data > 1.99 # empty regions in e2e exports
-    selection_data = data <= 1
-
-    new = np.log(data[selection_data] + 2.44e-04)
-    new = (new + 8.3) / 8.285
-
-    data[selection_data] = new
-    data[selection_0] = 0
-    data = np.clip(data, 0, 1)
-
-    from skimage.util import img_as_ubyte
-
-    return img_as_ubyte(data).astype(np.ubyte)
+    """Unnormalized fallback for E2E data without registration metadata."""
+    return from_vol_intensity(np.where(data == 1.9990234375, 0, data))
 
 
 # Function expects numpy array of uint8 type hint
-def to_vol_intensity(data: np.ndarray) -> NDArrayFloat:
-    from skimage.util import img_as_float32
+def to_vol_intensity(data: np.ndarray) -> NDArrayFloat32:
+    """Choose a linear intensity in each display bin.
 
-    data = img_as_float32(data)
-    data = data * 8.285 - 8.3
-    data = np.exp(data) - 2.44e-04
-    return data
+    Accept uint8 greys or floating-point greys in [0, 1]. Display
+    conversion loses information; this cannot recover the original
+    linear intensities.
+    """
+    from skimage.util import img_as_float64
+
+    gray = img_as_float64(data) * 255
+    linear = np.expm1((gray + .5 - _HEYEX_LOG_OFFSET) / _HEYEX_LOG_SLOPE) / 4096
+    linear = np.where(gray == 0, 0, np.where(gray == 255, 1, linear))
+    return np.clip(linear, 0, 1).astype(np.float32)
 
 
 def default_intensity_transform(data: np.ndarray) -> np.ndarray:

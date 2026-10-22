@@ -15,6 +15,7 @@ from eyepy.core.utils import intensity_transforms
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from skimage import transform as transform
+    from eyepy.core.heidelberg import HeidelbergLocalizerTransform
 
 import logging
 
@@ -40,7 +41,8 @@ class EyeEnface:
     def __init__(self, data: npt.NDArray[np.int64],
                  meta: EyeEnfaceMeta,
                  optic_disc: EyeEnfaceOpticDiscAnnotation | None = None,
-                 fovea: EyeEnfaceFoveaAnnotation | None = None) -> None:
+                 fovea: EyeEnfaceFoveaAnnotation | None = None,
+                 spatial_transform: HeidelbergLocalizerTransform | None = None) -> None:
         """Initialize EyeEnface.
 
         Args:
@@ -48,6 +50,7 @@ class EyeEnface:
             meta: Metadata for the enface image
             optic_disc: Optional EyeEnfaceOpticDiscAnnotation
             fovea: Optional EyeEnfaceFoveaAnnotation
+            spatial_transform: Optional lazy localizer registration before display.
         """
         self._raw_data = data
         self._data = None
@@ -55,6 +58,13 @@ class EyeEnface:
         self.meta = meta
         self._optic_disc = optic_disc
         self._fovea = fovea
+        if spatial_transform is None and 'spatial_transform' in self.meta:
+            from eyepy.core.heidelberg import HeidelbergLocalizerTransform
+            spatial_transform = HeidelbergLocalizerTransform.from_dict(
+                self.meta['spatial_transform'])
+        self._spatial_transform = spatial_transform
+        if spatial_transform is not None:
+            self.meta['spatial_transform'] = spatial_transform.as_dict()
 
         # Set up intensity transform
         if 'intensity_transform' not in self.meta:
@@ -99,7 +109,7 @@ class EyeEnface:
 
     @property
     def data(self) -> np.ndarray:
-        """Returns the enface data with intensity transform applied.
+        """Return the registered enface data with intensity transform applied.
 
         The intensity transform is computed lazily and cached.
 
@@ -107,8 +117,21 @@ class EyeEnface:
             Enface data as numpy array
         """
         if self._data is None:
-            self._data = self.intensity_transform(np.copy(self._raw_data))
+            self._data = self.intensity_transform(self.registered_data)
         return self._data
+
+    @property
+    def spatial_transform(self) -> HeidelbergLocalizerTransform | None:
+        """Optional image registration, distinct from the OCT-to-localizer map."""
+        return self._spatial_transform
+
+    @property
+    def registered_data(self) -> np.ndarray:
+        """Registered pixels before display conversion; raw_data stays
+        unchanged."""
+        if self.spatial_transform is None:
+            return self.raw_data
+        return self.spatial_transform(self._raw_data)
 
     @property
     def shape(self) -> tuple[int, int]:
@@ -773,6 +796,8 @@ class EyeEnface:
         if isinstance(self.meta, EyeEnfaceMeta):
             # Real EyeEnfaceMeta object - use the copy() method
             updated_meta = self.meta.copy()
+            # This operation materializes registration before the new transform.
+            updated_meta.pop('spatial_transform', None)
             if 'scale_x' in updated_meta:
                 updated_meta['scale_x'] = updated_meta['scale_x'] / scale_x
             if 'scale_y' in updated_meta:
@@ -789,7 +814,7 @@ class EyeEnface:
 
         # Transform the image data
         transformed_data = transform.warp(
-            self._raw_data,
+            self.registered_data,
             tform.inverse,
             output_shape=output_shape,
             order=order,

@@ -18,14 +18,14 @@ import warnings
 
 import construct as cs
 import numpy as np
-from skimage.transform import AffineTransform
-from skimage.transform import warp
 
 from eyepy.core.eyeenface import EyeEnface
 from eyepy.core.eyemeta import EyeBscanMeta
 from eyepy.core.eyemeta import EyeEnfaceMeta
 from eyepy.core.eyemeta import EyeVolumeMeta
 from eyepy.core.eyevolume import EyeVolume
+from eyepy.core.heidelberg import HeidelbergBscanTransform
+from eyepy.core.heidelberg import HeidelbergLocalizerTransform
 from eyepy.io.utils import _compute_localizer_oct_transform
 from eyepy.io.utils import find_float
 from eyepy.io.utils import find_int
@@ -38,6 +38,8 @@ from .e2e_format import datacontainer_format
 from .e2e_format import e2e_format
 from .e2e_format import Type10004
 from .e2e_format import type10004_format
+from .e2e_format import type10010_format
+from .e2e_format import type10012_format
 from .e2e_format import Type10025
 from .e2e_format import TypesEnum
 from .vol_reader import SEG_MAPPING
@@ -48,6 +50,10 @@ logger = logging.getLogger(__name__)
 class _E2EScalingError(ValueError):
     """Missing, invalid or inconsistent metadata required for metric
     conversion."""
+
+
+class _E2ERegistrationError(ValueError):
+    """Invalid localizer registration metadata."""
 
 
 # Occurence of type ids. This is used by the inspect function.
@@ -1167,6 +1173,51 @@ class E2ESeriesStructure(E2EStructureMixin):
             text += '\n'
         return text
 
+    def get_spatial_transform(self) -> HeidelbergBscanTransform | None:
+        """Decode normalization/registration, or warn and retain raw geometry.
+
+        Bounded payloads keep this independent of generic folder
+        parsing. A partial transform is never applied to only some
+        B-scans.
+        """
+        try:
+            tables = self.folders.get(10010, [])
+            if len(tables) != 1:
+                raise ValueError(
+                    'missing or ambiguous Type10010 normalization table')
+            table = type10010_format.parse(tables[0].get_bytes())
+            gains = np.full(self.n_bscans, np.nan)
+            matrices = np.full((self.n_bscans, 2, 3), np.nan, dtype=np.float32)
+            for slice_id, sl in self.slices.items():
+                index = 0 if self.n_bscans == 1 else slice_id // 2
+                if not 0 <= index < self.n_bscans:
+                    raise ValueError('B-scan ID is outside the image array')
+                meta = sl._get_bscanmeta_data()
+                if not 0 <= meta.aktImage < table.n_bscans:
+                    raise ValueError(
+                        'B-scan normalization index is outside Type10010')
+                numerator = meta.unknown1  # Type10004 float32 at payload offset32.
+                denominator = table.normalization[meta.aktImage]
+                if not (np.isfinite(numerator) and numerator > 0 and
+                        np.isfinite(denominator) and denominator > 0):
+                    raise ValueError(
+                        'invalid normalization numerator or denominator')
+                folders = sl.folders.get(10012, [])
+                if len(folders) != 1:
+                    raise ValueError(
+                        'missing or ambiguous Type10012 registration')
+                gains[index] = numerator / denominator
+                matrices[index] = type10012_format.parse(
+                    folders[0].get_bytes()).matrix
+            return HeidelbergBscanTransform(gains, matrices)
+        except (ValueError, IndexError, KeyError, cs.ConstructError) as exc:
+            warnings.warn(
+                f'E2E normalization/registration unavailable: {exc}. '
+                'Keeping the unregistered, unnormalized view; raw_data is preserved.',
+                RuntimeWarning,
+                stacklevel=2)
+            return None
+
     def get_volume(self) -> EyeVolume:
         """Return EyeVolume object for the series."""
         ## Check if scan is a volume scan
@@ -1184,27 +1235,67 @@ class E2ESeriesStructure(E2EStructureMixin):
 
         data = self.get_bscans()
 
-        volume_meta = self.get_meta()
-        localizer = self.get_localizer()
+        volume_meta = self.get_meta().copy()
+        spatial_transform = self.get_spatial_transform()
+        localizer = self.get_localizer(registered=spatial_transform is not None)
+        if spatial_transform is not None:
+            volume_meta['intensity_transform'] = 'vol'
+        if localizer.spatial_transform is not None:
+            volume_meta['bscan_meta'] = self._registered_bscan_positions(
+                volume_meta['bscan_meta'], localizer)
+            volume_meta['localizer_coordinate_frame'] = 'registered'
+            if volume_meta['scale_unit'] == volume_meta['bscan_meta'][0]['pos_unit']:
+                first = volume_meta['bscan_meta'][0]
+                volume_meta['scale_x'] = float(np.linalg.norm(
+                    np.asarray(first['end_pos']) - first['start_pos']) / data.shape[2])
+                volume_meta['scale_z'] = (get_bscan_spacing(volume_meta['bscan_meta'])
+                                         if len(volume_meta['bscan_meta']) > 1 else 0)
         volume = EyeVolume(
             data=data,
             meta=volume_meta,
             localizer=localizer,
             transformation=_compute_localizer_oct_transform(
                 volume_meta, localizer.meta, data.shape),
+            spatial_transform=spatial_transform,
         )
 
         layer_height_maps = self.get_layers()
         layer_manual_maps = self.get_layer_manual_maps()
         for name, i in SEG_MAPPING.items():
             if i in layer_height_maps:
+                raw_heights = layer_height_maps[i]
+                heights = (spatial_transform.transform_layers(raw_heights)
+                           if spatial_transform is not None else raw_heights)
                 volume.add_layer_annotation(
-                    layer_height_maps[i],
+                    heights,
                     name=name,
                     manual=layer_manual_maps.get(i),
+                    raw_data=raw_heights
+                    if spatial_transform is not None else None,
                 )
 
         return volume
+
+    def _registered_bscan_positions(self, metadata, localizer):
+        """Map acquisition-localizer endpoints to the registered localizer.
+
+        Type10012 already maps samples onto the B-scan grid described by
+        these endpoints; its lateral shifts must not be added again.
+        """
+        result = []
+        scale = np.array([localizer.scale_x, localizer.scale_y])
+        for original in metadata:
+            meta = original.copy()
+            offset = (scale * np.array(localizer.shape[::-1]) / 2
+                      if meta['pos_unit'] == '°' else np.zeros(2))
+            for key in ('start_pos', 'end_pos'):
+                meta['raw_' + key] = tuple(original[key])
+                source = (np.asarray(original[key]) + offset) / scale
+                target = localizer.spatial_transform.source_to_output(
+                    source, localizer.shape)
+                meta[key] = tuple(target * scale - offset)
+            result.append(meta)
+        return result
 
     @property
     def n_bscans(self) -> int:
@@ -1330,7 +1421,21 @@ class E2ESeriesStructure(E2EStructureMixin):
             )
         return self._localizer_meta
 
-    def get_localizer(self) -> EyeEnface:
+    def get_localizer_transform(self) -> HeidelbergLocalizerTransform | None:
+        """Decode the independent Type10025 localizer map when present."""
+        folders = self.folders.get(TypesEnum.slodata, [])
+        if not folders:
+            return None
+        try:
+            if len(folders) != 1:
+                raise ValueError('Expected one Type10025 localizer record')
+            return HeidelbergLocalizerTransform(
+                np.asarray(folders[0].data.transform).reshape(2, 3))
+        except (ValueError, KeyError, cs.ConstructError) as error:
+            raise _E2ERegistrationError(
+                f'Invalid E2E localizer registration: {error}') from error
+
+    def get_localizer(self, registered: bool = False) -> EyeEnface:
         """Return EyeEnface object for the localizer image."""
         try:
             folders = self.folders[TypesEnum.image]
@@ -1339,23 +1444,19 @@ class E2ESeriesStructure(E2EStructureMixin):
                     'There is more than one enface localizer image stored. This is not expected.'
                 )
 
-            # Slodata is not always present in E2E files.
-            # Todo: Give transform to EyeEnface object where it is applied to the image. EyeEnface then by default has an identity transform.
-            #transform = np.array(list(self.slo_data().transform) +
-            #                     [0, 0, 1]).reshape((3, 3))
-            # transfrom localizer with transform from E2E file
-            #transformed_localizer = warp(folders[0].data.data,
-            #                             AffineTransform(transform),
-            #                             order=1,
-            #                             preserve_range=True)
             return EyeEnface(folders[0].data.data,
                              self.localizer_meta(height=folders[0].data.height,
-                                                 width=folders[0].data.width))
+                                                 width=folders[0].data.width).copy(),
+                             spatial_transform=self.get_localizer_transform()
+                             if registered else None)
         except KeyError:
             if self.n_bscans == 1:
                 slice_struct = next(iter(self.slices.values()))
                 data = slice_struct.get_localizer()
-                return EyeEnface(data, self.localizer_meta(*data.shape))
+                return EyeEnface(
+                    data, self.localizer_meta(*data.shape).copy(),
+                    spatial_transform=self.get_localizer_transform()
+                    if registered else None)
             else:
                 raise ValueError(
                     'There is no localizer/fundus image in the E2E file.')
@@ -1730,7 +1831,7 @@ class HeE2eReader(AbstractContextManager):
         for s in self.series:
             try:
                 return s.get_volume()
-            except _E2EScalingError:
+            except (_E2EScalingError, _E2ERegistrationError):
                 raise
             except Exception as e:
                 # for compatibility with python <= 3.9, later work with only the exception as argument for format_exception
@@ -1752,7 +1853,7 @@ class HeE2eReader(AbstractContextManager):
         for s in self.series:
             try:
                 volumes.append(s.get_volume())
-            except _E2EScalingError:
+            except (_E2EScalingError, _E2ERegistrationError):
                 raise
             except Exception as e:
                 logger.debug(''.join(traceback.format_exception(e)))

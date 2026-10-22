@@ -50,13 +50,21 @@ class EyeBscan:
     def data(self) -> np.ndarray:
         """Returns the B-scan data as a numpy array.
 
-        The intensity transform is applied only to this single B-scan slice,
-        avoiding the computation of the transform for the entire volume.
+        Normalization, registration and display conversion are applied only
+        to this B-scan, avoiding conversion of the entire volume.
 
         Returns:
             B-scan data as numpy array
         """
-        return self.volume.intensity_transform(np.copy(self.volume._raw_data[self.index]))
+        return self.volume.intensity_transform(self.linear_data)
+
+    @property
+    def linear_data(self) -> np.ndarray:
+        """Normalized, registered linear data for this B-scan only."""
+        if self.volume.spatial_transform is None:
+            return self.raw_data
+        return self.volume.spatial_transform(self.volume._raw_data[self.index],
+                                             self.index)
 
     @property
     def raw_data(self) -> np.ndarray:
