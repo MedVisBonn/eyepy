@@ -161,7 +161,7 @@ def test_e2e_reader_attaches_transform_and_aligns_layers(
     raw_heights = np.full((2, 6), 2.)
     monkeypatch.setattr(series, 'get_meta', lambda: volume.meta.copy())
     monkeypatch.setattr(series, 'get_bscans', lambda: raw)
-    monkeypatch.setattr(series, 'get_localizer', lambda: volume.localizer)
+    monkeypatch.setattr(series, 'get_localizer', lambda registered=True: volume.localizer)
     monkeypatch.setattr(series, 'get_layers', lambda: {0: raw_heights})
     monkeypatch.setattr(series, 'get_layer_manual_maps',
                         lambda: {0: [True, False]})

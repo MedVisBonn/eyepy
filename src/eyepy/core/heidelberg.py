@@ -1,4 +1,4 @@
-"""Verified Heidelberg normalization and per-B-scan registration arithmetic."""
+"""Heidelberg image normalization and registration arithmetic."""
 
 from __future__ import annotations
 
@@ -20,6 +20,62 @@ def _fma32(a, b, c):
 def _lerp(a, b, fraction):
     """Preserve subtraction precision, then round each interpolation stage."""
     return np.float32(a.astype(float) + (b.astype(float) - a) * fraction)
+
+
+class HeidelbergLocalizerTransform:
+    """Type10025 output-to-source affine in centered localizer pixels.
+
+    This map is independent of the Type10012 B-scan image-plane maps.
+    Pixel resampling uses bilinear interpolation followed by truncation
+    to uint8; exact HEYEX interpolation arithmetic is not fully
+    reproduced.
+    """
+
+    def __init__(self, matrix):
+        self.matrix = np.array(matrix, dtype=np.float32, copy=True)
+        if self.matrix.shape != (2, 3) or not np.all(np.isfinite(self.matrix)):
+            raise ValueError('Expected a finite 2x3 E2E localizer affine')
+        if np.linalg.det(self.matrix[:, :2]) == 0:
+            raise ValueError('The E2E localizer affine is singular')
+        self.matrix.setflags(write=False)
+
+    def as_dict(self):
+        return dict(type='heidelberg_localizer', matrix=self.matrix.tolist())
+
+    @classmethod
+    def from_dict(cls, config):
+        if config['type'] != 'heidelberg_localizer':
+            raise ValueError(f"Unknown localizer transform: {config['type']}")
+        return cls(config['matrix'])
+
+    def source_to_output(self, points, shape):
+        """Move raw-localizer (x, y) positions into the registered frame."""
+        points = np.asarray(points, dtype=float)
+        center = np.asarray(shape[::-1], dtype=float) / 2
+        shifted = points - center - self.matrix[:, 2]
+        return np.linalg.solve(self.matrix[:, :2].astype(float),
+                               shifted.reshape(-1, 2).T).T.reshape(points.shape) + center
+
+    def __call__(self, data):
+        """Resample a uint8 IR localizer without modifying the source image."""
+        from scipy.ndimage import map_coordinates
+
+        if data.ndim != 2 or data.dtype != np.uint8:
+            raise ValueError('E2E localizer registration requires a 2D uint8 image')
+        if np.array_equal(self.matrix, [[1, 0, 0], [0, 1, 0]]):
+            return data.copy()
+        height, width = data.shape
+        y, x = np.indices(data.shape, dtype=float)
+        a, b, tx, c, d, ty = self.matrix.astype(float).ravel()
+        source_x = a * (x - width / 2) + b * (y - height / 2) + tx + width / 2
+        source_y = c * (x - width / 2) + d * (y - height / 2) + ty + height / 2
+        inside = ((source_x >= -.5) & (source_x < width - .5) &
+                  (source_y >= -.5) & (source_y < height - .5))
+        sampled = map_coordinates(data.astype(float), [source_y, source_x],
+                                  order=1, mode='nearest')
+        result = np.floor(sampled).astype(np.uint8)
+        result[~inside] = 0
+        return result
 
 
 class HeidelbergBscanTransform:

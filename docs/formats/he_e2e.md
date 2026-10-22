@@ -162,6 +162,9 @@ covers 30° square localizers.
 
 `series.get_bscan_meta()` retains the original angular positions. The volume
 receives copies with `pos_unit='mm'`.
+When localizer registration is active, its inverse map also updates these
+positions and the sampling derived from them, as described
+[below](#localizer-registration-and-slice-positions).
 
 ### Defaults and validation
 
@@ -369,6 +372,53 @@ converts that sentinel to black. The [VOL display curve](he_vol.md) is shared
 by both formats. Its two coefficients remain an empirical global fit to
 default-display exports, rather than vendor specifications.
 
+### Localizer registration and slice positions
+
+Type10012 acts within each OCT B-scan (lateral column and axial depth).
+Type10025 is a separate affine in the localizer's lateral/enface plane.
+When B-scan registration is active, the reader also applies Type10025 when
+present. It never applies a B-scan's axial shift or shear to the localizer.
+
+The localizer exposes the same distinction between original and rendered data:
+
+```python
+original_ir = volume.localizer.raw_data
+registered_ir = volume.localizer.data
+localizer_registration = volume.localizer.spatial_transform
+```
+
+Type10025 maps output to source in centered localizer pixel coordinates:
+
+```text
+p_source = A @ (p_output - center) + translation + center
+p_output = inverse(A) @ (p_source - center - translation) + center
+center = (width / 2, height / 2)
+```
+
+The image samples through the first equation. B-scan start/end positions
+move through the inverse equation so overlays follow the registered image.
+Their original values remain in `raw_start_pos` and `raw_end_pos`; the
+series' original B-scan metadata is unchanged. Direct `series.get_localizer()`
+calls keep the original view; `registered=True` explicitly requests its
+registered image. Volume import selects the view together with B-scan registration.
+
+For Type10012, the stored endpoints already describe the registered B-scan
+grid: adding its lateral shifts again produces 16–21 µm coordinate errors
+in the paired examples. For a non-identity Type10025, those endpoints are
+still expressed in the incoming localizer frame and need the inverse map.
+Using VOL's reported physical conversion to isolate this geometry check,
+the corrected endpoints agree within 0.00039 µm across all 460 paired B-scans;
+the uncorrected non-identity example differs by up to 345 µm. This verifies
+the coordinate convention without establishing how the vendor estimated it.
+
+Localizer pixels use bilinear sampling followed by truncation to uint8.
+The three identity/absent-map examples match their VOL localizers exactly.
+The one non-identity example matches approximately 99.7% of interior pixels;
+remaining interior differences are at most one grey level, with larger
+differences at two boundary pixels. Exact localizer interpolation arithmetic
+remains unresolved. Optical reference/calibration selection is separate
+from this pixel-coordinate transformation.
+
 ### Annotations and saving
 
 Imported layer heights are mapped into the registered coordinates so they
@@ -381,6 +431,7 @@ exactly (the observed maximum endpoint difference was approximately 0.298 pixel)
 
 `.eye` saves the original image array, the normalization/registration
 configuration, registered annotations and original imported layer snapshots.
+It also preserves the original localizer and its lazy registration configuration.
 Loading reconstructs the same lazy pipeline and does not register the raw
 data twice. Older archives without a spatial transform keep their existing
 unregistered geometry. Updated eyepy is required to reproduce the registered
@@ -390,18 +441,19 @@ view when loading these new archives.
 
 The conversion reproduces every float32 pixel bit in all 460 matching VOL
 B-scans, including missing markers and borders. With the shared display
-curve, every RGB pixel in 412 ordinary XML-associated TIFFs matches, without
+curve, every RGB pixel in 412 ordinary XML-associated B-scan TIFFs matches, without
 a comparison mask. These data cover four VOL acquisitions and four TIFF
 datasets, including varying corneal-radius settings, at default HEYEX
 brightness and contrast.
 
-General affines with other a/b/d values, other display settings and software
+Other Type10012 affine families, display settings and software
 versions remain unverified. Missing, malformed or unsupported normalization
-or registration metadata produces a warning and retains the unregistered,
+or B-scan registration metadata produces a warning and retains the unregistered,
 unnormalized fallback view for the whole volume. The supplied single-slice
 export has neither Type10010 nor Type10012; its normalization remains unknown.
-The separate geometry difference in one follow-up XML export remains outside
-this conversion; its matching VOL is reproduced exactly.
+Invalid Type10025 localizer affines raise a descriptive `ValueError`. Its
+absence leaves the localizer unchanged. The four matching VOL B-scan arrays
+are reproduced exactly; localizer resampling has the separate limits above.
 
 ## Acknowledgements
 
