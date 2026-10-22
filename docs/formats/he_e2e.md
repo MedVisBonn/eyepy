@@ -1,27 +1,40 @@
 # Heidelberg Engineering E2E Format
 
-E2E is a container for patients, studies, series and individual B-scans.
-One file can contain several OCT volumes. The reader exposes both
-[`EyeVolume`][eyepy.core.EyeVolume] objects and the underlying metadata.
+!!! warning "Unofficial, reverse-engineered documentation"
+    Everything documented here is based on reverse engineering of E2E files
+    and comparisons with exported data. This is not official documentation
+    supplied or endorsed by Heidelberg Engineering (HE). Field meanings,
+    conversions and compatibility may differ across devices and software versions.
+
+## Supported data
+
+This table describes E2E conversion to
+[`EyeVolume`][eyepy.core.EyeVolume] in the current reader.
+
+| Scan type | Support | Scope and limitations |
+| --- | --- | --- |
+| Multi-slice structural OCT volumes | Supported | Raster volumes, IR localizers and available layer annotations; validated on 14 supplied exports. |
+| Single-slice structural OCT volumes | Not reliably supported | The supplied export with a slice-local localizer fails to load. The fix in [PR #83](https://github.com/MedVisBonn/eyepy/pull/83) is separate and has not yet been merged. |
+| Circular scans | Unsupported | Circular B-scans (scan pattern 2) are rejected by the EyeVolume importer. |
+| Radial scans | Unsupported | Star-pattern scans (scan pattern 5) are rejected by the EyeVolume importer. |
+| OCTA volumes | Unsupported | E2E angiography/flow data are not decoded. |
+
+B-scan registration is not applied by this reader. Lateral scales are
+estimated; the calculation and observed agreement are described below.
 
 ## Read volumes
 
 ```python
 import eyepy
-from eyepy.io import HeE2eReader
 
 volume = eyepy.import_heyex_e2e("filename.E2E")  # First readable OCT series.
-
-with HeE2eReader("filename.E2E") as reader:
-    print(reader)             # Overview of patients, studies and series.
-    volumes = reader.volumes  # All readable OCT series.
 ```
 
-!!! warning "Estimated lateral scales"
-    Volumes, localizers and B-scan positions use millimeters. Lateral scales
-    use an approximate optical model, and import emits a warning. Axial
-    sampling is read directly from the file. This reader does not apply
-    B-scan registration.
+The returned volume, localizer and B-scan positions use millimeters. Import
+warns that lateral scales are approximate; axial sampling is read directly
+from the file. For files containing multiple OCT series,
+[`HeE2eReader`][eyepy.io.he.e2e_reader.HeE2eReader] exposes all readable
+volumes through `reader.volumes`.
 
 ## Metric scaling
 
@@ -144,7 +157,7 @@ covers 30° square localizers.
 `series.get_bscan_meta()` retains the original angular positions. The volume
 receives copies with `pos_unit='mm'`.
 
-### Validation, defaults and uncertainty
+### Defaults and validation
 
 - All available Type39 slice radii and matching-eye Type7 radii must be
   finite, positive and **exactly equal**. A mismatch rejects conversion;
@@ -158,21 +171,39 @@ receives copies with `pos_unit='mm'`.
   `ValueError`. Scaling validation errors propagate through
   `import_heyex_e2e()`, `reader.volume` and `reader.volumes`.
 
-Three native VOL comparisons without external reference volumes give
-lateral-scale estimates **4.08–7.21 ppm below** the reported values.
-Removing the 1.02302 multiplier instead lowers the estimate by about 2.25%.
-XML `ScaleX` is rounded to 0.0001 mm/pixel in the inspected exports;
-matching it after rounding does not establish exact agreement. Finer
-coordinate comparisons, including different corneal radii, also show
-small residuals that XML rounding alone does not explain.
+### Agreement with Heidelberg exports
+
+Three independent acquisitions with a 7.7 mm corneal radius have matching
+Heidelberg VOL exports. The Heidelberg column below is the VOL header's
+reported lateral scale. Focus is displayed rounded here; the calculation
+uses its full stored value. Error is `(estimated / Heidelberg - 1) * 1e6`.
+
+| Focus (D) | Estimated scale_x (mm/pixel) | Heidelberg scale_x (mm/pixel) | Error (ppm) |
+| ---: | ---: | ---: | ---: |
+| +0.90 | 0.005654491689 | 0.005654532462 | -7.21 |
+| +0.82 | 0.005661835251 | 0.005661873613 | -6.78 |
+| +0.36 | 0.005704433680 | 0.005704456940 | -4.08 |
+
+Thus these estimates are **0.00041–0.00072% below** the reported scales.
+Removing the 1.02302 multiplier instead underestimates them by about 2.25%.
+
+Additional XML coordinate comparisons at corneal radii of 9.0 and 6.2 mm
+give estimates approximately **27–49 ppm** and **69–88 ppm above** the
+coordinate-compatible scales, respectively. These ranges allow each XML
+coordinate to round to the nearest 0.001 mm and leave the coordinate origin
+free. XML `ScaleX` itself is rounded to 0.0001 mm/pixel in these examples,
+so agreement with that rounded value is a less precise check.
 
 These comparisons measure agreement with exported geometry, not anatomical
-accuracy or a general error bound. The exact vendor calculation remains
-unknown.
+accuracy or a general error bound. The finer coordinate and VOL checks show
+that the remaining difference cannot be attributed entirely to XML rounding.
+The exact vendor calculation remains unknown.
 
 ### Inspect the calculation
 
 ```python
+from eyepy.io import HeE2eReader
+
 with HeE2eReader("filename.E2E") as reader:
     series = next(s for s in reader.series if s.get_bscan_meta())
     print(series.get_x_scale_derivation())
