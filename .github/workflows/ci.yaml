@@ -141,7 +141,7 @@ jobs:
 
       # see https://docs.pypi.org/trusted-publishers/
       - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.14.2
+        uses: pypa/gh-action-pypi-publish@v1.14.3
         with:
           packages-dir: dist
           print-hash: true
