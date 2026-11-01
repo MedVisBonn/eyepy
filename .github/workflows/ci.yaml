@@ -84,21 +84,21 @@ jobs:
       - name: Action | Semantic Version Release
         id: release
         # Adjust tag with desired version if applicable.
-        uses: python-semantic-release/python-semantic-release@v10.6.2
+        uses: python-semantic-release/python-semantic-release@v10.7.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           git_committer_name: "github-actions"
           git_committer_email: "actions@users.noreply.github.com"
 
       - name: Publish | Upload to GitHub Release Assets
-        uses: python-semantic-release/publish-action@v10.6.2
+        uses: python-semantic-release/publish-action@v10.7.0
         if: steps.release.outputs.released == 'true'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ steps.release.outputs.tag }}
 
       - name: Upload | Distribution Artifacts
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         if: steps.release.outputs.released == 'true'
         with:
           name: distribution-artifacts
@@ -125,7 +125,7 @@ jobs:
 
     steps:
       - name: Setup | Download Build Artifacts
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@v8.0.2
         id: artifact-download
         with:
           name: distribution-artifacts
@@ -141,7 +141,7 @@ jobs:
 
       # see https://docs.pypi.org/trusted-publishers/
       - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.14.2
+        uses: pypa/gh-action-pypi-publish@v1.14.3
         with:
           packages-dir: dist
           print-hash: true
@@ -159,10 +159,10 @@ jobs:
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-      - uses: actions/setup-python@v7.0.0
+      - uses: actions/setup-python@v7.1.0
         with:
           python-version: "3.14"
-      - uses: astral-sh/setup-uv@v10.0.1
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - run: uv sync --locked --no-default-groups --group doc
