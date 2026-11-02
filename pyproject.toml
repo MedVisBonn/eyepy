@@ -36,6 +36,7 @@ dependencies = [
     "construct>=2.10.68",
     "construct-typing>=0.8.1,<0.9",
     "imageio>=2.25.1,<3",
+    "pillow>=13.0.0",
 ]
 
 [project.optional-dependencies]
@@ -94,6 +95,7 @@ format = [
 ]
 notebook = [
     "jupyter>=1.0.0,<2",
+    "nbconvert>=7.17.2",
 ]
 dev = [
     {include-group = "test-all"},
