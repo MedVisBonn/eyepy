@@ -6,6 +6,9 @@ This section describes the setup of the eyepy project, mainly for internal docum
 ### Dependency management and packaging
 We use `uv` for dependency management and task running. Install `uv` in your environment (python -m pip install uv) and use the commands below.
 
+eyepy requires Python 3.11 or newer for installation, testing, and development.
+Python 3.10 reached end of life on October 1, 2026 and is no longer supported.
+
 Install all dependencies (including development dependencies):
 
 ```bash

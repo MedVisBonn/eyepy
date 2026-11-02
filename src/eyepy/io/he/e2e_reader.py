@@ -1595,7 +1595,7 @@ class HeE2eReader(AbstractContextManager):
     @property
     def patients(self) -> list[E2EPatientStructure]:
         """List of all patients in the file as E2EPatient objects."""
-        return [p for p in self.file_hierarchy.patients.values()]
+        return [*self.file_hierarchy.patients.values()]
 
     @property
     def studies(self) -> list[E2EStudyStructure]:

@@ -63,7 +63,7 @@ There are several options to customize the plot:
     + show enface projections or quantifications of OCT voxel annotaions such as drusen (`projections` and `quantifications` parameters)
     + show only a specific region of the localizer image (`region` parameter)
 
-The plotting function is documented here: [EyeVolume.plot][eyepy.core.EyeVolume.plot]
+The plotting function is documented here: [EyeVolume.plot][eyepy.core.eyevolume.EyeVolume.plot]
 
 !!! Warning "`region` parameter"
     The region parameter produces unexpected results in combination with `bscan_positions` and `bscan_region` parameters
@@ -76,7 +76,7 @@ B-scans can be plotted using the `plot` method of the `EyeBscan` object. You get
 ev[0].plot(layers=["BM", "RPE"])
 ```
 
-The plotting function is documented here: [EyeBscan.plot][eyepy.core.EyeBscan.plot]
+The plotting function is documented here: [EyeBscan.plot][eyepy.core.eyebscan.EyeBscan.plot]
 
 ## Modify Annotations
 

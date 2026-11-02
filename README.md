@@ -24,6 +24,9 @@ A powerful Python package for importing, analyzing, and visualizing retinal imag
 ## Getting Started
 
 ### Installation
+
+eyepy requires Python 3.11 or newer.
+
 **Attention:** If you want to use a version prior to 0.12.0 you have to install from the `eyepie` name instead. This is because we used `eyepie` as a package name on PyPI until the previous owner of the `eyepy` name on PyPI was so kind to transfer it to us.
 
 To install the latest version of eyepy run `pip install -U eyepy`. (It is `eyepie` for versions < 0.12.0)

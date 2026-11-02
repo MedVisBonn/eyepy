@@ -3,7 +3,7 @@ name: Quality
 on:
   workflow_call:
   pull_request:
-    branches: [master]
+    branches: [master, dev]
   push:
     branches: [dev]
 
@@ -15,10 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-python@v7.0.0
+      - uses: actions/setup-python@v7.1.0
         with:
-          python-version: "3.10"
-      - uses: astral-sh/setup-uv@v10.0.1
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - run: uv sync --locked --no-default-groups --group format
@@ -29,13 +29,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-python@v7.0.0
+      - uses: actions/setup-python@v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
-      - uses: astral-sh/setup-uv@v10.0.1
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - run: uv sync --python ${{ matrix.python-version }} --locked --no-default-groups --group test
@@ -46,10 +46,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-python@v7.0.0
+      - uses: actions/setup-python@v7.1.0
         with:
           python-version: "3.14"
-      - uses: astral-sh/setup-uv@v10.0.1
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - run: uv sync --python 3.14 --locked --all-extras --no-default-groups --group test-all
@@ -78,10 +78,10 @@ jobs:
             module: imagecodecs
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-python@v7.0.0
+      - uses: actions/setup-python@v7.1.0
         with:
           python-version: "3.14"
-      - uses: astral-sh/setup-uv@v10.0.1
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - run: uv sync --python 3.14 --locked --extra ${{ matrix.extra }} --no-default-groups
@@ -94,15 +94,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-python@v7.0.0
+      - uses: actions/setup-python@v7.1.0
         with:
-          python-version: "3.10"
-      - uses: astral-sh/setup-uv@v10.0.1
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - name: Resolve declared minimum direct dependencies
-        run: uv sync --python 3.10 --resolution lowest-direct --all-extras --no-default-groups --group test-all
-      - run: uv run --python 3.10 --frozen --all-extras --no-default-groups --group test-all pytest
+        run: uv sync --python 3.11 --resolution lowest-direct --all-extras --no-default-groups --group test-all
+      - run: uv run --python 3.11 --frozen --all-extras --no-default-groups --group test-all pytest
       - run: uv pip check --python .venv
 
   cross-platform-smoke:
@@ -113,10 +113,10 @@ jobs:
         os: [macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-python@v7.0.0
+      - uses: actions/setup-python@v7.1.0
         with:
           python-version: "3.14"
-      - uses: astral-sh/setup-uv@v10.0.1
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - run: uv sync --python 3.14 --locked --no-default-groups --group test
@@ -132,7 +132,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@v10.0.1
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - run: uv sync --locked --no-default-groups --group doc
@@ -149,7 +149,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@v10.0.1
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - run: uv lock --check
@@ -172,5 +172,5 @@ jobs:
               metadata_name = next(name for name in archive.namelist() if name.endswith('.dist-info/METADATA'))
               metadata = email.message_from_bytes(archive.read(metadata_name))
 
-          assert metadata['Requires-Python'] == '<4.0,>=3.10'
+          assert metadata['Requires-Python'] == '<4.0,>=3.11'
           PY
