@@ -107,7 +107,7 @@ def test_set_layers_on_eyebscan(eyevolume):
 
 # Test Bscan iteration
 def test_bscan_iteration(eyevolume):
-    bscans = [b for b in eyevolume]
+    bscans = [*eyevolume]
     bscans_2 = [eyevolume[i] for i in range(len(eyevolume))]
     assert bscans == bscans_2
 
