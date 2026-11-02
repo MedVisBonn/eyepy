@@ -29,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-python@v7.1.0
@@ -96,13 +96,13 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-python@v7.1.0
         with:
-          python-version: "3.10"
+          python-version: "3.11"
       - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - name: Resolve declared minimum direct dependencies
-        run: uv sync --python 3.10 --resolution lowest-direct --all-extras --no-default-groups --group test-all
-      - run: uv run --python 3.10 --frozen --all-extras --no-default-groups --group test-all pytest
+        run: uv sync --python 3.11 --resolution lowest-direct --all-extras --no-default-groups --group test-all
+      - run: uv run --python 3.11 --frozen --all-extras --no-default-groups --group test-all pytest
       - run: uv pip check --python .venv
 
   cross-platform-smoke:
@@ -172,5 +172,5 @@ jobs:
               metadata_name = next(name for name in archive.namelist() if name.endswith('.dist-info/METADATA'))
               metadata = email.message_from_bytes(archive.read(metadata_name))
 
-          assert metadata['Requires-Python'] == '<4.0,>=3.10'
+          assert metadata['Requires-Python'] == '<4.0,>=3.11'
           PY

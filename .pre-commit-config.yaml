@@ -30,7 +30,7 @@ repos:
   rev: v3.22.0
   hooks:
     - id: pyupgrade
-      args: [--py310-plus]
+      args: [--py311-plus]
 - repo: https://github.com/PyCQA/docformatter
   rev: v1.7.8
   hooks:
