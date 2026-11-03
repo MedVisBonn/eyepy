@@ -12,7 +12,7 @@ _IMPORT_FUNCTIONS = [
     'import_topcon_fda',
 ]
 
-__all__ = _IMPORT_FUNCTIONS + ['HeVolReader', 'HeVolWriter', 'HeXmlReader', 'HeE2eReader']
+__all__ = _IMPORT_FUNCTIONS + ['HeVolReader', 'HeVolWriter', 'HeXmlReader', 'HeE2eReader', 'HeE2eWriter', 'HeXmlWriter']
 
 
 def __dir__():
@@ -23,7 +23,7 @@ def __getattr__(name):
     if name in _IMPORT_FUNCTIONS:
         from . import import_functions
         return getattr(import_functions, name)
-    if name in ('HeVolReader', 'HeVolWriter', 'HeXmlReader', 'HeE2eReader'):
+    if name in ('HeVolReader', 'HeVolWriter', 'HeXmlReader', 'HeE2eReader', 'HeE2eWriter', 'HeXmlWriter'):
         from . import he
         return getattr(he, name)
     raise AttributeError(f'module {__name__!r} has no attribute {name!r}')

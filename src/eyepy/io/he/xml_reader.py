@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import functools
 import logging
 from pathlib import Path
 import xml.etree.ElementTree as ElementTree
@@ -192,11 +191,10 @@ xml_bscan_format = {
 }
 
 
-@functools.lru_cache(maxsize=4, typed=False)
 def get_xml_root(filepath) -> ElementTree.Element:
-    with open(filepath, encoding='utf-8', errors='replace') as mf:
-        tree = ElementTree.parse(mf)
-    return tree.getroot()
+    parser = ElementTree.XMLParser(target=ElementTree.TreeBuilder(
+        insert_comments=True, insert_pis=True))
+    return ElementTree.parse(filepath, parser=parser).getroot()
 
 
 class HeXmlReader:
@@ -212,18 +210,27 @@ class HeXmlReader:
                 raise ValueError(
                     'There is more than one .xml file in the given folder.')
             path = xmls[0]
+        from eyepy.io.he._native import SourceFile
+
         self.path = path
+        self._source = SourceFile.capture(path)
         self.xml_root: ElementTree.Element = get_xml_root(self.path)
 
+        self._source.verify()
+        self._xml_snapshot = ElementTree.tostring(self.xml_root, encoding='utf-8')
+        self.body = self.xml_root.find('BODY')
+        if self.body is None:
+            raise ValueError('The Heidelberg XML document has no BODY element')
+
         self.parsed_values = {
-            name: func(self.xml_root[0].findall(xpath))
+            name: func(self.body.findall(xpath))
             for name, (xpath, func) in xml_format.items()
         }
 
     @property
     def bscan_meta(self) -> list[EyeBscanMeta]:
         bscan_meta = []
-        for bscan in self.xml_root[0].findall(".//ImageType[Type='OCT'].."):
+        for bscan in self.body.findall(".//ImageType[Type='OCT'].."):
             parsed_values = {
                 name: func(bscan.findall(xpath))
                 for name, (xpath, func) in xml_bscan_format.items()
@@ -282,7 +289,7 @@ class HeXmlReader:
     @property
     def localizer(self) -> EyeEnface:
         localizer_pattern = ".//ImageType[Type='LOCALIZER']../ImageData/ExamURL"
-        localizer_name = self.xml_root[0].find(localizer_pattern).text.split(
+        localizer_name = self.body.find(localizer_pattern).text.split(
             '\\')[-1]
         import imageio.v3 as iio
         localizer = iio.imread(self.path.parent / localizer_name)
@@ -307,7 +314,7 @@ class HeXmlReader:
         layer_heights = {}
         layer_manual = {}
         for index, bscan_root in enumerate(
-                self.xml_root[0].findall(".//ImageType[Type='OCT']..")):
+                self.body.findall(".//ImageType[Type='OCT']..")):
             scan_name = bscan_root.find('./ImageData/ExamURL').text.split(
                 '\\')[-1]
             import imageio.v3 as iio

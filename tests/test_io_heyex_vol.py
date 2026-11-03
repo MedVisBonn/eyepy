@@ -26,6 +26,17 @@ def test_heyex_vol_import(vol_volume):
     assert vol_volume.linear_data_available
 
 
+def test_vol_export_uses_e2e_ui_quality_and_consistent_header_sizes(vol_volume, tmp_path):
+    for meta in vol_volume.meta['bscan_meta']:
+        meta['quality'] = .84  # Legacy E2E field is not the displayed quality.
+        meta['quality_ui'] = 29.5
+    path = tmp_path / 'quality.vol'
+    HeVolWriter(vol_volume).write(path)
+    parsed = HeVolReader(path).parsed_file
+    assert all(bscan.quality == 29.5 for bscan in parsed.bscans)
+    assert all(bscan.bscan_hdr_size == parsed.bscan_hdr_size for bscan in parsed.bscans)
+
+
 def test_vol_export_preserves_float32_bits_and_layers(vol_volume, tmp_path):
     volume = vol_volume
     # Include values that collapse into the same display bin, special values,
@@ -88,7 +99,7 @@ def test_xml_export_requires_explicit_approximation_and_preserves_greys(tmp_path
     assert path.read_bytes() == b'existing file'
     # Export uses stored display greys, not a user-selected visualization.
     volume.set_intensity_transform(lambda values: np.zeros(values.shape, np.uint8))
-    HeVolWriter(volume, allow_approximate=True).write(path)
+    HeVolWriter(volume, allow_approximate=True).write(path, overwrite=True)
     loaded = HeVolReader(path).volume
     np.testing.assert_array_equal(loaded.data, original)
     np.testing.assert_array_equal(volume.raw_data, original)

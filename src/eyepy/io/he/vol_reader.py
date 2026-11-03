@@ -57,9 +57,10 @@ bscan_format = cs.Struct(
     'Intra volume transformation matrix. The values are only available for volume and radial scans and if alignment is turned off, otherwise the values are initialized to 0.',
     '__empty' / cs.Padding(168) * 'Spare bytes for future use.',
     # cs.Probe(cs.this.bscan_hdr.sizeof(cs.this)),
+    '_seg_padding' / cs.Padding(cs.this.seg_offset - 256),
     'layer_segmentations' / Segmentations *
     'Layer segmentations for num_seg Layers. If layers are not segmented the data is empty',
-    '__empty' / cs.Padding(cs.this.bscan_hdr_size - 256 -
+    '__empty' / cs.Padding(cs.this.bscan_hdr_size - cs.this.seg_offset -
                            cs.this.num_seg * 4 * cs.this._.size_x) *
     "B-scan data starts after 'bscan_hdr_size' bytes from the start of the"
     'B-scan. This header contains 256 bytes for general information, then "num_seg" '
@@ -192,10 +193,16 @@ TYPE_INTENSITY_MAPPING = {
 class HeVolReader:
 
     def __init__(self, path, type: Literal['oct', 'octa'] = 'oct'):
+        from eyepy.io.he._native import SourceFile
+        from eyepy.io.he._vol_native import capture_layout
+
         self.path = path
+        self._source = SourceFile.capture(path)
         self.intensity_transform = TYPE_INTENSITY_MAPPING.get(type, 'vol')
         with open(self.path, 'rb') as vol_file:
             self.parsed_file = vol_format.parse_stream(vol_file)
+        self._source.verify()
+        self._native_layout = capture_layout(self)
 
     @property
     def volume(self) -> EyeVolume:
@@ -315,8 +322,9 @@ class HeVolWriter:
     and unknown encodings cannot be exported.
     """
 
-    def __init__(self, volume: EyeVolume, *, allow_approximate: bool = False):
-        self.volume = volume
+    def __init__(self, volume: EyeVolume | HeVolReader, *, allow_approximate: bool = False):
+        self.reader = volume if isinstance(volume, HeVolReader) else None
+        self.volume = None if self.reader is not None else volume
         self.allow_approximate = allow_approximate
 
     def _validate_encoding(self):
@@ -330,12 +338,17 @@ class HeVolWriter:
                 'Use allow_approximate=True to export representative VOL values.')
         self.volume._require_linear_data()
 
-    def write(self, path):
-        # Validate/build before opening the destination, so a rejected
-        # conversion cannot truncate an existing file.
-        payload = self.bytes
-        with open(path, 'wb') as mf:
-            mf.write(payload)
+    def write(self, path, *, overwrite=False):
+        from eyepy.io.he._native import write_file
+        from eyepy.io.he._vol_native import patches
+
+        if self.reader is not None:
+            source = self.reader._source
+            write_file(path, lambda output: source.rewrite(output, patches(self.reader)),
+                       sources=[source], overwrite=overwrite)
+        else:
+            payload = self.bytes
+            write_file(path, lambda output: output.write(payload), overwrite=overwrite)
 
     @staticmethod
     def _date(value):
@@ -349,6 +362,9 @@ class HeVolWriter:
 
     @property
     def bytes(self):
+        if self.reader is not None:
+            from eyepy.io.he._vol_native import patches
+            return self.reader._source.build(patches(self.reader))
         self._validate_encoding()
         return vol_format.build(
             dict(size_x=self.volume.size_x,
@@ -366,6 +382,7 @@ class HeVolWriter:
                  scan_position=self.volume.localizer.meta['laterality'],
                  exam_time=self._date(self.volume.meta['exam_time']),
                  scan_pattern=0,
+                 bscan_hdr_size=256 + 17 * 4 * self.volume.size_x,
                  id='unknown',
                  reference_id='unknown',
                  pid=self.volume.meta['patient']['pid'],
@@ -393,7 +410,7 @@ class HeVolWriter:
                  end_x=bscan.meta['end_pos'][0],
                  end_y=bscan.meta['end_pos'][1],
                  num_seg=17,
-                 quality=bscan.meta['quality'],
+                 quality=bscan.meta.get('quality_ui', bscan.meta['quality']),
                  shift=0,
                  iv_transformation=[0, 0, 0, 0, 0, 0],
                  layer_segmentations=self._segmentations_from_bscan(bscan),

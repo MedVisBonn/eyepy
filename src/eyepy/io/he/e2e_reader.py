@@ -1643,12 +1643,16 @@ class HeE2eReader(AbstractContextManager):
         Args:
             path: Path to the e2e file.
         """
+        from eyepy.io.he._native import SourceFile
+
         self.path = Path(path)
+        self._source = SourceFile.capture(self.path)
         self.file_object: BufferedReader
 
         # Index file to create hierarchy
         self.file_hierarchy = E2EFileStructure()
         self._index_file()
+        self._source.verify()
 
     def _index_file(self) -> None:
         with open(self.path, 'rb') as f:
@@ -1698,7 +1702,7 @@ class HeE2eReader(AbstractContextManager):
     @property
     def patients(self) -> list[E2EPatientStructure]:
         """List of all patients in the file as E2EPatient objects."""
-        return [p for p in self.file_hierarchy.patients.values()]
+        return [*self.file_hierarchy.patients.values()]
 
     @property
     def studies(self) -> list[E2EStudyStructure]:
