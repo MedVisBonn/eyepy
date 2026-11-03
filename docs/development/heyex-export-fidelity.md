@@ -101,3 +101,29 @@ matches and identified the remaining image, layer, geometry and calibration
 differences. It also established across all 460 VOL B-scans that Type10004's
 `quality_ui` matches exported VOL quality exactly; the historical `quality`
 field does not. The VOL writer now uses that decoded UI quality when present.
+
+### Follow-up acquisition references
+
+Some E2E series identify their acquisition with a Type10005 key and identify
+their reference acquisition in Type10025. The key combines a progression UUID
+with the original 64-bit Windows timestamp. Matching on a Python `datetime`
+would discard the final timestamp digit and can conflate distinct acquisitions.
+
+```python
+with HeE2eReader('baseline.e2e') as baseline_reader, HeE2eReader('followup.e2e') as followup_reader:
+    baseline = baseline_reader.series[0]
+    followup = followup_reader.series[0]
+    reference = followup.resolve_reference([baseline, followup])
+```
+
+Keep both readers open while accessing their series. `resolve_reference()`
+returns the series itself when there is no reference key or the key explicitly
+refers to the same acquisition. An external reference must resolve to exactly
+one supplied series. Missing candidates, ambiguous matches and malformed keys
+raise `ValueError`; filenames and scan dates are never used to guess a match.
+`get_acquisition_key()` and `get_reference_key()` expose the immutable keys for
+applications that manage their own acquisition index.
+
+This resolves provenance only. It does not change calibration or establish an
+exact metric conversion. In the private paired fixtures the follow-up resolves
+to the supplied baseline, while four other series have no reference records.

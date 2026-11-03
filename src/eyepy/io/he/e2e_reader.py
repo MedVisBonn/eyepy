@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterable
 from contextlib import AbstractContextManager
 import dataclasses
 import datetime
@@ -14,6 +15,7 @@ import sys
 from textwrap import indent
 import traceback
 from typing import Any, Optional, Union
+from uuid import UUID
 import warnings
 
 import construct as cs
@@ -54,6 +56,23 @@ class _E2EScalingError(ValueError):
 
 class _E2ERegistrationError(ValueError):
     """Invalid localizer registration metadata."""
+
+
+@dataclasses.dataclass(frozen=True)
+class E2EAcquisitionKey:
+    """Exact progression/acquisition key, retaining all Windows timestamp bits.
+
+    Type10005 stores the key at offset 0. Type10025 stores its reference
+    acquisition's key at offset 8. A Python datetime is insufficient for
+    matching because it cannot preserve the native 100 ns resolution.
+    """
+
+    progression_id: UUID
+    windows_ticks: int
+
+    def as_dict(self) -> dict[str, str | int]:
+        return dict(progression_id=str(self.progression_id),
+                    windows_ticks=self.windows_ticks)
 
 
 # Occurence of type ids. This is used by the inspect function.
@@ -1435,6 +1454,53 @@ class E2ESeriesStructure(E2EStructureMixin):
         except (ValueError, KeyError, cs.ConstructError) as error:
             raise _E2ERegistrationError(
                 f'Invalid E2E localizer registration: {error}') from error
+
+    def _get_acquisition_key(self, record_type: int, offset: int) -> E2EAcquisitionKey | None:
+        folders = self.folders.get(record_type, [])
+        if not folders:
+            return None
+        if len(folders) != 1:
+            raise ValueError(f'Ambiguous Type{record_type} acquisition key')
+        raw = folders[0].get_bytes()
+        if len(raw) < offset + 24:
+            raise ValueError(f'Truncated Type{record_type} acquisition key')
+        key = raw[offset:offset + 24]
+        if key == bytes(24):
+            return None
+        return E2EAcquisitionKey(UUID(bytes_le=key[:16]),
+                                 struct.unpack_from('<Q', key, 16)[0])
+
+    def get_acquisition_key(self) -> E2EAcquisitionKey | None:
+        """Return the native Type10005 progression/acquisition key, if present."""
+        return self._get_acquisition_key(10005, 0)
+
+    def get_reference_key(self) -> E2EAcquisitionKey | None:
+        """Return the acquisition referenced by Type10025, if present."""
+        return self._get_acquisition_key(10025, 8)
+
+    def resolve_reference(
+            self, candidates: Iterable[E2ESeriesStructure] = ()) -> E2ESeriesStructure:
+        """Resolve the explicit reference acquisition without guessing a baseline.
+
+        Candidates may be series from other open E2E readers. Absent
+        reference metadata or an explicit self-reference returns this
+        series. An external reference requires one matching candidate;
+        missing or ambiguous matches raise rather than silently
+        substituting the follow-up's calibration. This identifies
+        provenance, not an exact metric calibration algorithm.
+        """
+        key = self.get_reference_key()
+        if key is None or key == self.get_acquisition_key():
+            return self
+        matches = {}
+        for candidate in candidates:
+            if candidate.get_acquisition_key() == key:
+                matches[id(candidate)] = candidate
+        if not matches:
+            raise ValueError('The E2E reference acquisition is required but was not supplied')
+        if len(matches) != 1:
+            raise ValueError('Multiple supplied E2E acquisitions match the reference key')
+        return next(iter(matches.values()))
 
     def get_localizer(self, registered: bool = False) -> EyeEnface:
         """Return EyeEnface object for the localizer image."""
