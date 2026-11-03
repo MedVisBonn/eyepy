@@ -57,11 +57,22 @@ noncanonical zero representations. Unrepresentable samples and layout-changing
 edits are rejected. Constructing an E2E database from an `EyeVolume` remains
 unfinished.
 
-For XML, unchanged documents retain their original bytes and images retain
-all their original encoded bytes. Metadata edits to `reader.xml_root` are
-serialized as XML, preserving comments and processing instructions inside the
-root. Native image-reference edits currently require a future asset-editing
-API and are rejected. XML generation from a different format remains unfinished.
+For XML, unchanged documents retain their original bytes and unchanged images
+retain all their original encoded bytes. Metadata edits to `reader.xml_root`
+are serialized as XML, preserving comments and processing instructions inside
+the root. `replace_image(filename, display)` explicitly replaces an existing
+TIFF with a 2D uint8 grayscale image of the dimensions recorded in the XML.
+It uses the observed HEYEX RGB TIFF encoding profile and requires `eyepy[tiff]`.
+The caller supplies the rendered image; the writer does not infer its intensity
+curve or registration. Adding or changing image references is still rejected.
+Complete XML generation from a different format remains unfinished.
+
+```python
+reader = HeXmlReader('source.xml')
+writer = HeXmlWriter(reader)
+writer.replace_image(reader.bscan_meta[0]['scan_name'], rendered_bscan)
+writer.write('edited_export_directory')
+```
 
 ## Verification
 
@@ -72,6 +83,36 @@ rewritten exports re-import successfully. Synthetic tests additionally cover
 opaque header/trailer bytes, sub-microsecond timestamps, NaN payloads,
 noncanonical E2E zeros, changed pixels/checksums, nondefault segmentation
 offsets, and source/destination protection.
+
+### TIFF serialization
+
+The TIFF encoder reconstructs the observed HEYEX layout from rendered pixels:
+little-endian RGB grayscale, LZW with horizontal prediction, 8 KiB nominal
+strips, 16 explicitly ordered IFD entries, 96 dpi rationals, and zero alignment
+padding. It also reproduces HEYEX's terminal LZW code width when the final data
+code lies at a dictionary-growth boundary. It does not copy compressed data
+or TIFF metadata from the paired target.
+
+Two checks deliberately isolate encoding from rendering:
+
+* Re-encoding the decoded pixels of all 538 reference TIFFs reconstructs every
+  complete TIFF byte-for-byte. This proves serialization for those fixtures;
+  it does not prove E2E conversion.
+* Rendering from E2E and encoding those pixels reconstructs 416 complete TIFFs
+  byte-for-byte across four ordinary paired exports (412 OCT and 4 localizers).
+  The follow-up's 122 TIFFs remain different and are included as failures.
+
+Both checks pass with imagecodecs 2025.3.30 and 2026.8.16. The implementation
+uses the minimum supported LZW API rather than depending on newer TIFF-wrapper
+arguments. Run them with:
+
+```bash
+PYTHONPATH=src python scripts/verify_heyex_tiff_encoding.py manifest.json report.json
+```
+
+The report records image hashes and explicitly leaves full cross-format writer
+verification false. XML metadata generation, calibration and follow-up geometry
+are separate requirements.
 
 Run the audit with a private manifest mapping format names to alias/path pairs:
 
@@ -127,3 +168,12 @@ applications that manage their own acquisition index.
 This resolves provenance only. It does not change calibration or establish an
 exact metric conversion. In the private paired fixtures the follow-up resolves
 to the supplied baseline, while four other series have no reference records.
+
+### Patient metadata
+
+Type9's birth date is a float64 OLE Automation day count at offset 93, between
+the 11-byte title and the sex byte at offset 101. The reader now exposes that
+complete value as `birthdate`, and `date_of_birth` returns its ISO calendar date.
+The historical layout read only its upper four bytes as an integer. Decoded
+dates match all five paired XML exports and all four paired VOL exports.
+Unknown trailing patient-record bytes remain available as `rest`.

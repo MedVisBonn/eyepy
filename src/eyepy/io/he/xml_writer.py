@@ -7,6 +7,8 @@ import shutil
 import tempfile
 import xml.etree.ElementTree as ElementTree
 
+import numpy as np
+
 from eyepy.io.he._native import SourceFile
 from eyepy.io.he._native import write_file
 from eyepy.io.he.xml_reader import HeXmlReader
@@ -16,10 +18,11 @@ class HeXmlWriter:
     """Rewrite a native XML document and every referenced image asset.
 
     An unchanged XML tree retains the exact original document bytes.
-    Assets retain their original bytes, including TIFF tags/compression
-    and JPEG encoding. XML edits are serialized as XML; semantic changes
-    cannot retain the original document's byte identity. The destination
-    is a new directory.
+    Unchanged assets retain their original bytes, including TIFF
+    tags/compression and JPEG encoding. Explicit TIFF replacements use
+    the observed HEYEX encoding profile. XML edits are serialized as
+    XML; semantic changes cannot retain the original document's byte
+    identity. The destination is a new directory.
     """
 
     def __init__(self, reader: HeXmlReader):
@@ -37,6 +40,33 @@ class HeXmlWriter:
             if name not in self.assets:
                 self.assets[name] = SourceFile.capture(reader.path.parent / name)
         self._references = self._image_references()
+        self._replacements = {}
+
+    def replace_image(self, name: str, display: np.ndarray):
+        """Replace a referenced TIFF with rendered uint8 grayscale pixels.
+
+        ``name`` is the asset's filename, without directories.
+        Dimensions must agree with every corresponding XML image entry.
+        No display curve, registration or calibration is inferred here.
+        """
+        from eyepy.io.he._xml_tiff import encode_heyex_tiff
+
+        if name not in self.assets:
+            raise ValueError('Image is not referenced by the source XML')
+        if Path(name).suffix.lower() not in {'.tif', '.tiff'}:
+            raise ValueError('Replacement encoding is only available for TIFF images')
+        display = np.asarray(display)
+        shapes = []
+        for image in self.reader.xml_root.findall('.//Image'):
+            reference = image.findtext('ImageData/ExamURL')
+            if reference is not None and reference.replace('\\', '/').rsplit('/', 1)[-1] == name:
+                context = image.find('OphthalmicAcquisitionContext')
+                if context is None or context.findtext('Height') is None or context.findtext('Width') is None:
+                    raise ValueError('XML image dimensions are required for replacement')
+                shapes.append((int(context.findtext('Height')), int(context.findtext('Width'))))
+        if not shapes or any(display.shape != shape for shape in shapes):
+            raise ValueError('Replacement image dimensions disagree with the XML')
+        self._replacements[name] = encode_heyex_tiff(display)
 
     def _image_references(self):
         return tuple(element.text for element in
@@ -69,7 +99,11 @@ class HeXmlWriter:
             write_file(temporary / self.reader.path.name,
                        lambda output: output.write(xml))
             for name, source in self.assets.items():
-                write_file(temporary / name, source.rewrite)
+                if name in self._replacements:
+                    payload = self._replacements[name]
+                    write_file(temporary / name, lambda output: output.write(payload))
+                else:
+                    write_file(temporary / name, source.rewrite)
             self.source.verify()
             for source in self.assets.values():
                 source.verify()

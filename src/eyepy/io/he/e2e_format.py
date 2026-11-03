@@ -361,14 +361,31 @@ class Type9(DataclassMixin, TypeMixin):
 
     Size: 131 bytes
 
-    Notes:
+    The surname occupies 51 bytes and the title 11 bytes. Offset 93 holds
+    an eight-byte OLE Automation date: days since 1899-12-30. The previous
+    layout treated the upper four bytes as an integer birth date.
     """
 
     firstname: str = csfield(Latin1String(31))
-    surname: str = csfield(Latin1String(66))
-    birthdate: int = csfield(cs.Int32ul)
+    surname: str = csfield(Latin1String(51))
+    title: str = csfield(Latin1String(11))
+    birthdate: float = csfield(cs.Float64l, doc='OLE Automation days since 1899-12-30')
     sex: str = csfield(cs.PaddedString(1, 'ascii'))
     patient_id: str = csfield(Latin1String(25))
+    rest: bytes = csfield(cs.GreedyBytes)
+
+    @property
+    def date_of_birth(self) -> str:
+        """ISO date from the native day count, including pre-epoch dates."""
+        if not np.isfinite(self.birthdate):
+            raise ValueError('Invalid E2E patient birth date')
+        try:
+            # OLE's negative fractional dates use the integral day component
+            # with a positive time of day; truncation gives its calendar date.
+            return (datetime.date(1899, 12, 30) +
+                    datetime.timedelta(days=int(self.birthdate))).isoformat()
+        except OverflowError as error:
+            raise ValueError('Invalid E2E patient birth date') from error
 
 
 type9_format = DataclassStruct(Type9)

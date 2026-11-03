@@ -255,6 +255,14 @@ only the matching-eye corneal radius enters the scale calculation.
 
 ## HEYEX metadata provenance
 
+Type9 patient records store first names at offset 0 (31 bytes), surname at
+31 (51 bytes), title at 82 (11 bytes), a float64 OLE Automation birth date at
+93, sex at 101, and the patient identifier at 102. `Type9.birthdate` is the
+native day count from 1899-12-30; `Type9.date_of_birth` is its ISO calendar date.
+The reader includes that date in the HEYEX-style patient metadata. This layout
+was checked against five paired XML and four paired VOL exports; trailing
+undecoded record bytes are retained as `rest`.
+
 The reader provides a HEYEX-style view and a corresponding source map:
 
 ```python

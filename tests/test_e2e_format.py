@@ -10,6 +10,7 @@ from eyepy.io.he.e2e_format import chunk_format
 from eyepy.io.he.e2e_format import datacontainer_format
 from eyepy.io.he.e2e_format import type5_format
 from eyepy.io.he.e2e_format import type7_format
+from eyepy.io.he.e2e_format import type9_format
 from eyepy.io.he.e2e_format import Type39
 from eyepy.io.he.e2e_format import type10004_format
 
@@ -195,3 +196,29 @@ def test_type9_parses_latin1_patient_strings():
     assert parsed.item.firstname == 'J\xf6rg'
     assert parsed.item.surname == 'M\xfcller'
     assert parsed.item.patient_id == 'P\xc4T-1'
+
+
+@pytest.mark.parametrize('days,expected', [(0., '1899-12-30'),
+                                         (-2.25, '1899-12-28'),
+                                         (2.75, '1900-01-01'),
+                                         (36526., '2000-01-01')])
+def test_type9_decodes_full_ole_birthdate_without_overlapping_title(days, expected):
+    raw = (b'Firstname'.ljust(31, b'\0') + b'Surname'.ljust(51, b'\0') +
+           b'Prof.'.ljust(11, b'\0') + struct.pack('<d', days) + b'F' +
+           b'example-id'.ljust(25, b'\0') + b'\x12\x34\x56\x78')
+    assert len(raw) == 131
+    patient = type9_format.parse(raw)
+    assert patient.surname == 'Surname'
+    assert patient.title == 'Prof.'
+    assert patient.birthdate == days
+    assert patient.date_of_birth == expected
+    assert patient.sex == 'F'
+    assert patient.patient_id == 'example-id'
+    assert type9_format.build(patient) == raw
+
+
+@pytest.mark.parametrize('days', [float('nan'), float('inf'), 1e100])
+def test_type9_rejects_invalid_birthdate_without_exposing_its_value(days):
+    raw = bytes(93) + struct.pack('<d', days) + b'M' + bytes(25)
+    with pytest.raises(ValueError, match='Invalid E2E patient birth date'):
+        _ = type9_format.parse(raw).date_of_birth

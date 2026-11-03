@@ -887,7 +887,8 @@ class E2ESeriesStructure(E2EStructureMixin):
                 if patient_data is not None else None,
                 'Patient ID': patient_data.patient_id.strip()
                 if patient_data is not None else None,
-                'Date of Birth': None,
+                'Date of Birth': patient_data.date_of_birth
+                if patient_data is not None else None,
                 'Sex': patient_data.sex.strip() if patient_data is not None else None,
             },
             'Container': {
@@ -984,13 +985,14 @@ class E2ESeriesStructure(E2EStructureMixin):
 
         sources = {
             'Patient': {
-                'First Name': 'Type9@patient+offset0:ascii'
+                'First Name': 'Type9@patient+offset0:latin1'
                 if patient_data is not None else None,
-                'Surname': 'Type9@patient+offset31:ascii'
+                'Surname': 'Type9@patient+offset31:latin1'
                 if patient_data is not None else None,
-                'Patient ID': 'Type9@patient+offset106:ascii'
+                'Patient ID': 'Type9@patient+offset102:latin1'
                 if patient_data is not None else None,
-                'Date of Birth': None,
+                'Date of Birth': 'Type9@patient+offset93:float64 OLE Automation date'
+                if patient_data is not None else None,
                 'Sex': 'Type9@patient+offset101:ascii'
                 if patient_data is not None else None,
             },
