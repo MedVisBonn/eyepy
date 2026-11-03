@@ -1562,6 +1562,23 @@ class E2ESeriesStructure(E2EStructureMixin):
                     meta[key] = tuple(
                         (np.asarray(meta[key]) + field_deg / 2) * mm_per_degree)
                 meta['pos_unit'] = 'mm'
+            patient_folder = self._first_patient_folder(TypesEnum.patient)
+            patient_data = patient_folder.data if patient_folder is not None else None
+            patient = (dict(firstname=patient_data.firstname,
+                            lastname=patient_data.surname,
+                            patient_id=patient_data.patient_id,
+                            dob=patient_data.date_of_birth)
+                       if patient_data is not None else {})
+            exam_time = self._series_exam_time_iso()
+            acquisition_key = self.get_acquisition_key()
+            reference_key = self.get_reference_key()
+            native_dates = {}
+            if acquisition_key is not None and exam_time is not None:
+                native_dates.update(exam_time=exam_time,
+                                    exam_time_ticks=acquisition_key.windows_ticks)
+            if patient_data is not None:
+                native_dates.update(dob=patient_data.date_of_birth + 'T00:00:00',
+                                    dob_days=patient_data.birthdate)
             self._meta = EyeVolumeMeta(
                 scale_x=self._x_scale_mm(),
                 scale_y=bscan_meta[0]['scale_y'],
@@ -1569,7 +1586,12 @@ class E2ESeriesStructure(E2EStructureMixin):
                 scale_unit='mm',
                 laterality=self.laterality(),
                 visit_date=None,
-                exam_time=None,
+                exam_time=exam_time,
+                patient=patient,
+                prog_id=acquisition_key.progression_id.hex if acquisition_key is not None else '',
+                heyex_native_dates=native_dates,
+                e2e_acquisition_key=acquisition_key.as_dict() if acquisition_key is not None else None,
+                e2e_reference_key=reference_key.as_dict() if reference_key is not None else None,
                 bscan_meta=bscan_meta,
                 intensity_transform='e2e',
                 intensity_encoding='e2e_raw',

@@ -177,3 +177,67 @@ complete value as `birthdate`, and `date_of_birth` returns its ISO calendar date
 The historical layout read only its upper four bytes as an integer. Decoded
 dates match all five paired XML exports and all four paired VOL exports.
 Unknown trailing patient-record bytes remain available as `rest`.
+
+### Generated VOL files and database context
+
+Importing an E2E into another HEYEX database can assign new patient, visit and
+scan IDs. The supplied pairs were exported after such an import. Matching those
+IDs requires the receiving database's context; acquisition identity does not
+determine its local counters or visit timestamp.
+
+```python
+from eyepy.io import HeE2eReader, HeVolExportContext, HeVolWriter
+
+context = HeVolExportContext(
+    pid=101, vid=202, id='303', reference_id='302',
+    visit_date='2026-01-01T09:00:00', scan_pattern=3,
+)
+with HeE2eReader('source.e2e') as reader:
+    volume = reader.series[0].get_volume()
+    HeVolWriter(volume, export_context=context).write('generated.vol')
+```
+
+The identifiers and timestamp above are examples, not acquisition-derived
+defaults. Optional context fields override source metadata when supplied.
+`patient_id` is the receiving database's user-defined patient identifier;
+`pid`, `vid`, `id` and `reference_id` are its internal identifiers. E2E and VOL
+scan-pattern enums differ, so E2E conversion requires an explicit VOL
+`scan_pattern` when no VOL-native value is available. A self-reference maps to
+the newly assigned scan ID; external references require `reference_id` from the
+receiving database. Missing examination timestamps and visit timestamps must
+be supplied explicitly rather than substituted with a B-scan timestamp or date.
+
+Generated files use `HSF-OCT-103` and `HSF-BS-103` signatures, the available
+segmentation slots, and `0x7f7fffff` for missing heights. B-scan matrices are
+retained as metadata alongside already registered pixels. Layer export reads
+the volume annotations directly; it does not depend on which lazy B-scan layer
+views the caller has accessed. Later layer slots 17 and 18 are supported.
+Writing streams one generated B-scan at a time. A newly generated header uses
+the observed `80 * width` allocation, enlarged when required to fit its vectors;
+known source header sizes and segmentation offsets are retained when available.
+
+VOL imports now carry known identifiers, scan pattern, registration metadata
+and exact timestamp/day-count scalars through `EyeVolume` and `.eye` saving.
+Those scalar encodings are retained only while the corresponding metadata is
+unchanged; explicit edits or context overrides take precedence. This preserves
+sub-microsecond examination time bits that a `datetime` cannot represent.
+The E2E and VOL Windows-time adapters use integer arithmetic for representable
+microseconds, avoiding the floating-point drift of the previous adapters.
+For exact receiving-database scalars, context accepts `exam_time_ticks` (100 ns
+units since 1601-01-01) and `visit_date_days` (float64 OLE Automation days).
+Supply the raw scalar or its ISO/datetime counterpart, not both. Explicit raw
+context values retain every encoded bit; an explicit datetime replaces any
+retained source encoding even when its displayed time is unchanged.
+Uninterpreted reserved bytes and trailing grids still require native
+`HeVolWriter(reader)` rewriting.
+
+`scripts/audit_heyex_vol_generation.py` writes and reimports complete VOL files
+using E2E source data and explicitly synthetic database context. Across all four
+paired VOL exports, all 460 entire OCT arrays match in every float32 bit,
+including invalid padding. Quality and six registration coefficients also match
+for all 460 B-scans; signatures, B-scan header sizes, segmentation counts and
+birth-date scalar bytes match every pair. Examination time bytes match the two
+E2Es that provide Type10005 timestamps. The other two timestamps and all local
+database IDs remain unverified context values. Layer geometry, calibration,
+endpoints and the follow-up localizer still differ. The audit reports these
+differences and leaves full cross-format writer verification false.

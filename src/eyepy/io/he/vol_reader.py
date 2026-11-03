@@ -7,7 +7,9 @@ https://github.com/FabianRathke/octSegmentation/blob/master/collector/HDEVolImpo
 from __future__ import annotations
 
 import datetime
+import io
 import logging
+import struct
 from typing import Literal
 import warnings
 
@@ -15,7 +17,6 @@ import construct as cs
 import numpy as np
 import skimage
 
-from eyepy import __version__
 from eyepy import EyeBscanMeta
 from eyepy import EyeEnface
 from eyepy import EyeEnfaceMeta
@@ -23,6 +24,7 @@ from eyepy import EyeVolume
 from eyepy import EyeVolumeMeta
 from eyepy.core.eyebscan import EyeBscan
 from eyepy.core.utils import display_to_vol_linear_approx
+from eyepy.io.he._vol_export import HeVolExportContext
 from eyepy.io.utils import _compute_localizer_oct_transform
 from eyepy.io.utils import Bscan
 from eyepy.io.utils import FloatDate
@@ -34,7 +36,7 @@ logger = logging.getLogger('eyepy.io.HeVolReader')
 
 bscan_format = cs.Struct(
     'version' /
-    cs.Default(cs.PaddedString(12, 'ascii'), f'ep-v{__version__}'.ljust(12)) *
+    cs.Default(cs.PaddedString(12, 'ascii'), 'HSF-BS-103') *
     'Version identifier',
     'bscan_hdr_size' / cs.Int32ul *
     'Size of the B-Scan header in bytes. It is identical to the same value of the file header.',
@@ -71,7 +73,7 @@ bscan_format = cs.Struct(
 
 vol_format = cs.Struct(
     'version' /
-    cs.Default(cs.PaddedString(12, 'ascii'), f'ep-v{__version__}'.ljust(12)) *
+    cs.Default(cs.PaddedString(12, 'ascii'), 'HSF-OCT-103') *
     'Version identifier: HSF-OCT-xxx',
     'size_x' / cs.Int32ul *
     'Number of A-Scans in each B-Scan, i.e. B-Scan width in pixel',
@@ -148,6 +150,12 @@ vol_format = cs.Struct(
     'localizer' / Localizer * 'NIR localizer image',
     'bscans' / bscan_format[cs.this.n_bscans],
 )
+
+# Building a large volume must not retain every generated B-scan array in
+# Construct's return value. Parsing still uses vol_format's ordinary Array.
+vol_write_format = cs.Struct(
+    *vol_format.subcons[:-1],
+    'bscans' / cs.Array(cs.this.n_bscans, bscan_format, discard=True))
 
 # PR1 and EZ map to 14 and PR2 and IZ map to 15. Hence both names can be used
 # to access the same data
@@ -286,6 +294,10 @@ class HeVolReader:
         return [
             EyeBscanMeta(
                 quality=b.quality,
+                num_seg=b.num_seg,
+                seg_offset=b.seg_offset,
+                shift=b.shift,
+                iv_transformation=list(b.iv_transformation),
                 start_pos=(b.start_x, b.start_y),
                 end_pos=(b.end_x, b.end_y),
                 pos_unit='mm',
@@ -310,7 +322,33 @@ class HeVolReader:
             patient=dict(pid=self.parsed_file.pid,
                          patient_id=self.parsed_file.patient_id,
                          dob=self.parsed_file.dob),
+            id=self.parsed_file.id,
+            reference_id=self.parsed_file.reference_id,
+            vid=self.parsed_file.vid,
+            visit_id=self.parsed_file.visit_id,
+            prog_id=self.parsed_file.prog_id,
+            scan_pattern=self.parsed_file.scan_pattern,
+            bscan_hdr_size=self.parsed_file.bscan_hdr_size,
+            heyex_native_dates=dict(
+                exam_time=self.parsed_file.exam_time,
+                exam_time_ticks=struct.unpack('<Q', self._source.read(88, 8))[0],
+                dob=self.parsed_file.dob,
+                dob_days=struct.unpack('<d', self._source.read(164, 8))[0],
+                visit_date=self.parsed_file.visit_date,
+                visit_date_days=struct.unpack('<d', self._source.read(200, 8))[0]),
         )
+
+
+class _BscanRecords:
+
+    def __init__(self, writer):
+        self.writer = writer
+
+    def __len__(self):
+        return self.writer.volume.size_z
+
+    def __iter__(self):
+        return self.writer._iter_bscan_dicts()
 
 
 class HeVolWriter:
@@ -322,10 +360,16 @@ class HeVolWriter:
     and unknown encodings cannot be exported.
     """
 
-    def __init__(self, volume: EyeVolume | HeVolReader, *, allow_approximate: bool = False):
+    def __init__(self, volume: EyeVolume | HeVolReader, *, allow_approximate: bool = False,
+                 export_context: HeVolExportContext | None = None):
         self.reader = volume if isinstance(volume, HeVolReader) else None
         self.volume = None if self.reader is not None else volume
         self.allow_approximate = allow_approximate
+        if export_context is not None and not isinstance(export_context, HeVolExportContext):
+            raise TypeError('export_context must be a HeVolExportContext')
+        if self.reader is not None and export_context is not None:
+            raise ValueError('Use export_context with an EyeVolume; native reader edits use parsed_file')
+        self.export_context = export_context
 
     def _validate_encoding(self):
         if self.volume.linear_data_available:
@@ -347,8 +391,10 @@ class HeVolWriter:
             write_file(path, lambda output: source.rewrite(output, patches(self.reader)),
                        sources=[source], overwrite=overwrite)
         else:
-            payload = self.bytes
-            write_file(path, lambda output: output.write(payload), overwrite=overwrite)
+            self._validate_encoding()
+            metadata = self._export_metadata()
+            write_file(path, lambda output: self._write_generated(output, metadata),
+                       overwrite=overwrite)
 
     @staticmethod
     def _date(value):
@@ -366,7 +412,13 @@ class HeVolWriter:
             from eyepy.io.he._vol_native import patches
             return self.reader._source.build(patches(self.reader))
         self._validate_encoding()
-        return vol_format.build(
+        metadata = self._export_metadata()
+        output = io.BytesIO()
+        self._write_generated(output, metadata)
+        return output.getvalue()
+
+    def _write_generated(self, output, metadata):
+        vol_write_format.build_stream(
             dict(size_x=self.volume.size_x,
                  size_y=self.volume.size_y,
                  n_bscans=self.volume.size_z,
@@ -380,52 +432,133 @@ class HeVolWriter:
                  field_size_slo=self.volume.localizer.meta['field_size'],
                  scan_focus=self.volume.localizer.meta['scan_focus'],
                  scan_position=self.volume.localizer.meta['laterality'],
-                 exam_time=self._date(self.volume.meta['exam_time']),
-                 scan_pattern=0,
-                 bscan_hdr_size=256 + 17 * 4 * self.volume.size_x,
-                 id='unknown',
-                 reference_id='unknown',
-                 pid=self.volume.meta['patient']['pid'],
-                 patient_id=self.volume.meta['patient']['patient_id'],
-                 dob=self._date(self.volume.meta['patient']['dob']),
-                 vid=0,
-                 visit_id='unknown',
-                 visit_date=self._date(self.volume.meta['visit_date']),
+                 exam_time=metadata['exam_time'],
+                 scan_pattern=metadata['scan_pattern'],
+                 bscan_hdr_size=self._bscan_header_size,
+                 id=metadata['id'],
+                 reference_id=metadata['reference_id'],
+                 pid=metadata['pid'],
+                 patient_id=metadata['patient_id'],
+                 dob=metadata['dob'],
+                 vid=metadata['vid'],
+                 visit_id=metadata['visit_id'],
+                 visit_date=metadata['visit_date'],
                  grid_type=0,
                  grid_offset=0,
                  grid_type1=0,
                  grid_offset1=0,
-                 prog_id='unknown',
+                 prog_id=metadata['prog_id'],
                  localizer=skimage.util.img_as_ubyte(
                      self.volume.localizer.data),
-                 bscans=self._bscan_dicts))
+                 bscans=_BscanRecords(self)), output)
+        # Datetimes cannot retain native 100 ns ticks or every float64 day
+        # value. Reuse those scalar encodings only while their meaning is
+        # unchanged; an explicit metadata/context edit takes precedence.
+        dates = self.volume.meta.get('heyex_native_dates', {})
+        context = self.export_context.as_dict() if self.export_context is not None else {}
+        end = output.tell()
+        for name, raw_name, offset, code in (
+                ('exam_time', 'exam_time_ticks', 88, '<Q'),
+                ('dob', 'dob_days', 164, '<d'),
+                ('visit_date', 'visit_date_days', 200, '<d')):
+            if raw_name in context:
+                output.seek(offset)
+                output.write(struct.pack(code, context[raw_name]))
+            elif name not in context and dates.get(name) is not None and raw_name in dates:
+                if metadata[name] == self._date(dates[name]):
+                    output.seek(offset)
+                    output.write(struct.pack(code, dates[raw_name]))
+        output.seek(end)
+
+    def _export_metadata(self):
+        meta = self.volume.meta
+        patient = meta.get('patient', {})
+        values = dict(id=meta.get('id', ''), reference_id=meta.get('reference_id', ''),
+                      pid=patient.get('pid'), patient_id=patient.get('patient_id', ''),
+                      vid=meta.get('vid', 0), visit_id=meta.get('visit_id', ''),
+                      prog_id=meta.get('prog_id', ''), scan_pattern=meta.get('scan_pattern', 0),
+                      exam_time=meta.get('exam_time'), visit_date=meta.get('visit_date'),
+                      dob=patient.get('dob'))
+        if self.export_context is not None:
+            values.update(self.export_context.as_dict())
+            for name, raw_name, code, adapter in (
+                    ('exam_time', 'exam_time_ticks', '<Q', IntDate),
+                    ('visit_date', 'visit_date_days', '<d', FloatDate)):
+                if values.get(raw_name) is not None:
+                    if getattr(self.export_context, name) is not None:
+                        raise ValueError(f'Supply either {name} or {raw_name}, not both')
+                    try:
+                        values[name] = adapter.parse(struct.pack(code, values[raw_name]))
+                    except (ValueError, OverflowError, struct.error) as error:
+                        raise ValueError(f'Invalid receiving-database {raw_name}') from error
+        if self.volume.intensity_encoding == 'e2e_raw':
+            if not values['id']:
+                raise ValueError('E2E conversion requires export_context with receiving-database identifiers')
+            if 'scan_pattern' not in meta and (self.export_context is None or self.export_context.scan_pattern is None):
+                raise ValueError('scan_pattern is required in the E2E receiving-database export_context')
+            reference = meta.get('e2e_reference_key')
+            if reference is not None and (self.export_context is None or self.export_context.reference_id is None):
+                if reference == meta.get('e2e_acquisition_key'):
+                    values['reference_id'] = values['id']
+                else:
+                    raise ValueError('reference_id is required to map the external E2E reference into the receiving database')
+        for name in ('id', 'reference_id', 'patient_id', 'visit_id', 'prog_id'):
+            if values[name] is None:
+                values[name] = ''
+        for name in ('pid', 'scan_pattern', 'exam_time', 'visit_date', 'dob'):
+            if values[name] is None:
+                raise ValueError(f'{name} is required for VOL export; supply source metadata or export_context')
+        for name in ('exam_time', 'visit_date', 'dob'):
+            values[name] = self._date(values[name])
+        return values
 
     @property
-    def _bscan_dicts(self):
+    def _num_segments(self):
+        source_counts = [meta.get('num_seg', 0) for meta in self.volume.meta['bscan_meta']]
+        layer_counts = [SEG_MAPPING[name] + 1 for name in self.volume.layers if name in SEG_MAPPING]
+        return max([0, *source_counts, *layer_counts])
+
+    @property
+    def _bscan_header_size(self):
+        required = max(meta.get('seg_offset', 256) for meta in self.volume.meta['bscan_meta'])
+        required += self._num_segments * 4 * self.volume.size_x
+        return max(self.volume.meta.get('bscan_hdr_size', 80 * self.volume.size_x), required)
+
+    def _iter_bscan_dicts(self):
         self._validate_encoding()
-        return [
-            dict(bscan_hdr_size=256 + 17 * 4 * bscan.volume.size_x,
+        header_size = self._bscan_header_size
+        count = self._num_segments
+        matrices = getattr(self.volume.bscan_transform, 'matrices', None)
+        return (
+            dict(bscan_hdr_size=header_size,
                  start_x=bscan.meta['start_pos'][0],
                  start_y=bscan.meta['start_pos'][1],
                  end_x=bscan.meta['end_pos'][0],
                  end_y=bscan.meta['end_pos'][1],
-                 num_seg=17,
-                 quality=bscan.meta.get('quality_ui', bscan.meta['quality']),
-                 shift=0,
-                 iv_transformation=[0, 0, 0, 0, 0, 0],
+                 num_seg=count,
+                 seg_offset=bscan.meta.get('seg_offset', 256),
+                 quality=bscan.meta['quality_ui'] if 'quality_ui' in bscan.meta else
+                 bscan.meta.get('quality', np.finfo(np.float32).max),
+                 shift=bscan.meta.get('shift', 0),
+                 iv_transformation=(matrices[index].ravel().tolist() if matrices is not None else
+                                    bscan.meta.get('iv_transformation', [0] * 6)),
                  layer_segmentations=self._segmentations_from_bscan(bscan),
                  data=(bscan.linear_data.astype('<f4', copy=False)
                        if self.volume.linear_data_available else
                        display_to_vol_linear_approx(bscan.raw_data)))
-            for bscan in self.volume
-        ]
+            for index, bscan in enumerate(self.volume)
+        )
 
     def _segmentations_from_bscan(self, bscan: EyeBscan) -> np.ndarray:
         """"""
-        segs = np.full((17, bscan.volume.size_x), np.nan, dtype='<f4')
-        for layer in bscan.layers.values():
+        segs = np.full((self._num_segments, bscan.volume.size_x),
+                       np.finfo(np.float32).max, dtype='<f4')
+        # B-scan layer views are lazy; iterating their cache can omit every
+        # layer unless a caller happened to access them before exporting.
+        for layer in self.volume.layers.values():
             if layer.name in SEG_MAPPING:
-                segs[SEG_MAPPING[layer.name]] = layer.data
+                heights = np.asarray(layer.data[bscan.index], dtype='<f4')
+                segs[SEG_MAPPING[layer.name]] = np.where(np.isnan(heights), np.finfo(np.float32).max, heights)
             else:
                 warnings.warn(
                     f'Unknown layer name: {layer.name}. Skipping. \n VOL format only supports layers with the following names: {list(SEG_MAPPING.keys())}'

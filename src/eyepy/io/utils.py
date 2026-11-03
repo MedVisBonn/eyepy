@@ -152,12 +152,20 @@ def _compute_localizer_oct_transform(
 
 def get_date_adapter(construct, epoch, second_frac, *, integer=False):
 
+    windows_time = integer and epoch == datetime(1601, 1, 1) and second_frac == 1e-7
+
     class DateAdapter(cs.Adapter):
 
         def _decode(self, obj, context, path):
+            if windows_time:
+                from eyepy.io._timestamps import decode_windows_time
+                return decode_windows_time(obj)
             return (epoch + timedelta(seconds=obj * second_frac)).isoformat()
 
         def _encode(self, obj, context, path):
+            if windows_time:
+                from eyepy.io._timestamps import encode_windows_time
+                return encode_windows_time(obj)
             value = (datetime.fromisoformat(obj) -
                      epoch).total_seconds() / second_frac
             return round(value) if integer else value

@@ -13,6 +13,9 @@ from construct_typed import EnumValue
 from construct_typed import TEnum
 import numpy as np
 
+from eyepy.io._timestamps import decode_windows_time
+from eyepy.io._timestamps import encode_windows_time
+
 logger = logging.getLogger(__name__)
 
 
@@ -90,13 +93,10 @@ class DateTimeAdapter(cs.Adapter):
                                     minute=0)
 
     def _decode(self, obj: bytes, context, path):
-        return (self.start_epoch + datetime.timedelta(
-            seconds=cs.Int64ul.parse(obj) * 1e-7)).isoformat()
+        return decode_windows_time(cs.Int64ul.parse(obj))
 
     def _encode(self, obj: str, context, path):
-        return cs.Int64ul.build(
-            int((datetime.datetime.fromisoformat(obj) -
-                 self.start_epoch).total_seconds() * 1e7))
+        return cs.Int64ul.build(encode_windows_time(obj))
 
 
 class SingleByteStringAdapter(cs.Adapter):
