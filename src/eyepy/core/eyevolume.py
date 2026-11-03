@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib import patches
     from skimage import transform
+    from eyepy.core.heidelberg import HeidelbergBscanTransform
 
 import logging
 
@@ -47,6 +48,9 @@ class EyeVolume:
         meta: EyeVolumeMeta | None = None,
         localizer: EyeEnface | None = None,
         transformation: GeometricTransform | None = None,
+        bscan_transform: HeidelbergBscanTransform | None = None,
+        *,
+        intensity_encoding: str | None = None,
     ) -> None:
         """
 
@@ -55,6 +59,11 @@ class EyeVolume:
             meta: Optional [EyeVolumeMeta][eyepy.core.eyemeta.EyeVolumeMeta] object.
             localizer:
             transformation:
+            bscan_transform: Optional B-scan normalization/registration,
+                applied lazily before the intensity display transform.
+            intensity_encoding: Encoding of the supplied raw samples:
+                'vol_linear', 'e2e_raw', 'display', or 'unknown'. Defaults
+                to metadata, or 'unknown' without format information.
         """
         self._raw_data = data
         self._data = None
@@ -66,6 +75,25 @@ class EyeVolume:
             self.meta = self._default_meta(self._raw_data)
         else:
             self.meta = meta
+        if bscan_transform is None and 'bscan_transform' in self.meta:
+            from eyepy.core.heidelberg import HeidelbergBscanTransform
+            bscan_transform = HeidelbergBscanTransform.from_dict(
+                self.meta['bscan_transform'])
+        if bscan_transform is not None:
+            if len(bscan_transform.gains) != len(data):
+                raise ValueError(
+                    'B-scan transform must match the B-scan count')
+            self.meta['bscan_transform'] = bscan_transform.as_dict()
+        self._bscan_transform = bscan_transform
+        if intensity_encoding is None:
+            intensity_encoding = self.meta.get(
+                'intensity_encoding',
+                'e2e_raw' if bscan_transform is not None else 'unknown')
+        if intensity_encoding not in {'unknown', 'vol_linear', 'e2e_raw', 'display'}:
+            raise ValueError(f'Unknown intensity encoding: {intensity_encoding!r}')
+        if bscan_transform is not None and intensity_encoding != 'e2e_raw':
+            raise ValueError('Heidelberg B-scan normalization requires e2e_raw samples')
+        self.meta['intensity_encoding'] = intensity_encoding
         if 'intensity_transform' not in self.meta:
             self.meta['intensity_transform'] = 'default'
         if 'par_algorithm' not in self.meta:
@@ -158,6 +186,12 @@ class EyeVolume:
                     'annotations/layers/meta.json',
                     json.dumps([l.meta for l in self._layers])
                 )
+                for i, layer in enumerate(self._layers):
+                    if layer._raw_data is not None:
+                        raw_layer_bytes = io.BytesIO()
+                        np.save(raw_layer_bytes, layer._raw_data)
+                        zipf.writestr(f'annotations/layers/raw_layer_{i}.npy',
+                                      raw_layer_bytes.getvalue())
 
             # Save slab annotations
             if len(self._slabs) > 0:
@@ -248,6 +282,12 @@ class EyeVolume:
                 data = np.load(io.BytesIO(f.read()))
             with zipf.open('meta.json') as f:
                 volume_meta = EyeVolumeMeta.from_dict(json.load(f))
+            if 'intensity_encoding' not in volume_meta:
+                # Released .eye files identify known domains through their
+                # saved display function. Identity/custom views are ambiguous.
+                volume_meta['intensity_encoding'] = {
+                    'vol': 'vol_linear', 'e2e': 'e2e_raw'
+                }.get(volume_meta.get('intensity_transform'), 'unknown')
 
             # Load Volume Annotations
             voxel_annotations = []
@@ -318,6 +358,16 @@ class EyeVolume:
             except KeyError:
                 layer_annotations = []
                 layers_meta = []
+
+            raw_layer_annotations = []
+            for i in range(len(layer_annotations)):
+                try:
+                    with zipf.open(
+                            f'annotations/layers/raw_layer_{i}.npy') as f:
+                        raw_layer_annotations.append(
+                            np.load(io.BytesIO(f.read())))
+                except KeyError:
+                    raw_layer_annotations.append(None)
 
             # Load slabs
             try:
@@ -443,8 +493,12 @@ class EyeVolume:
                 localizer=localizer,
                 transformation=transformation,
             )
-            for meta, annotation in zip(layers_meta, layer_annotations):
-                ev.add_layer_annotation(annotation, meta)
+            for meta, annotation, raw_annotation in zip(layers_meta,
+                                                        layer_annotations,
+                                                        raw_layer_annotations):
+                ev.add_layer_annotation(annotation,
+                                        meta,
+                                        raw_data=raw_annotation)
 
             for meta in slabs_meta:
                 ev.add_slab_annotation(meta)
@@ -630,6 +684,56 @@ class EyeVolume:
         return np.copy(self._raw_data)
 
     @property
+    def bscan_transform(self) -> HeidelbergBscanTransform | None:
+        """Composite B-scan normalization and spatial registration.
+
+        This is distinct from the geometric localizer_transform.
+        """
+        return self._bscan_transform
+
+    @property
+    def intensity_encoding(self) -> str:
+        """Encoding of raw_data, independent of the chosen display function."""
+        return self.meta['intensity_encoding']
+
+    @property
+    def linear_data_available(self) -> bool:
+        """Whether a supported VOL-linear representation is available."""
+        return (self.intensity_encoding == 'vol_linear' or
+                (self.intensity_encoding == 'e2e_raw' and
+                 self.bscan_transform is not None))
+
+    def _get_processed_data(self, index: int | None = None) -> np.ndarray:
+        """Apply the B-scan pipeline, retaining raw fallback/display views."""
+        if index is None:
+            if self.bscan_transform is None:
+                return self.raw_data
+            return self.bscan_transform(self._raw_data)
+        if self.bscan_transform is None:
+            return np.copy(self._raw_data[index])
+        return self.bscan_transform(self._raw_data[index], index)
+
+    def _require_linear_data(self) -> None:
+        if not self.linear_data_available:
+            raise ValueError(
+                'VOL-linear data is unavailable for intensity encoding '
+                f'{self.intensity_encoding!r}. Display greys require an explicit '
+                'approximate inverse; raw E2E samples require complete supported '
+                'normalization/registration metadata.')
+
+    @property
+    def linear_data(self) -> np.ndarray:
+        """Linear data after normalization and registration, before display.
+
+        Available for VOL-linear inputs and E2E imports with complete,
+        supported normalization/registration metadata. Raises ValueError
+        for display-only, unnormalized E2E, or unknown input encodings.
+        Original raw_data is never modified.
+        """
+        self._require_linear_data()
+        return self._get_processed_data()
+
+    @property
     def data(self) -> np.ndarray:
         """
 
@@ -637,7 +741,7 @@ class EyeVolume:
 
         """
         if self._data is None:
-            self._data = self.intensity_transform(np.copy(self._raw_data))
+            self._data = self.intensity_transform(self._get_processed_data())
         return self._data
 
     @property
@@ -648,7 +752,7 @@ class EyeVolume:
 
         """
         if self._data_par is None:
-            self._data_par = self.par_algorithm(np.copy(self._raw_data))
+            self._data_par = self.par_algorithm(self._get_processed_data())
         return self._data_par
 
     @property
@@ -859,15 +963,17 @@ class EyeVolume:
                 bscan.area_maps.pop(name)
 
     def add_layer_annotation(self,
-                             height_map: None | (npt.NDArray[
-                                 np.float64]) = None,
+                             height_map: None |
+                             (npt.NDArray[np.float64]) = None,
                              meta: dict | None = None,
+                             raw_data: np.ndarray | None = None,
                              **kwargs: Any) -> EyeVolumeLayerAnnotation:
         """
 
         Args:
             height_map: Height in shape (n_Bscans, Bscan_width) The first index refers to the bottom most B-scan
             meta: name, current_color, and knots
+            raw_data: Optional snapshot of imported heights before registration.
             **kwargs:
 
         Returns:
@@ -876,7 +982,10 @@ class EyeVolume:
         if meta is None:
             meta = {}
         meta.update(**kwargs)
-        layer_annotation = EyeVolumeLayerAnnotation(self, height_map, **meta)
+        layer_annotation = EyeVolumeLayerAnnotation(self,
+                                                    height_map,
+                                                    raw_data=raw_data,
+                                                    **meta)
         self._layers.append(layer_annotation)
         return layer_annotation
 

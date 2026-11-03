@@ -22,7 +22,7 @@ from eyepy import EyeEnfaceMeta
 from eyepy import EyeVolume
 from eyepy import EyeVolumeMeta
 from eyepy.core.eyebscan import EyeBscan
-from eyepy.core.utils import to_vol_intensity
+from eyepy.core.utils import display_to_vol_linear_approx
 from eyepy.io.utils import _compute_localizer_oct_transform
 from eyepy.io.utils import Bscan
 from eyepy.io.utils import FloatDate
@@ -298,21 +298,58 @@ class HeVolReader:
             exam_time=self.parsed_file.exam_time,
             bscan_meta=bscan_meta,
             intensity_transform=self.intensity_transform,
+            intensity_encoding='vol_linear',
             par_algorithm='sum',
+            patient=dict(pid=self.parsed_file.pid,
+                         patient_id=self.parsed_file.patient_id,
+                         dob=self.parsed_file.dob),
         )
 
 
 class HeVolWriter:
+    """Export supported linear OCT values without a display round trip.
 
-    def __init__(self, volume: EyeVolume):
+    Display-only inputs require allow_approximate=True. The approximate
+    inverse uses the stored display greys, independently of
+    visualization settings. Raw E2E inputs without a supported transform
+    and unknown encodings cannot be exported.
+    """
+
+    def __init__(self, volume: EyeVolume, *, allow_approximate: bool = False):
         self.volume = volume
+        self.allow_approximate = allow_approximate
+
+    def _validate_encoding(self):
+        if self.volume.linear_data_available:
+            return
+        if self.volume.intensity_encoding == 'display':
+            if self.allow_approximate:
+                return
+            raise ValueError(
+                'Display-only input cannot recover original linear intensities. '
+                'Use allow_approximate=True to export representative VOL values.')
+        self.volume._require_linear_data()
 
     def write(self, path):
+        # Validate/build before opening the destination, so a rejected
+        # conversion cannot truncate an existing file.
+        payload = self.bytes
         with open(path, 'wb') as mf:
-            mf.write(self.bytes)
+            mf.write(payload)
+
+    @staticmethod
+    def _date(value):
+        """Normalize metadata dates to the ISO strings used by VOL adapters."""
+        if isinstance(value, datetime.date):
+            value = value.isoformat()
+        value = datetime.datetime.fromisoformat(value)
+        if value.tzinfo is not None:
+            value = value.astimezone(datetime.UTC).replace(tzinfo=None)
+        return value.isoformat()
 
     @property
     def bytes(self):
+        self._validate_encoding()
         return vol_format.build(
             dict(size_x=self.volume.size_x,
                  size_y=self.volume.size_y,
@@ -327,19 +364,16 @@ class HeVolWriter:
                  field_size_slo=self.volume.localizer.meta['field_size'],
                  scan_focus=self.volume.localizer.meta['scan_focus'],
                  scan_position=self.volume.localizer.meta['laterality'],
-                 exam_time=datetime.datetime.combine(
-                     self.volume.meta['exam_time'], datetime.time()),
+                 exam_time=self._date(self.volume.meta['exam_time']),
                  scan_pattern=0,
                  id='unknown',
                  reference_id='unknown',
                  pid=self.volume.meta['patient']['pid'],
                  patient_id=self.volume.meta['patient']['patient_id'],
-                 dob=datetime.datetime.combine(
-                     self.volume.meta['patient']['dob'], datetime.time()),
+                 dob=self._date(self.volume.meta['patient']['dob']),
                  vid=0,
                  visit_id='unknown',
-                 visit_date=datetime.datetime.combine(
-                     self.volume.meta['visit_date'], datetime.time()),
+                 visit_date=self._date(self.volume.meta['visit_date']),
                  grid_type=0,
                  grid_offset=0,
                  grid_type1=0,
@@ -351,25 +385,28 @@ class HeVolWriter:
 
     @property
     def _bscan_dicts(self):
+        self._validate_encoding()
         return [
             dict(bscan_hdr_size=256 + 17 * 4 * bscan.volume.size_x,
                  start_x=bscan.meta['start_pos'][0],
                  start_y=bscan.meta['start_pos'][1],
                  end_x=bscan.meta['end_pos'][0],
                  end_y=bscan.meta['end_pos'][1],
-                 num_seg=len(bscan.layers),
+                 num_seg=17,
                  quality=bscan.meta['quality'],
                  shift=0,
                  iv_transformation=[0, 0, 0, 0, 0, 0],
                  layer_segmentations=self._segmentations_from_bscan(bscan),
-                 data=to_vol_intensity(bscan.data.astype(np.float32)))
+                 data=(bscan.linear_data.astype('<f4', copy=False)
+                       if self.volume.linear_data_available else
+                       display_to_vol_linear_approx(bscan.raw_data)))
             for bscan in self.volume
         ]
 
     def _segmentations_from_bscan(self, bscan: EyeBscan) -> np.ndarray:
         """"""
-        segs = np.zeros((17, bscan.volume.size_x), dtype=np.float32)
-        for layer in bscan.layers:
+        segs = np.full((17, bscan.volume.size_x), np.nan, dtype='<f4')
+        for layer in bscan.layers.values():
             if layer.name in SEG_MAPPING:
                 segs[SEG_MAPPING[layer.name]] = layer.data
             else:

@@ -150,7 +150,7 @@ def _compute_localizer_oct_transform(
     return transform.estimate_transform('affine', src, dst)
 
 
-def get_date_adapter(construct, epoch, second_frac):
+def get_date_adapter(construct, epoch, second_frac, *, integer=False):
 
     class DateAdapter(cs.Adapter):
 
@@ -158,8 +158,9 @@ def get_date_adapter(construct, epoch, second_frac):
             return (epoch + timedelta(seconds=obj * second_frac)).isoformat()
 
         def _encode(self, obj, context, path):
-            return (datetime.fromisoformat(obj) -
-                    epoch).total_seconds() / second_frac
+            value = (datetime.fromisoformat(obj) -
+                     epoch).total_seconds() / second_frac
+            return round(value) if integer else value
 
     return DateAdapter(construct)
 
@@ -197,7 +198,7 @@ class SegmentationsAdapter(cs.Adapter):
         return obj.tobytes()
 
 
-IntDate = get_date_adapter(cs.Int64ul, datetime(1601, 1, 1), 1e-7)
+IntDate = get_date_adapter(cs.Int64ul, datetime(1601, 1, 1), 1e-7, integer=True)
 FloatDate = get_date_adapter(cs.Float64l, datetime(1899, 12, 30), 60 * 60 * 24)
 Localizer = LocalizerAdapter(cs.Bytes(cs.this.size_x_slo * cs.this.size_y_slo))
 Segmentations = SegmentationsAdapter(

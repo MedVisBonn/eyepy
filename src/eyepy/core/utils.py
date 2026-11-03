@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import numpy.typing as npt
 
@@ -11,6 +13,11 @@ NDArrayFloat = npt.NDArray[np.float64]
 NDArrayBool = npt.NDArray[np.bool_]
 NDArrayInt = npt.NDArray[np.int64]
 NDArrayUByte = npt.NDArray[np.ubyte]
+
+# Empirical display thresholds, shared by the forward and representative
+# inverse mappings. See docs/formats/he_vol.md for provenance and limits.
+_HEYEX_LOG_SLOPE = 30.776116889447362
+_HEYEX_LOG_OFFSET = 0.001931325892041094
 
 
 class DynamicDefaultDict(dict):
@@ -46,7 +53,7 @@ def from_angio_intensity(data: NDArrayFloat) -> NDArrayInt:
 
 
 def vol_intensity_transform(data: NDArrayFloat) -> NDArrayUByte:
-    """Wrapper around from_vol_intensity.
+    """Wrapper around vol_linear_to_display.
 
     Transform intensities from Heyex VOL exports to achieve a constrast similar to the one used in Heyex.
 
@@ -56,48 +63,63 @@ def vol_intensity_transform(data: NDArrayFloat) -> NDArrayUByte:
     Returns:
         Transformed data
     """
-    return from_vol_intensity(data)
+    return vol_linear_to_display(data)
+
+
+def vol_linear_to_display(data: NDArrayFloat) -> NDArrayUByte:
+    """Render linear VOL intensities using the empirically verified HEYEX curve.
+
+    The global coefficients were fitted to five default-display VOL/TIFF
+    pairs and verified on 218 B-scans. They are not vendor
+    specifications. Missing values render black. The input array is
+    never modified.
+    """
+    values = np.asarray(data, dtype=np.float64)
+    valid = np.isfinite(values) & (values != np.finfo(np.float32).max)
+    values = np.where(valid, np.clip(values, 0, 1), 0)
+    gray = np.floor(_HEYEX_LOG_SLOPE * np.log1p(4096 * values) +
+                    _HEYEX_LOG_OFFSET)
+    return np.clip(gray, 0, 255).astype(np.ubyte)
+
+def from_e2e_intensity(data: NDArrayFloat32) -> NDArrayUByte:
+    """Unnormalized fallback for E2E data without registration metadata."""
+    return vol_linear_to_display(np.where(data == 1.9990234375, 0, data))
+
+
+def display_to_vol_linear_approx(data: np.ndarray) -> NDArrayFloat32:
+    """Choose a linear intensity in each display bin.
+
+    Accept uint8 greys or floating-point greys in [0, 1]. Display
+    conversion loses information; this cannot recover the original
+    linear intensities.
+    """
+    values = np.asarray(data)
+    if values.dtype == np.uint8:
+        gray = values.astype(np.float64)
+    elif np.issubdtype(values.dtype, np.floating):
+        if not np.all(np.isfinite(values) & (values >= 0) & (values <= 1)):
+            raise ValueError('Floating-point display greys must be finite and in [0, 1]')
+        gray = values.astype(np.float64) * 255
+    else:
+        raise ValueError('Expected uint8 display greys or floating-point greys in [0, 1]')
+    linear = np.expm1((gray + .5 - _HEYEX_LOG_OFFSET) / _HEYEX_LOG_SLOPE) / 4096
+    linear = np.where(gray == 0, 0, np.where(gray == 255, 1, linear))
+    return np.clip(linear, 0, 1).astype(np.float32)
 
 
 def from_vol_intensity(data: NDArrayFloat) -> NDArrayUByte:
-    selection_0 = data == np.finfo(np.float32).max
-    selection_data = data <= 1
-
-    new = np.log(data[selection_data] + 2.44e-04)
-    new = (new + 8.3) / 8.285
-
-    data[selection_data] = new
-    data[selection_0] = 0
-    data = np.clip(data, 0, 1)
-
-    from skimage.util import img_as_ubyte
-
-    return img_as_ubyte(data).astype(np.ubyte)
-
-def from_e2e_intensity(data: NDArrayFloat32) -> NDArrayUByte:
-    selection_0 = data > 1.99 # empty regions in e2e exports
-    selection_data = data <= 1
-
-    new = np.log(data[selection_data] + 2.44e-04)
-    new = (new + 8.3) / 8.285
-
-    data[selection_data] = new
-    data[selection_0] = 0
-    data = np.clip(data, 0, 1)
-
-    from skimage.util import img_as_ubyte
-
-    return img_as_ubyte(data).astype(np.ubyte)
+    """Deprecated alias for vol_linear_to_display."""
+    warnings.warn('Use vol_linear_to_display instead of from_vol_intensity.',
+                  DeprecationWarning, stacklevel=2)
+    return vol_linear_to_display(data)
 
 
-# Function expects numpy array of uint8 type hint
-def to_vol_intensity(data: np.ndarray) -> NDArrayFloat:
-    from skimage.util import img_as_float32
-
-    data = img_as_float32(data)
-    data = data * 8.285 - 8.3
-    data = np.exp(data) - 2.44e-04
-    return data
+def to_vol_intensity(data: np.ndarray) -> NDArrayFloat32:
+    """Deprecated alias for display_to_vol_linear_approx; inversion is lossy."""
+    warnings.warn('Use display_to_vol_linear_approx instead of to_vol_intensity; '
+                  'original linear intensities cannot be recovered.',
+                  DeprecationWarning, stacklevel=2)
+    return display_to_vol_linear_approx(data)
 
 
 def default_intensity_transform(data: np.ndarray) -> np.ndarray:
