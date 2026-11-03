@@ -344,7 +344,7 @@ class HeVolWriter:
             value = value.isoformat()
         value = datetime.datetime.fromisoformat(value)
         if value.tzinfo is not None:
-            value = value.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+            value = value.astimezone(datetime.UTC).replace(tzinfo=None)
         return value.isoformat()
 
     @property
