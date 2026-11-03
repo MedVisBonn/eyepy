@@ -318,7 +318,7 @@ preserved raw samples rather than the computed view. If supported conversion
 metadata is unavailable, `data` retains the raw fallback view and
 `linear_data` raises `ValueError` instead of presenting unnormalized samples
 as VOL-linear values. See [intensity encoding and export](he_vol.md#intensity-encoding-and-export)
-for explicit approximate export of display-only data and `.eye` metadata migration.
+for explicit approximate export of display-only data and loading older `.eye` files.
 
 ### Decoding and normalization
 

@@ -75,20 +75,15 @@ class EyeVolume:
             self.meta = self._default_meta(self._raw_data)
         else:
             self.meta = meta
-        if bscan_transform is None:
-            config = self.meta.get('bscan_transform',
-                                   self.meta.get('spatial_transform'))
-        else:
-            config = None
-        if config is not None:
+        if bscan_transform is None and 'bscan_transform' in self.meta:
             from eyepy.core.heidelberg import HeidelbergBscanTransform
-            bscan_transform = HeidelbergBscanTransform.from_dict(config)
+            bscan_transform = HeidelbergBscanTransform.from_dict(
+                self.meta['bscan_transform'])
         if bscan_transform is not None:
             if len(bscan_transform.gains) != len(data):
                 raise ValueError(
                     'B-scan transform must match the B-scan count')
             self.meta['bscan_transform'] = bscan_transform.as_dict()
-        self.meta.pop('spatial_transform', None)
         self._bscan_transform = bscan_transform
         if intensity_encoding is None:
             intensity_encoding = self.meta.get(
@@ -288,13 +283,11 @@ class EyeVolume:
             with zipf.open('meta.json') as f:
                 volume_meta = EyeVolumeMeta.from_dict(json.load(f))
             if 'intensity_encoding' not in volume_meta:
-                # Migrate known legacy format conventions only on file load.
-                # Identity/custom display functions cannot identify an encoding.
-                volume_meta['intensity_encoding'] = (
-                    'e2e_raw' if ('bscan_transform' in volume_meta or
-                                  'spatial_transform' in volume_meta) else
-                    {'vol': 'vol_linear', 'e2e': 'e2e_raw'}.get(
-                        volume_meta.get('intensity_transform'), 'unknown'))
+                # Released .eye files identify known domains through their
+                # saved display function. Identity/custom views are ambiguous.
+                volume_meta['intensity_encoding'] = {
+                    'vol': 'vol_linear', 'e2e': 'e2e_raw'
+                }.get(volume_meta.get('intensity_transform'), 'unknown')
 
             # Load Volume Annotations
             voxel_annotations = []

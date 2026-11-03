@@ -28,16 +28,19 @@ def rewrite_metadata(source, target, update):
 
 
 @pytest.mark.parametrize('encoding', ['unknown', 'display', 'e2e_raw', 'vol_linear'])
-def test_encoding_survives_save_load_independently_of_display(encoding, tmp_path):
+@pytest.mark.parametrize('display', ['default', 'vol', 'e2e'])
+def test_encoding_survives_save_load_independently_of_display(
+        encoding, display, tmp_path):
     volume = volume_with_encoding(encoding)
-    volume.set_intensity_transform('default')
+    volume.set_intensity_transform(display)
     path = tmp_path / 'encoded.eye'
     volume.save(path)
     loaded = EyeVolume.load(path)
     assert loaded.intensity_encoding == encoding
+    assert loaded.meta['intensity_transform'] == display
     np.testing.assert_array_equal(loaded.raw_data, volume.raw_data)
-    np.testing.assert_array_equal(loaded.data, volume.raw_data)
-    np.testing.assert_array_equal(loaded[0].data, volume.raw_data[0])
+    np.testing.assert_array_equal(loaded.data, volume.data)
+    np.testing.assert_array_equal(loaded[0].data, volume[0].data)
     if encoding == 'vol_linear':
         np.testing.assert_array_equal(loaded.linear_data, volume.raw_data)
         np.testing.assert_array_equal(loaded[0].linear_data, volume.raw_data[0])
@@ -60,8 +63,9 @@ def test_new_arrays_do_not_infer_encoding_from_dtype_range_or_display():
 
 @pytest.mark.parametrize('display,expected', [
     ('vol', 'vol_linear'), ('e2e', 'e2e_raw'), ('default', 'unknown')])
-def test_legacy_files_migrate_only_known_encodings(display, expected, tmp_path):
+def test_older_files_use_saved_intensity_function(display, expected, tmp_path):
     volume = volume_with_encoding('vol_linear')
+    volume._raw_data[0, 0, :3] = [.25, .5, 1.9990234375]
     volume.set_intensity_transform(display)
     path = tmp_path / 'new.eye'
     old_path = tmp_path / 'legacy.eye'
@@ -69,49 +73,45 @@ def test_legacy_files_migrate_only_known_encodings(display, expected, tmp_path):
     rewrite_metadata(path, old_path, lambda meta: meta.pop('intensity_encoding'))
     loaded = EyeVolume.load(old_path)
     assert loaded.intensity_encoding == expected
+    assert loaded.meta['intensity_transform'] == display
     np.testing.assert_array_equal(loaded.raw_data, volume.raw_data)
+    np.testing.assert_array_equal(loaded.data, volume.data)
+    np.testing.assert_array_equal(loaded[0].data, volume[0].data)
+    assert loaded.linear_data_available == (expected == 'vol_linear')
+    if expected == 'vol_linear':
+        np.testing.assert_array_equal(loaded.linear_data, volume.raw_data)
+    else:
+        with pytest.raises(ValueError, match='VOL-linear data is unavailable'):
+            loaded.linear_data
 
 
-def test_legacy_transform_metadata_loads_and_saves_under_new_key(tmp_path):
-    source = volume_with_encoding('e2e_raw')
-    transform = HeidelbergBscanTransform(
-        [2] * source.size_z, [[[1, 0, .5], [0, 1, 0]]] * source.size_z)
-    volume = EyeVolume(source.raw_data, source.meta.copy(), source.localizer,
-                       source.localizer_transform, bscan_transform=transform)
-    path = tmp_path / 'new.eye'
-    old_path = tmp_path / 'legacy.eye'
-    migrated_path = tmp_path / 'migrated.eye'
-    volume.save(path)
-
-    def legacy(meta):
-        meta.pop('intensity_encoding')
-        config = meta.pop('bscan_transform')
-        config.pop('version')
-        meta['spatial_transform'] = config
-
-    rewrite_metadata(path, old_path, legacy)
+def test_older_custom_display_file_keeps_ambiguous_encoding(tmp_path):
+    volume = volume_with_encoding('vol_linear')
+    volume.set_intensity_transform(lambda values: values + 1)
+    path = tmp_path / 'custom.eye'
+    old_path = tmp_path / 'older.eye'
+    with pytest.warns(UserWarning, match='Custom intensity transforms'):
+        volume.save(path)
+    rewrite_metadata(path, old_path, lambda meta: meta.pop('intensity_encoding'))
     loaded = EyeVolume.load(old_path)
-    assert loaded.intensity_encoding == 'e2e_raw'
-    assert loaded.bscan_transform is not None
-    assert 'spatial_transform' not in loaded.meta
-    np.testing.assert_array_equal(loaded.linear_data.view('<u4'),
-                                  volume.linear_data.view('<u4'))
-    loaded.save(migrated_path)
-    with zipfile.ZipFile(migrated_path) as saved:
-        meta = json.loads(saved.read('meta.json'))
-    assert 'spatial_transform' not in meta
-    assert meta['bscan_transform']['version'] == 1
-    assert meta['intensity_encoding'] == 'e2e_raw'
+    assert loaded.intensity_encoding == 'unknown'
+    assert loaded.meta['intensity_transform'] == 'default'
+    np.testing.assert_array_equal(loaded.data, volume.raw_data)
+    assert not loaded.linear_data_available
 
 
 def test_transform_rejects_unknown_versions_and_incompatible_encodings():
     source = volume_with_encoding('vol_linear')
     transform = HeidelbergBscanTransform(
         [1] * source.size_z, [[[1, 0, 0], [0, 1, 0]]] * source.size_z)
-    config = transform.as_dict()
-    config['version'] = 2
-    with pytest.raises(ValueError, match='Unsupported B-scan transform version'):
-        HeidelbergBscanTransform.from_dict(config)
+    for version in (None, 2):
+        config = transform.as_dict()
+        if version is None:
+            config.pop('version')
+        else:
+            config['version'] = version
+        with pytest.raises(ValueError, match='Unsupported B-scan transform version'):
+            HeidelbergBscanTransform.from_dict(config)
     with pytest.raises(ValueError, match='requires e2e_raw'):
         EyeVolume(source.raw_data, source.meta.copy(), source.localizer,
                   source.localizer_transform, bscan_transform=transform)

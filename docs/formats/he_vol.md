@@ -73,10 +73,14 @@ the conversion is not reversible to the original E2E samples. XML/TIFF display
 greys additionally lack the original linear intensities.
 
 `.eye` files persist the raw intensity encoding and the versioned
-`bscan_transform` configuration separately from display settings. Loading
-older files accepts the previous volume-level `spatial_transform` key and
-unversioned Heidelberg B-scan configurations. For files without an explicit
-encoding, a saved B-scan transform identifies `e2e_raw`; otherwise the legacy
-`vol` and `e2e` display conventions identify their respective formats. Other
-legacy encodings remain `unknown`. New files use the explicit encoding and
-the `bscan_transform` key.
+`bscan_transform` configuration separately from display settings. For older
+files without an explicit encoding, loading uses the saved intensity function:
+`vol` identifies `vol_linear`, and `e2e` identifies `e2e_raw`. The saved
+function continues to control display. `default` and other ambiguous cases
+remain `unknown`: an identity function does not establish the data's origin,
+and custom functions were historically saved as `default`.
+
+Recognizing E2E samples does not reconstruct missing gain or registration
+metadata. These older files retain their fallback display, but cannot provide
+VOL-linear data without supported conversion parameters. New files always use
+their explicit encoding, even when the display function has been changed.
