@@ -55,6 +55,17 @@ def test_half_pixel_boundary_clamps_lower_edge_and_excludes_upper_edge():
     assert registered[1, 0] == .375
 
 
+def test_layer_geometry_is_independent_of_intensity_gain():
+    matrices = [matrix(tx=.5, ty=.25, shear=.125)]
+    heights = np.array([[1.1, 1.2, np.nan, 1.4, 1.5, 1.6]])
+    original = heights.copy()
+    first = HeidelbergBscanTransform([1], matrices).transform_layers(heights)
+    second = HeidelbergBscanTransform([7], matrices).transform_layers(heights)
+    np.testing.assert_array_equal(first, second)
+    np.testing.assert_array_equal(heights, original)
+    assert np.isnan(first[0, -1])
+
+
 @pytest.mark.parametrize('output,corner,values,expected', [
     ((307, 991), (279, 991), [[1.6961712390184402e-7, 0],
                               [5.714595317840576e-6, 1.1339783668518066e-5]

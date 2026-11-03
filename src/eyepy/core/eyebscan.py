@@ -56,15 +56,14 @@ class EyeBscan:
         Returns:
             B-scan data as numpy array
         """
-        return self.volume.intensity_transform(self.linear_data)
+        return self.volume.intensity_transform(
+            self.volume._get_processed_data(self.index))
 
     @property
     def linear_data(self) -> np.ndarray:
         """Normalized, registered linear data for this B-scan only."""
-        if self.volume.spatial_transform is None:
-            return self.raw_data
-        return self.volume.spatial_transform(self.volume._raw_data[self.index],
-                                             self.index)
+        self.volume._require_linear_data()
+        return self.volume._get_processed_data(self.index)
 
     @property
     def raw_data(self) -> np.ndarray:

@@ -295,18 +295,30 @@ with HeE2eReader('scan.e2e') as reader:
     volume = reader.volume
 
 original = volume.raw_data       # Decoded samples, original geometry and intensity.
-linear = volume.linear_data      # Normalized, registered float32 VOL intensities.
+if volume.linear_data_available:
+    linear = volume.linear_data  # Normalized, registered float32 VOL intensities.
 display = volume.data            # Registered uint8 display.
 one_bscan = volume[0].data        # Converts only that B-scan.
-registration = volume.spatial_transform
+conversion = volume.bscan_transform
 ```
 
-`spatial_transform` is separate from `localizer_transform`, which maps the
-enface projection onto the localizer image. The B-scan transform records its
-gain vector and 2x3 affine matrices. It applies normalization before spatial
-sampling; the existing `intensity_transform` then converts the registered
-linear values to greys. Changing the display transform does not change the
-original samples or registration.
+`bscan_transform` combines intensity normalization and spatial registration.
+Its `normalize()` and `register()` operations remain distinct: gain is not
+a spatial transform. Layer coordinates use only its geometric component.
+The composite is separate from `localizer_transform`, which maps the enface
+projection onto the localizer image, and from the localizer's own geometric
+`spatial_transform`.
+
+The B-scan transform records its gain vector and 2x3 affine matrices. It
+applies normalization before spatial sampling; the existing
+`intensity_transform` then converts the registered linear values to greys.
+Changing the display transform does not change the original samples or
+registration. `volume.intensity_encoding` remains `e2e_raw`, describing the
+preserved raw samples rather than the computed view. If supported conversion
+metadata is unavailable, `data` retains the raw fallback view and
+`linear_data` raises `ValueError` instead of presenting unnormalized samples
+as VOL-linear values. See [intensity encoding and export](he_vol.md#intensity-encoding-and-export)
+for explicit approximate export of display-only data and `.eye` metadata migration.
 
 ### Decoding and normalization
 

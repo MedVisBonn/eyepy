@@ -145,7 +145,7 @@ def test_reader_keeps_bscan_shift_separate_and_updates_overlay_geometry(
         [1, 1], [[[1, 0, .5], [0, 1, 0]]] * 2)
     monkeypatch.setattr(series, 'get_meta', lambda: meta)
     monkeypatch.setattr(series, 'get_bscans', lambda: np.ones((2, 3, 6), np.float32))
-    monkeypatch.setattr(series, 'get_spatial_transform',
+    monkeypatch.setattr(series, 'get_bscan_transform',
                         lambda: bscan_transform if apply_registration else None)
     def get_localizer(registered=False):
         assert registered == apply_registration

@@ -48,7 +48,9 @@ class EyeVolume:
         meta: EyeVolumeMeta | None = None,
         localizer: EyeEnface | None = None,
         transformation: GeometricTransform | None = None,
-        spatial_transform: HeidelbergBscanTransform | None = None,
+        bscan_transform: HeidelbergBscanTransform | None = None,
+        *,
+        intensity_encoding: str | None = None,
     ) -> None:
         """
 
@@ -57,8 +59,11 @@ class EyeVolume:
             meta: Optional [EyeVolumeMeta][eyepy.core.eyemeta.EyeVolumeMeta] object.
             localizer:
             transformation:
-            spatial_transform: Optional B-scan normalization/registration,
+            bscan_transform: Optional B-scan normalization/registration,
                 applied lazily before the intensity display transform.
+            intensity_encoding: Encoding of the supplied raw samples:
+                'vol_linear', 'e2e_raw', 'display', or 'unknown'. Defaults
+                to metadata, or 'unknown' without format information.
         """
         self._raw_data = data
         self._data = None
@@ -70,16 +75,30 @@ class EyeVolume:
             self.meta = self._default_meta(self._raw_data)
         else:
             self.meta = meta
-        if spatial_transform is None and 'spatial_transform' in self.meta:
+        if bscan_transform is None:
+            config = self.meta.get('bscan_transform',
+                                   self.meta.get('spatial_transform'))
+        else:
+            config = None
+        if config is not None:
             from eyepy.core.heidelberg import HeidelbergBscanTransform
-            spatial_transform = HeidelbergBscanTransform.from_dict(
-                self.meta['spatial_transform'])
-        if spatial_transform is not None:
-            if len(spatial_transform.gains) != len(data):
+            bscan_transform = HeidelbergBscanTransform.from_dict(config)
+        if bscan_transform is not None:
+            if len(bscan_transform.gains) != len(data):
                 raise ValueError(
-                    'Spatial transform must match the B-scan count')
-            self.meta['spatial_transform'] = spatial_transform.as_dict()
-        self._spatial_transform = spatial_transform
+                    'B-scan transform must match the B-scan count')
+            self.meta['bscan_transform'] = bscan_transform.as_dict()
+        self.meta.pop('spatial_transform', None)
+        self._bscan_transform = bscan_transform
+        if intensity_encoding is None:
+            intensity_encoding = self.meta.get(
+                'intensity_encoding',
+                'e2e_raw' if bscan_transform is not None else 'unknown')
+        if intensity_encoding not in {'unknown', 'vol_linear', 'e2e_raw', 'display'}:
+            raise ValueError(f'Unknown intensity encoding: {intensity_encoding!r}')
+        if bscan_transform is not None and intensity_encoding != 'e2e_raw':
+            raise ValueError('Heidelberg B-scan normalization requires e2e_raw samples')
+        self.meta['intensity_encoding'] = intensity_encoding
         if 'intensity_transform' not in self.meta:
             self.meta['intensity_transform'] = 'default'
         if 'par_algorithm' not in self.meta:
@@ -268,6 +287,14 @@ class EyeVolume:
                 data = np.load(io.BytesIO(f.read()))
             with zipf.open('meta.json') as f:
                 volume_meta = EyeVolumeMeta.from_dict(json.load(f))
+            if 'intensity_encoding' not in volume_meta:
+                # Migrate known legacy format conventions only on file load.
+                # Identity/custom display functions cannot identify an encoding.
+                volume_meta['intensity_encoding'] = (
+                    'e2e_raw' if ('bscan_transform' in volume_meta or
+                                  'spatial_transform' in volume_meta) else
+                    {'vol': 'vol_linear', 'e2e': 'e2e_raw'}.get(
+                        volume_meta.get('intensity_transform'), 'unknown'))
 
             # Load Volume Annotations
             voxel_annotations = []
@@ -664,22 +691,54 @@ class EyeVolume:
         return np.copy(self._raw_data)
 
     @property
-    def spatial_transform(self) -> HeidelbergBscanTransform | None:
-        """B-scan normalization/registration, distinct from
-        localizer_transform."""
-        return self._spatial_transform
+    def bscan_transform(self) -> HeidelbergBscanTransform | None:
+        """Composite B-scan normalization and spatial registration.
+
+        This is distinct from the geometric localizer_transform.
+        """
+        return self._bscan_transform
+
+    @property
+    def intensity_encoding(self) -> str:
+        """Encoding of raw_data, independent of the chosen display function."""
+        return self.meta['intensity_encoding']
+
+    @property
+    def linear_data_available(self) -> bool:
+        """Whether a supported VOL-linear representation is available."""
+        return (self.intensity_encoding == 'vol_linear' or
+                (self.intensity_encoding == 'e2e_raw' and
+                 self.bscan_transform is not None))
+
+    def _get_processed_data(self, index: int | None = None) -> np.ndarray:
+        """Apply the B-scan pipeline, retaining raw fallback/display views."""
+        if index is None:
+            if self.bscan_transform is None:
+                return self.raw_data
+            return self.bscan_transform(self._raw_data)
+        if self.bscan_transform is None:
+            return np.copy(self._raw_data[index])
+        return self.bscan_transform(self._raw_data[index], index)
+
+    def _require_linear_data(self) -> None:
+        if not self.linear_data_available:
+            raise ValueError(
+                'VOL-linear data is unavailable for intensity encoding '
+                f'{self.intensity_encoding!r}. Display greys require an explicit '
+                'approximate inverse; raw E2E samples require complete supported '
+                'normalization/registration metadata.')
 
     @property
     def linear_data(self) -> np.ndarray:
         """Linear data after normalization and registration, before display.
 
-        E2E imports with complete metadata return registered VOL-
-        equivalent values. Formats storing display-encoded greys (e.g.
-        XML) retain those values. Original raw_data is never modified.
+        Available for VOL-linear inputs and E2E imports with complete,
+        supported normalization/registration metadata. Raises ValueError
+        for display-only, unnormalized E2E, or unknown input encodings.
+        Original raw_data is never modified.
         """
-        if self.spatial_transform is None:
-            return self.raw_data
-        return self.spatial_transform(self._raw_data)
+        self._require_linear_data()
+        return self._get_processed_data()
 
     @property
     def data(self) -> np.ndarray:
@@ -689,7 +748,7 @@ class EyeVolume:
 
         """
         if self._data is None:
-            self._data = self.intensity_transform(self.linear_data)
+            self._data = self.intensity_transform(self._get_processed_data())
         return self._data
 
     @property
@@ -700,7 +759,7 @@ class EyeVolume:
 
         """
         if self._data_par is None:
-            self._data_par = self.par_algorithm(self.linear_data)
+            self._data_par = self.par_algorithm(self._get_processed_data())
         return self._data_par
 
     @property

@@ -109,6 +109,7 @@ class HeidelbergBscanTransform:
     def as_dict(self):
         """JSON-compatible configuration, persisted with the original samples."""
         return dict(type='heidelberg_e2e',
+                    version=1,
                     gains=self.gains.tolist(),
                     matrices=self.matrices.tolist())
 
@@ -116,6 +117,8 @@ class HeidelbergBscanTransform:
     def from_dict(cls, config):
         if config['type'] != 'heidelberg_e2e':
             raise ValueError(f"Unknown B-scan transform: {config['type']}")
+        if config.get('version', 1) != 1:
+            raise ValueError(f"Unsupported B-scan transform version: {config['version']}")
         return cls(config['gains'], config['matrices'])
 
     def normalize(self, data: np.ndarray, index: int) -> np.ndarray:

@@ -1173,7 +1173,7 @@ class E2ESeriesStructure(E2EStructureMixin):
             text += '\n'
         return text
 
-    def get_spatial_transform(self) -> HeidelbergBscanTransform | None:
+    def get_bscan_transform(self) -> HeidelbergBscanTransform | None:
         """Decode normalization/registration, or warn and retain raw geometry.
 
         Bounded payloads keep this independent of generic folder
@@ -1236,9 +1236,10 @@ class E2ESeriesStructure(E2EStructureMixin):
         data = self.get_bscans()
 
         volume_meta = self.get_meta().copy()
-        spatial_transform = self.get_spatial_transform()
-        localizer = self.get_localizer(registered=spatial_transform is not None)
-        if spatial_transform is not None:
+        volume_meta['intensity_encoding'] = 'e2e_raw'
+        bscan_transform = self.get_bscan_transform()
+        localizer = self.get_localizer(registered=bscan_transform is not None)
+        if bscan_transform is not None:
             volume_meta['intensity_transform'] = 'vol'
         if localizer.spatial_transform is not None:
             volume_meta['bscan_meta'] = self._registered_bscan_positions(
@@ -1256,7 +1257,7 @@ class E2ESeriesStructure(E2EStructureMixin):
             localizer=localizer,
             transformation=_compute_localizer_oct_transform(
                 volume_meta, localizer.meta, data.shape),
-            spatial_transform=spatial_transform,
+            bscan_transform=bscan_transform,
         )
 
         layer_height_maps = self.get_layers()
@@ -1264,14 +1265,14 @@ class E2ESeriesStructure(E2EStructureMixin):
         for name, i in SEG_MAPPING.items():
             if i in layer_height_maps:
                 raw_heights = layer_height_maps[i]
-                heights = (spatial_transform.transform_layers(raw_heights)
-                           if spatial_transform is not None else raw_heights)
+                heights = (bscan_transform.transform_layers(raw_heights)
+                           if bscan_transform is not None else raw_heights)
                 volume.add_layer_annotation(
                     heights,
                     name=name,
                     manual=layer_manual_maps.get(i),
                     raw_data=raw_heights
-                    if spatial_transform is not None else None,
+                    if bscan_transform is not None else None,
                 )
 
         return volume
@@ -1503,6 +1504,7 @@ class E2ESeriesStructure(E2EStructureMixin):
                 exam_time=None,
                 bscan_meta=bscan_meta,
                 intensity_transform='e2e',
+                intensity_encoding='e2e_raw',
                 e2e_metadata=self.get_eyevolume_e2e_metadata(),
             )
         return self._meta

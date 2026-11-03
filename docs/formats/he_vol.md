@@ -23,5 +23,60 @@ and software versions remain unverified.
 
 The curve clips finite input to [0, 1]. Float32 maximum (`0x7F7FFFFF`), NaN
 and infinities render black. The input array is never modified.
-`to_vol_intensity()` chooses an intensity in the middle of a display bin;
-it cannot recover intensities lost during conversion to 8-bit greys.
+`vol_linear_to_display()` implements this rendering.
+`display_to_vol_linear_approx()` chooses an intensity in the middle of a
+display bin; it cannot recover intensities lost during conversion to 8-bit
+greys. The previous names `from_vol_intensity()` and `to_vol_intensity()`
+remain deprecated aliases.
+
+## Intensity encoding and export
+
+`volume.intensity_encoding` describes the samples in `raw_data`, independently
+of display settings:
+
+| Encoding | Stored samples | `linear_data` |
+| --- | --- | --- |
+| `vol_linear` | Imported VOL-linear values | Copy of the stored values |
+| `e2e_raw` | Original decoded E2E values | Supported normalization/registration, or raises `ValueError` |
+| `display` | Display greys, such as XML-associated TIFFs | Raises `ValueError` |
+| `unknown` | Unspecified domain | Raises `ValueError` |
+
+Check `volume.linear_data_available` before requesting linear data. `data`
+continues to provide a view for every encoding, including display-only inputs
+and raw E2E fallbacks. For arrays supplied directly, declare their encoding
+with `EyeVolume(data, intensity_encoding='vol_linear')`, or use `display` for
+display greys. The default is `unknown`; dtype, value range and a selected
+display function do not establish an encoding.
+
+```python
+from eyepy.io import HeVolWriter
+
+# VOL inputs and E2E imports with supported normalization/registration:
+HeVolWriter(volume).write('linear.vol')
+
+# Display-only XML/TIFF inputs; explicitly accept approximate linear values:
+HeVolWriter(display_volume, allow_approximate=True).write('approximate.vol')
+```
+
+The writer uses linear samples directly when available, preserving float32
+values and invalid sentinels. For display-only inputs, it requires
+`allow_approximate=True` and inverts the stored display greys (uint8, or float
+greys in [0, 1]). Custom visualization settings do not affect either path.
+Unknown encodings and E2E inputs without supported conversion metadata are
+rejected even when approximation is enabled. Export also requires the usual
+VOL patient, examination, localizer and B-scan metadata; this does not establish
+compatibility with importing the output into every HEYEX version.
+
+Matching an E2E reconstruction to a paired vendor VOL export is a statement
+about that output. Gain clipping, quantization and spatial resampling mean
+the conversion is not reversible to the original E2E samples. XML/TIFF display
+greys additionally lack the original linear intensities.
+
+`.eye` files persist the raw intensity encoding and the versioned
+`bscan_transform` configuration separately from display settings. Loading
+older files accepts the previous volume-level `spatial_transform` key and
+unversioned Heidelberg B-scan configurations. For files without an explicit
+encoding, a saved B-scan transform identifies `e2e_raw`; otherwise the legacy
+`vol` and `e2e` display conventions identify their respective formats. Other
+legacy encodings remain `unknown`. New files use the explicit encoding and
+the `bscan_transform` key.

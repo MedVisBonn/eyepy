@@ -65,12 +65,12 @@ def transformed_volume():
                      meta,
                      localizer,
                      AffineTransform(),
-                     spatial_transform=HeidelbergBscanTransform(
+                     bscan_transform=HeidelbergBscanTransform(
                          [2, 3], [matrix(tx=.5), matrix()]))
 
 
 def test_gain_indexes_table_by_akt_image_instead_of_slice_order():
-    transform = series_fixture().get_spatial_transform()
+    transform = series_fixture().get_bscan_transform()
     np.testing.assert_array_equal(transform.gains, [2, 3])
 
 
@@ -95,7 +95,7 @@ def test_unavailable_registration_warns_instead_of_applying_partial_transform(
         values[0][0] = 2
         series.slices[0].folders[10012] = [folder(registration_payload(values))]
     with pytest.warns(RuntimeWarning, match='Keeping the unregistered'):
-        assert series.get_spatial_transform() is None
+        assert series.get_bscan_transform() is None
 
 
 def test_normalization_precedes_interpolation_and_display(transformed_volume):
@@ -113,7 +113,7 @@ def test_normalization_precedes_interpolation_and_display(transformed_volume):
 
 def test_single_bscan_does_not_register_the_whole_volume(
         transformed_volume, monkeypatch):
-    transform = transformed_volume.spatial_transform
+    transform = transformed_volume.bscan_transform
     calls = []
     register = transform.register
 
@@ -131,7 +131,7 @@ def test_registered_layer_coordinates_and_original_snapshot_survive_save(
         transformed_volume, tmp_path):
     volume = transformed_volume
     raw_heights = np.full((2, 6), 2.0)
-    heights = volume.spatial_transform.transform_layers(raw_heights)
+    heights = volume.bscan_transform.transform_layers(raw_heights)
     layer = volume.add_layer_annotation(heights,
                                         name='ILM',
                                         raw_data=raw_heights)
@@ -166,7 +166,7 @@ def test_e2e_reader_attaches_transform_and_aligns_layers(
     monkeypatch.setattr(series, 'get_layer_manual_maps',
                         lambda: {0: [True, False]})
     imported = series.get_volume()
-    assert imported.spatial_transform is not None
+    assert imported.bscan_transform is not None
     assert imported.meta['intensity_transform'] == 'vol'
     np.testing.assert_array_equal(imported.raw_data, raw)
     np.testing.assert_array_equal(imported.layers['ILM'].raw_data, raw_heights)

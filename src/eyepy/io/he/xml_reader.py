@@ -254,6 +254,7 @@ class HeXmlReader:
             patient=self.patient,
             bscan_meta=bscan_meta,
             intensity_transform='default',
+            intensity_encoding='display',
         )
 
     @property
