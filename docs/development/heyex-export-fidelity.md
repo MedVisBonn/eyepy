@@ -114,6 +114,59 @@ The report records image hashes and explicitly leaves full cross-format writer
 verification false. XML metadata generation, calibration and follow-up geometry
 are separate requirements.
 
+### Controlled follow-up alignment exports
+
+Four additional XML bundles exported with Spectralis Viewing Module 7.0.7.0
+isolate the XML export option **Align follow-up to reference**. They contain
+the baseline and follow-up acquisitions, each exported with the option on and
+off. Acquisition clocks agree with the earlier exports for all 122 images per
+bundle. The comparisons establish the following complete-TIFF results:
+
+| Acquisition / XML export option | E2E-derived OCT TIFFs exact | E2E-derived localizer TIFFs exact |
+| --- | ---: | ---: |
+| Baseline, on | 121 / 121 | 1 / 1 |
+| Baseline, off | 121 / 121 | 1 / 1 |
+| Follow-up, off | 121 / 121 | 0 / 1 |
+| Follow-up, on | 0 / 121 | 0 / 1 |
+
+The baseline's 122 TIFFs are byte-identical between the two settings and to
+the earlier baseline export. The follow-up's earlier 121 OCT TIFFs are
+byte-identical to the new export with alignment **on**. Every follow-up OCT
+image changes when the option is switched off, while its localizer stays
+byte-identical. That localizer's decoded pixels equal the native VOL localizer;
+our E2E localizer resampling still differs at 6843 pixels, independently of this
+export option.
+
+The complete XML documents also match byte-for-byte after replacing only the
+`ExamURL` contents. This holds between on/off controls and between the earlier
+exports and the new on controls. Consequently these XML documents do not record
+which of the two image-processing settings produced their OCT assets. A writer
+must receive this export setting explicitly; it cannot infer it from those
+metadata fields alone.
+
+The existing Type10012 normalization/registration pipeline reproduces the
+follow-up export with this option **off**. Turning the option off does not mean
+disabling Type10012 registration. Turning it on adds another OCT processing
+step, whose algorithm remains unresolved. Likewise, `get_volume(reference=...)`
+selects metric output calibration; it does not implement this extra XML export
+alignment.
+
+All 488 new reference TIFFs are re-encoded exactly from their own decoded pixels,
+including the aligned follow-up images. Thus their encoding profile is already
+supported; the aligned image-generation step is the remaining difference.
+Native rewriting of all four bundles also passes: 492 XML/asset files match
+their originals and sources remain unchanged. Unreferenced database/cache files
+in an export directory are outside the XML bundle.
+
+Run `scripts/audit_heyex_alignment_exports.py manifest.json report.json` with
+the aliases `reference_aligned`, `reference_unaligned`, `followup_aligned` and
+`followup_unaligned` mapped to XML paths. Optional `reference_old` and
+`followup_old` entries compare earlier exports. It reports per-image byte and
+pixel comparisons and checks source fingerprints, without recording patient
+fields or input paths. The separate native and TIFF verifiers exercise the
+writers and source-derived rendering; the alignment audit itself compares
+controls and does not supply an inferred alignment implementation.
+
 Run the audit with a private manifest mapping format names to alias/path pairs:
 
 ```bash
