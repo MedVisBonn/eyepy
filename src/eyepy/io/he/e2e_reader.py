@@ -1429,7 +1429,7 @@ class E2ESeriesStructure(E2EStructureMixin):
             logger.debug(
                 'There is more than one laterality stored. This is not expected.'
             )
-        return str(folders[0].data.laterality)
+        return folders[0].data.laterality.name
 
     def slo_data(self) -> Type10025:
         folders = self.folders[TypesEnum.slodata]
@@ -1450,7 +1450,8 @@ class E2ESeriesStructure(E2EStructureMixin):
                 modality=self.enface_modality(),
                 laterality=self.laterality(),
                 field_size=field_deg,
-                scan_focus=None,
+                scan_focus=self._derive_scan_focus_diopters(),
+                num_averaged=self._type39_uint8(376),
                 visit_date=None,
                 exam_time=None,
             )
@@ -1620,7 +1621,8 @@ class E2ESeriesStructure(E2EStructureMixin):
             patient = (dict(firstname=patient_data.firstname,
                             lastname=patient_data.surname,
                             patient_id=patient_data.patient_id,
-                            dob=patient_data.date_of_birth)
+                            dob=patient_data.date_of_birth,
+                            sex=patient_data.sex)
                        if patient_data is not None else {})
             exam_time = self._series_exam_time_iso()
             acquisition_key = self.get_acquisition_key()

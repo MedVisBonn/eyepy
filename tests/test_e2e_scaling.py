@@ -97,6 +97,15 @@ def test_default_volume_uses_consistent_mm_and_preserves_alignment(series):
     assert info['focus_diopters'] == pytest.approx(0.9)
 
 
+@pytest.mark.parametrize('eye', [LateralityEnum.OD, LateralityEnum.OS])
+def test_e2e_laterality_is_an_anatomical_label_not_an_enum_number(series, eye):
+    series.folders[TypesEnum.laterality][0].data.laterality = eye
+    with pytest.warns(UserWarning, match='approximate optical model'):
+        volume = series.get_volume()
+    assert volume.laterality == eye.name
+    assert volume.localizer.laterality == eye.name
+
+
 @pytest.mark.parametrize('field_deg', [20, 55])
 def test_stored_localizer_field_controls_scale_origin_and_alignment(series, field_deg):
     for sl in series.slices.values():

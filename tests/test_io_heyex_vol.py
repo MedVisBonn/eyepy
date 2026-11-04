@@ -103,7 +103,8 @@ def test_xml_export_requires_explicit_approximation_and_preserves_greys(tmp_path
     assert path.read_bytes() == b'existing file'
     # Export uses stored display greys, not a user-selected visualization.
     volume.set_intensity_transform(lambda values: np.zeros(values.shape, np.uint8))
-    HeVolWriter(volume, allow_approximate=True).write(path, overwrite=True)
+    context = HeVolExportContext(pid=1, vid=2, id='3', exam_time='2000-01-01T00:00:00')
+    HeVolWriter(volume, allow_approximate=True, export_context=context).write(path, overwrite=True)
     loaded = HeVolReader(path).volume
     np.testing.assert_array_equal(loaded.data, original)
     np.testing.assert_array_equal(volume.raw_data, original)

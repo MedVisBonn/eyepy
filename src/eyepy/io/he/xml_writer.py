@@ -11,11 +11,13 @@ import numpy as np
 
 from eyepy.io.he._native import SourceFile
 from eyepy.io.he._native import write_file
+from eyepy.io.he._xml_export import GeneratedXmlBundle
+from eyepy.io.he._xml_export import HeXmlExportContext
 from eyepy.io.he.xml_reader import HeXmlReader
 
 
 class HeXmlWriter:
-    """Rewrite a native XML document and every referenced image asset.
+    """Write a native XML bundle or generate one from an EyeVolume.
 
     An unchanged XML tree retains the exact original document bytes.
     Unchanged assets retain their original bytes, including TIFF
@@ -23,11 +25,27 @@ class HeXmlWriter:
     the observed HEYEX encoding profile. XML edits are serialized as
     XML; semantic changes cannot retain the original document's byte
     identity. The destination is a new directory.
+
+    An EyeVolume input requires explicit HeXmlExportContext. Its display
+    pixels are encoded as TIFFs and its metadata/layers form a new XML
+    document. Exact complete HEYEX metadata and follow-up alignment are
+    not yet reproduced; unsupported external alignment is rejected.
+    ``include_segmentation=False`` selects an export without layer
+    records, as in the supplied paired XML exports.
     """
 
-    def __init__(self, reader: HeXmlReader):
+    def __init__(self, reader, *, export_context: HeXmlExportContext | None = None,
+                 include_segmentation: bool = True):
+        from eyepy.core.eyevolume import EyeVolume
+
+        self._generated = None
+        if isinstance(reader, EyeVolume):
+            self._generated = GeneratedXmlBundle(reader, export_context, include_segmentation)
+            return
         if not isinstance(reader, HeXmlReader):
-            raise TypeError('Native XML writing requires a HeXmlReader')
+            raise TypeError('XML writing requires a HeXmlReader or EyeVolume')
+        if export_context is not None or not include_segmentation:
+            raise ValueError('Native XML metadata is edited through reader.xml_root, not export context')
         self.reader = reader
         self.source = reader._source
         self.assets = {}
@@ -51,6 +69,8 @@ class HeXmlWriter:
         """
         from eyepy.io.he._xml_tiff import encode_heyex_tiff
 
+        if self._generated is not None:
+            raise ValueError('Edit the source EyeVolume to replace generated images')
         if name not in self.assets:
             raise ValueError('Image is not referenced by the source XML')
         if Path(name).suffix.lower() not in {'.tif', '.tiff'}:
@@ -74,6 +94,8 @@ class HeXmlWriter:
 
     @property
     def bytes(self):
+        if self._generated is not None:
+            return self._generated.bytes
         current = ElementTree.tostring(self.reader.xml_root, encoding='utf-8')
         if current == self.reader._xml_snapshot:
             return self.source.read()
@@ -84,6 +106,8 @@ class HeXmlWriter:
 
     def write(self, path):
         """Atomically create a new directory containing the complete bundle."""
+        if self._generated is not None:
+            return self._generated.write(path)
         path = Path(path)
         if path.exists():
             raise FileExistsError('XML export destination already exists')

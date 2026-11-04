@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import datetime
+from decimal import Decimal
 import logging
 from pathlib import Path
 import xml.etree.ElementTree as ElementTree
@@ -20,6 +22,44 @@ from eyepy.io.utils import _get_first_as_str
 from eyepy.io.utils import get_bscan_spacing
 
 logger = logging.getLogger(__name__)
+
+
+def _optional_date(elements):
+    return _get_date_from_xml(elements) if elements else None
+
+
+def _image_name(reference):
+    if reference is None:
+        raise ValueError('Empty XML image reference')
+    name = reference.replace('\\', '/').rsplit('/', 1)[-1]
+    if name in {'', '.', '..'}:
+        raise ValueError('Invalid XML image filename')
+    return name
+
+
+def _acquisition_clock(image):
+    """Read a clock and UTC offset without borrowing the reference's date."""
+    node = image.find('AcquisitionTime/Time')
+    if node is None:
+        return None
+    try:
+        seconds = Decimal(node.findtext('Second'))
+        if not seconds.is_finite() or not 0 <= seconds < 60:
+            raise ValueError('Invalid XML acquisition seconds')
+        whole = int(seconds)
+        fraction = int((seconds - whole) * 1000000)
+        bias = node.findtext('UTCBias')
+        timezone = (datetime.timezone(datetime.timedelta(minutes=int(bias)))
+                    if bias is not None else None)
+        return datetime.time(int(node.findtext('Hour')), int(node.findtext('Minute')),
+                             whole, fraction, tzinfo=timezone).isoformat()
+    except (TypeError, ValueError, ArithmeticError) as error:
+        raise ValueError('Invalid XML acquisition clock') from error
+
+
+def _acquisition_fields(image, tags):
+    context = image.find('OphthalmicAcquisitionContext')
+    return {tag: context.findtext(tag) for tag in tags if context is not None and context.find(tag) is not None}
 
 
 def _get_bool_from_xml_text(element: ElementTree.Element | None) -> bool | None:
@@ -103,8 +143,8 @@ xml_format = {
         lambda x: 'OD' if x[0].text == 'R' else 'OS',
     ),
     # Examination time
-    'exam_time': ('./Patient/Study/Series/ReferenceSeries/ExamDate/Date',
-                  _get_date_from_xml),
+    'exam_time': ('./Patient/Study/Series/ExamDate/Date', _optional_date),
+    'reference_exam_date': ('./Patient/Study/Series/ReferenceSeries/ExamDate/Date', _optional_date),
     # Scan pattern type: (Not given in XML)
     #   0 = Unknown pattern,
     #   1 = Single line scan (one B-Scan only),
@@ -133,9 +173,10 @@ xml_format = {
     # Last name of the patient
     'lastname': ('./Patient/LastName', _get_first_as_str),
     # Patient's date of birth
-    'dob': ('./Patient/Birthdate/Date', _get_date_from_xml),
+    'dob': ('./Patient/Birthdate/Date', _optional_date),
+    'sex': ('./Patient/Sex', _get_first_as_str),
     # Internal visit ID used by HEYEX.
-    'vid': ('', lambda x: None),
+    'vid': ('./Patient/Study/ID', _get_first_as_int),
     # User-defined visit ID (zero terminated string). This ID can be defined
     # in the Comment-field of the Diagnosis-tab of the Examination Data
     # dialog box. The VisitID must be defined in the first row of the
@@ -145,7 +186,7 @@ xml_format = {
     'visit_id': ('', lambda x: None),
     # Date the visit took place. Identical to the date of an examination tab
     # in HEYEX.
-    'visit_date': ('./Patient/Study/StudyDate/Date', _get_date_from_xml),
+    'visit_date': ('./Patient/Study/StudyDate/Date', _optional_date),
     # Type of grid used to derive thickness data. 0 No thickness data
     # available, >0 Type of grid used to derive thickness values. Thickness
     # data is only available for ScanPattern 3 and 4.
@@ -187,7 +228,7 @@ xml_bscan_format = {
     # values are initialized to 0.
     'iv_trafo': ('', lambda x: None),
     # Bscan filename
-    'scan_name': ('./ImageData/ExamURL', lambda x: x[0].text.split('\\')[-1]),
+    'scan_name': ('./ImageData/ExamURL', lambda x: _image_name(x[0].text)),
 }
 
 
@@ -238,6 +279,11 @@ class HeXmlReader:
             bscan_meta.append(
                 EyeBscanMeta(
                     quality=parsed_values['quality'],
+                    quality_ui=parsed_values['quality'],
+                    art_mode=_get_first_as_int(bscan.findall('./OphthalmicAcquisitionContext/NumAve')),
+                    heyex_xml_acquisition_time=_acquisition_clock(bscan),
+                    heyex_xml_acquisition=_acquisition_fields(
+                        bscan, ('Resolution', 'PositionWithinTolerance', 'EDI', 'EVI')),
                     start_pos=(parsed_values['start_x'],
                                parsed_values['start_y']),
                     end_pos=(parsed_values['end_x'], parsed_values['end_y']),
@@ -259,6 +305,11 @@ class HeXmlReader:
             visit_date=self.parsed_values['visit_date'],
             exam_time=self.parsed_values['exam_time'],
             patient=self.patient,
+            id=str(self.parsed_values['id']) if self.parsed_values['id'] is not None else '',
+            reference_id=str(self.parsed_values['reference_id']) if self.parsed_values['reference_id'] is not None else '',
+            reference_exam_date=self.parsed_values['reference_exam_date'],
+            vid=self.parsed_values['vid'],
+            prog_id=self.parsed_values['prog_id'] or '',
             bscan_meta=bscan_meta,
             intensity_transform='default',
             intensity_encoding='display',
@@ -270,10 +321,12 @@ class HeXmlReader:
                     lastname=self.parsed_values['lastname'],
                     dob=self.parsed_values['dob'],
                     pid=self.parsed_values['pid'],
-                    patient_id=self.parsed_values['patient_id'])
+                    patient_id=self.parsed_values['patient_id'],
+                    sex=self.parsed_values['sex'])
 
     @property
     def localizer_meta(self) -> EyeEnfaceMeta:
+        image = self.body.find(".//ImageType[Type='LOCALIZER']..")
         return EyeEnfaceMeta(
             scale_x=self.parsed_values['scale_x_slo'],
             scale_y=self.parsed_values['scale_y_slo'],
@@ -284,13 +337,16 @@ class HeXmlReader:
             scan_focus=self.parsed_values['scan_focus'],
             visit_date=self.parsed_values['visit_date'],
             exam_time=self.parsed_values['exam_time'],
+            heyex_xml_acquisition_time=_acquisition_clock(image),
+            heyex_xml_acquisition=_acquisition_fields(
+                image, ('Resolution', 'AutoSensorGain', 'SensorGain', 'FixationTarget')),
+            num_averaged=_get_first_as_int(image.findall('./OphthalmicAcquisitionContext/NumAve')),
         )
 
     @property
     def localizer(self) -> EyeEnface:
         localizer_pattern = ".//ImageType[Type='LOCALIZER']../ImageData/ExamURL"
-        localizer_name = self.body.find(localizer_pattern).text.split(
-            '\\')[-1]
+        localizer_name = _image_name(self.body.findtext(localizer_pattern))
         import imageio.v3 as iio
         localizer = iio.imread(self.path.parent / localizer_name)
         if localizer.ndim == 3:
@@ -313,10 +369,10 @@ class HeXmlReader:
         bscans = []
         layer_heights = {}
         layer_manual = {}
+        layer_enabled = {}
         for index, bscan_root in enumerate(
                 self.body.findall(".//ImageType[Type='OCT']..")):
-            scan_name = bscan_root.find('./ImageData/ExamURL').text.split(
-                '\\')[-1]
+            scan_name = _image_name(bscan_root.findtext('./ImageData/ExamURL'))
             import imageio.v3 as iio
             img = iio.imread(self.path.parent / scan_name)
             if img.ndim == 3:
@@ -334,9 +390,12 @@ class HeXmlReader:
                 if name not in layer_heights:
                     layer_heights[name] = []
                     layer_manual[name] = []
+                    layer_enabled[name] = []
                 layer_heights[name].append((index, data))
                 layer_manual[name].append(
                     (index, _get_bool_from_xml_text(segline.find('./Manual'))))
+                layer_enabled[name].append(
+                    (index, _get_bool_from_xml_text(segline.find('./Enabled'))))
 
         data = np.stack(bscans, axis=0)
 
@@ -350,6 +409,7 @@ class HeXmlReader:
             name: [None] * data.shape[0]
             for name in layer_manual
         }
+        layer_enabled_maps = {name: [None] * data.shape[0] for name in layer_enabled}
 
         for name, heights in layer_heights.items():
             for index, layer_height in heights:
@@ -358,6 +418,9 @@ class HeXmlReader:
         for name, manual_values in layer_manual.items():
             for index, manual in manual_values:
                 layer_manual_maps[name][index] = manual
+        for name, enabled_values in layer_enabled.items():
+            for index, enabled in enabled_values:
+                layer_enabled_maps[name][index] = enabled
 
         localizer = self.localizer
         volume_meta = self.meta
@@ -376,6 +439,7 @@ class HeXmlReader:
                 height_map,
                 name=name,
                 manual=layer_manual_maps[name],
+                heyex_xml_enabled=layer_enabled_maps[name],
             )
 
         return volume

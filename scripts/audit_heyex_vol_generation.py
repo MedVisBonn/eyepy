@@ -69,6 +69,8 @@ def audit(pair):
             reference_calibration_supplied='reference_e2e' in pair,
             source_exam_time_available=volume.meta['exam_time'] is not None,
             header=dict(version_equal=generated.version == reference.version,
+                        laterality_equal=generated.scan_position == reference.scan_position,
+                        focus_equal=generated.scan_focus == reference.scan_focus,
                         bscan_versions_equal=all(a.version == b.version for a, b in zip(generated.bscans, reference.bscans)),
                         bscan_header_size_equal=generated.bscan_hdr_size == reference.bscan_hdr_size,
                         segmentation_counts_equal=all(a.num_seg == b.num_seg for a, b in zip(generated.bscans, reference.bscans)),

@@ -65,7 +65,9 @@ TIFF with a 2D uint8 grayscale image of the dimensions recorded in the XML.
 It uses the observed HEYEX RGB TIFF encoding profile and requires `eyepy[tiff]`.
 The caller supplies the rendered image; the writer does not infer its intensity
 curve or registration. Adding or changing image references is still rejected.
-Complete XML generation from a different format remains unfinished.
+`HeXmlWriter(volume, export_context=...)` also generates a new XML document
+and TIFF bundle. Its current metadata profile and limits are described below;
+complete HEYEX cross-format fidelity remains unfinished.
 
 ```python
 reader = HeXmlReader('source.xml')
@@ -73,6 +75,97 @@ writer = HeXmlWriter(reader)
 writer.replace_image(reader.bscan_meta[0]['scan_name'], rendered_bscan)
 writer.write('edited_export_directory')
 ```
+
+### Generating XML from source volumes
+
+```python
+from eyepy.io import HeXmlExportContext, HeXmlWriter
+
+context = HeXmlExportContext(
+    pid=101, study_id=202, series_id=303,
+    software_name='Example exporting application', software_version='1.0',
+    align_followup_to_reference=False,
+    visit_date='2026-01-01', utc_bias_minutes=60,
+    reference_id=302, reference_exam_date='2025-01-01',
+)
+HeXmlWriter(volume, export_context=context, include_segmentation=False).write(
+    'generated_xml_bundle')
+```
+
+The values above are illustrative context, not guessed acquisition metadata.
+The writer streams a localizer TIFF and one TIFF per B-scan from the volume's
+current uint8 display representation. It writes a new UTF-8 XML document with
+CRLF line endings and the observed field ordering. `bytes` returns that document
+alone; `write()` publishes the complete directory after every asset succeeds.
+Existing destinations are rejected and failed writes remove temporary files.
+
+The alignment choice is mandatory. An external E2E reference requires a
+receiving-database reference ID and the reference acquisition's date. A
+self-reference uses the new destination series ID. Alignment enabled for an
+external follow-up raises `NotImplementedError`; its extra image processing
+has not been reproduced. Source-backed native rewrites remain available for
+all existing bundles regardless of that setting.
+
+Identifiers, UIDs, software/equipment details, export URLs and additional
+acquisition settings can be supplied explicitly in `HeXmlExportContext`.
+Missing visit dates, patient birth dates and required reference dates raise
+rather than being replaced by unrelated dates. Naive acquisition clocks need
+an explicit UTC bias; aware clocks retain their offset, and a conflicting
+explicit bias is rejected. The observed numeric profile uses four decimal
+places for pixel scales and three for endpoints, configurable independently
+through `scale_precision` and `position_precision`.
+
+Layer output is enabled by default. It includes float32 heights, explicit
+missing values, known manual flags and imported XML enabled/disabled flags.
+Unset flags remain unspecified. `include_segmentation=False` selects the
+layer-free export seen in the private paired XMLs. Round-tripping layer text
+through float32 is tested; matching every vendor layer/text interpolation rule
+is a separate unresolved gate. Thickness-grid summaries and opaque metadata
+are not yet reconstructed by this generated writer. An ordinary readable
+bundle is not proof of complete HEYEX metadata fidelity.
+
+XML clocks are stored without inventing their acquisition date. In particular,
+`ReferenceSeries/ExamDate` belongs to the reference scan and is exposed as
+`reference_exam_date`; it is no longer mislabeled as the current scan's
+`exam_time`. XMLs without a current `Series/ExamDate` have `exam_time=None`.
+Their per-image clocks and offsets survive `.eye` serialization. Exporting
+such a display-only XML volume to VOL requires both explicit approximate
+intensity inversion and a known examination timestamp in export context.
+
+Generated E2E metadata now uses anatomical laterality labels `OD`/`OS` rather
+than converting enum values to numeric strings such as `82`. The localizer
+also carries decoded source focus and ART count. These fields are checked in
+the generated-export audits, separately from database context.
+
+Run `scripts/audit_heyex_xml_generation.py manifest.json report.json` with
+E2E/XML pairs, an explicit `align_followup_to_reference` setting and, for an
+external reference, `reference_e2e`. This generates actual bundles using source
+data and explicitly synthetic database/software/date/UTC context, re-imports
+them, and compares complete assets and metadata fields. A separate check
+re-serializes the target XML tree to isolate document formatting; target
+metadata are never passed to the source-derived generator. Both checks leave
+full cross-format verification false.
+
+In the controlled fixtures, actual generated baseline bundles with the setting
+on/off and the generated unaligned follow-up bundle all re-import successfully.
+Each has 121 complete OCT TIFFs matching its independent target byte-for-byte.
+Both baseline localizers match too; the follow-up localizer retains the known
+6843-pixel difference. Source-derived patient fields, all per-image OCT clocks,
+quality and ART counts, focus at XML precision, laterality and all serialized
+pixel-scale fields agree. Endpoint fields match at 476/484 for the baseline and
+473/484 for the follow-up; approximate metric calibration still changes some
+three-decimal endpoint values. The complete generated XML documents differ
+because metadata reconstruction and actual destination context remain
+incomplete. The audit explicitly reports enabled external alignment as
+unsupported instead of writing an incorrect aligned bundle.
+
+Separately, serializing the parsed metadata of all nine reference XML documents
+reconstructs every complete document byte-for-byte. This establishes the XML
+serialization profile, not source-only metadata derivation. Native rewriting
+also remains exact for all nine XML bundles (1035 XML/asset files) after adding
+the generator. The generated VOL audit still matches all 460 OCT arrays and
+now verifies correct laterality labels; its focus scalar is not bit-identical
+to the target, despite matching at displayed XML precision.
 
 ## Verification
 

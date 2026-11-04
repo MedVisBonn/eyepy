@@ -1,4 +1,4 @@
-__all__ = ['HeVolReader', 'HeVolWriter', 'HeVolExportContext', 'HeXmlReader', 'HeE2eReader', 'HeE2eWriter', 'HeXmlWriter']
+__all__ = ['HeVolReader', 'HeVolWriter', 'HeVolExportContext', 'HeXmlReader', 'HeE2eReader', 'HeE2eWriter', 'HeXmlWriter', 'HeXmlExportContext']
 
 _LAZY_IMPORTS = {
     'HeVolReader': '.vol_reader',
@@ -8,6 +8,7 @@ _LAZY_IMPORTS = {
     'HeE2eReader': '.e2e_reader',
     'HeE2eWriter': '.e2e_writer',
     'HeXmlWriter': '.xml_writer',
+    'HeXmlExportContext': '._xml_export',
 }
 
 
