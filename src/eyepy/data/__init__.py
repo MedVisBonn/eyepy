@@ -69,7 +69,12 @@ def load(name: str) -> EyeVolume:
 
             urllib.request.urlretrieve(url, download_path)
             with zipfile.ZipFile(download_path, 'r') as zip_ref:
-                zip_ref.extractall(EYEPY_DATA_DIR)
+                target = EYEPY_DATA_DIR.resolve()
+                for member in zip_ref.namelist():
+                    member_path = (target / member).resolve()
+                    if target not in member_path.parents and member_path != target:
+                        raise ValueError(f"Unsafe path in archive: {member}")
+                    zip_ref.extract(member, EYEPY_DATA_DIR)
             download_path.unlink()
         # Assume XML inside extracted folder for zip samples
         return import_func(data_path / 'metaclean.xml')
