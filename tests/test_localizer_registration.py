@@ -92,8 +92,11 @@ def test_localizer_registration_and_raw_pixels_survive_eye_save_load(tmp_path):
 
 def test_materializing_an_enface_transform_does_not_register_twice():
     image = localizer([[1, 0, 2], [0, 1, 0]])
+    image.meta['raw_calibration'] = dict(scale_x=2, scale_y=2, scale_unit='pixel')
     transformed = image.transform(np.eye(3))
     assert transformed.spatial_transform is None
+    assert 'raw_calibration' not in transformed.meta
+    assert image.meta['raw_calibration']['scale_x'] == 2
     np.testing.assert_array_equal(transformed.raw_data, image.registered_data)
     np.testing.assert_array_equal(transformed.data, image.data)
 
@@ -109,7 +112,7 @@ def test_reader_raw_localizer_view_does_not_inherit_cached_registration(slice_lo
         image_folders = sl.folders
     image_folders[TypesEnum.image] = [SimpleNamespace(data=SimpleNamespace(
         data=pixels, height=8, width=8, type=33620481))]
-    series.folders[TypesEnum.slodata] = [SimpleNamespace(data=SimpleNamespace(
+    series.folders[TypesEnum.slodata] = [SimpleNamespace(get_bytes=lambda: bytes(100), data=SimpleNamespace(
         transform=[1, 0, 2, 0, 1, 0]))]
     series._localizer_meta = EyeEnfaceMeta(scale_x=1, scale_y=1, scale_unit='pixel')
     registered = series.get_localizer(registered=True)
@@ -147,7 +150,7 @@ def test_reader_keeps_bscan_shift_separate_and_updates_overlay_geometry(
     monkeypatch.setattr(series, 'get_bscans', lambda: np.ones((2, 3, 6), np.float32))
     monkeypatch.setattr(series, 'get_bscan_transform',
                         lambda: bscan_transform if apply_registration else None)
-    def get_localizer(registered=False):
+    def get_localizer(registered=False, reference=None):
         assert registered == apply_registration
         if registered:
             return image

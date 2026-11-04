@@ -798,6 +798,7 @@ class EyeEnface:
             updated_meta = self.meta.copy()
             # This operation materializes registration before the new transform.
             updated_meta.pop('spatial_transform', None)
+            updated_meta.pop('raw_calibration', None)
             if 'scale_x' in updated_meta:
                 updated_meta['scale_x'] = updated_meta['scale_x'] / scale_x
             if 'scale_y' in updated_meta:

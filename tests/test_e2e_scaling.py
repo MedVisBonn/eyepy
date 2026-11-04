@@ -1,10 +1,15 @@
+from copy import deepcopy
 from io import BytesIO
 import struct
 from types import SimpleNamespace
+from uuid import UUID
 
 import numpy as np
 import pytest
 
+from eyepy import EyeVolume
+from eyepy.core.heidelberg import HeidelbergBscanTransform
+from eyepy.core.heidelberg import HeidelbergLocalizerTransform
 from eyepy.io.he.e2e_format import LateralityEnum
 from eyepy.io.he.e2e_format import TypesEnum
 from eyepy.io.he.e2e_reader import E2EFolder
@@ -254,3 +259,114 @@ def test_invalid_optical_denominator_is_rejected(series, monkeypatch):
     monkeypatch.setattr(series, '_derive_scan_focus_diopters', lambda: -100)
     with pytest.raises(ValueError, match='non-positive scale'):
         series._mm_per_degree()
+
+
+@pytest.fixture
+def referenced_series(series, monkeypatch):
+    baseline = deepcopy(series)
+    progression = UUID('12345678-1234-5678-1234-567812345678').bytes_le
+    baseline_key = progression + struct.pack('<Q', 116444736000000000)
+    followup_key = progression + struct.pack('<Q', 116444736000000001)
+    for source, key in ((baseline, baseline_key), (series, followup_key)):
+        source.folders[10005] = [SimpleNamespace(
+            get_bytes=lambda key=key: key,
+            data=SimpleNamespace(examination_time='1970-01-01T00:00:00'))]
+    series.folders[10025] = [SimpleNamespace(
+        get_bytes=lambda: bytes(8) + baseline_key + bytes(68))]
+    monkeypatch.setattr(series, '_mm_per_degree', lambda: 0.3)
+    monkeypatch.setattr(baseline, '_mm_per_degree', lambda: 0.25)
+    # Only follow-up pixels should be resampled, never the baseline image.
+    series.folders[TypesEnum.image][0].data.data = np.full((32, 64), 100, dtype=np.uint8)
+    baseline.folders[TypesEnum.image][0].data.data = np.full((32, 64), 200, dtype=np.uint8)
+    transform = HeidelbergLocalizerTransform([[1, 0, 2], [0, 1, -3]])
+    monkeypatch.setattr(series, 'get_localizer_transform', lambda: transform)
+    bscan_transform = HeidelbergBscanTransform(
+        [1, 1], [[[1, 0, 0], [0, 1, 0]]] * 2)
+    monkeypatch.setattr(series, 'get_bscan_transform', lambda: bscan_transform)
+    return series, baseline
+
+
+def test_reference_output_calibration_preserves_raw_frame_and_pixels(referenced_series, tmp_path):
+    source, baseline = referenced_series
+    raw_localizer = source.get_localizer()
+    with pytest.warns(UserWarning, match='approximate optical model'):
+        volume = source.get_volume(reference=baseline)
+    localizer = volume.localizer
+    assert (localizer.scale_x, localizer.scale_y) == pytest.approx((30 * .25 / 64, 30 * .25 / 32))
+    assert localizer.meta['raw_calibration'] == {
+        'scale_x': 30 * .3 / 64, 'scale_y': 30 * .3 / 32,
+        'scale_unit': 'mm', 'field_size': 30}
+    assert volume.meta['e2e_output_reference_key'] == baseline.get_acquisition_key().as_dict()
+    assert 'raw_calibration' not in raw_localizer.meta
+    assert raw_localizer.scale_x == 30 * .3 / 64
+    np.testing.assert_array_equal(localizer.raw_data, raw_localizer.raw_data)
+    assert localizer.data[16, 32] == 100
+    np.testing.assert_array_equal(source.get_localizer().raw_data, raw_localizer.raw_data)
+    np.testing.assert_array_equal(baseline.get_localizer().raw_data, 200)
+
+    # Angular endpoints -> source pixels -> inverse translation -> reference mm.
+    expected_pixels = np.array([[5 / 30 * 64 - 2, 14 / 30 * 32 + 3],
+                                [25 / 30 * 64 - 2, 14 / 30 * 32 + 3]])
+    expected_positions = expected_pixels * [30 * .25 / 64, 30 * .25 / 32]
+    meta = volume.meta['bscan_meta'][0]
+    np.testing.assert_allclose([meta['start_pos'], meta['end_pos']], expected_positions)
+    assert meta['raw_start_pos'] == pytest.approx((5 * .3, 14 * .3))
+    assert meta['raw_end_pos'] == pytest.approx((25 * .3, 14 * .3))
+    assert volume.scale_x == pytest.approx(20 * .25 / 16)
+    assert volume.scale_z == pytest.approx(2 * .25)
+    np.testing.assert_allclose(volume.localizer_transform([[0, 1], [15, 1]]), expected_pixels)
+
+    volume.save(tmp_path / 'reference.eye')
+    restored = EyeVolume.load(tmp_path / 'reference.eye')
+    assert restored.localizer.meta == localizer.meta
+    assert restored.meta['e2e_output_reference_key'] == volume.meta['e2e_output_reference_key']
+    np.testing.assert_array_equal(restored.localizer.raw_data, localizer.raw_data)
+    np.testing.assert_array_equal(restored.localizer.data, localizer.data)
+
+
+def test_missing_reference_warns_without_relabeling_source_calibration(referenced_series):
+    source, _ = referenced_series
+    with pytest.warns(RuntimeWarning, match='reference= is supplied'):
+        localizer = source.get_localizer(registered=True)
+    assert localizer.scale_x == 30 * .3 / 64
+    assert 'raw_calibration' not in localizer.meta
+    assert 'e2e_output_reference_key' not in localizer.meta
+
+
+@pytest.mark.parametrize('registered,has_transform', [(False, True), (True, False)])
+def test_reference_requires_registered_output(referenced_series, monkeypatch, registered, has_transform):
+    source, baseline = referenced_series
+    if not has_transform:
+        monkeypatch.setattr(source, 'get_localizer_transform', lambda: None)
+    with pytest.raises(ValueError, match='requires registered localizer output'):
+        source.get_localizer(registered=registered, reference=baseline)
+
+
+def test_wrong_reference_is_rejected(referenced_series):
+    source, _ = referenced_series
+    with pytest.raises(ValueError, match='required but was not supplied'):
+        source.get_localizer(registered=True, reference=source)
+
+
+@pytest.mark.parametrize('failure,message', [
+    ('shape', 'Different-sized'), ('eye', 'laterality differs'),
+    ('unit', 'units differ'), ('scale', 'Invalid E2E reference'),
+    ('chain', 'required but was not supplied'),
+])
+def test_unsupported_reference_frames_are_rejected(referenced_series, monkeypatch, failure, message):
+    source, baseline = referenced_series
+    if failure == 'shape':
+        baseline.folders[TypesEnum.image][0].data.data = np.zeros((16, 32), dtype=np.uint8)
+    elif failure == 'eye':
+        baseline.folders[TypesEnum.laterality][0].data.laterality = LateralityEnum.OS
+    elif failure in {'unit', 'scale'}:
+        meta = baseline.localizer_meta(32, 64)
+        meta['scale_unit' if failure == 'unit' else 'scale_x'] = '°' if failure == 'unit' else float('nan')
+    else:
+        baseline.folders[10025] = source.folders[10025]
+        # Reference a different timestamp rather than itself.
+        raw = bytearray(baseline.folders[10025][0].get_bytes())
+        struct.pack_into('<Q', raw, 24, 116444736000000002)
+        baseline.folders[10025] = [SimpleNamespace(get_bytes=lambda: bytes(raw))]
+    with pytest.raises(ValueError, match=message):
+        source.get_localizer(registered=True, reference=baseline)

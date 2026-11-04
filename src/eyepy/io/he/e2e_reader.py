@@ -1239,8 +1239,14 @@ class E2ESeriesStructure(E2EStructureMixin):
                 stacklevel=2)
             return None
 
-    def get_volume(self) -> EyeVolume:
-        """Return EyeVolume object for the series."""
+    def get_volume(self, *, reference: E2ESeriesStructure | None = None) -> EyeVolume:
+        """Return the series, optionally calibrated in its reference frame.
+
+        ``reference`` must be the acquisition explicitly identified by
+        Type10025. Keep its reader open as well. This selects the output
+        localizer calibration; it does not replace raw data or establish
+        the exact vendor metric model.
+        """
         ## Check if scan is a volume scan
         volume_meta = self.get_meta()
 
@@ -1259,13 +1265,16 @@ class E2ESeriesStructure(E2EStructureMixin):
         volume_meta = self.get_meta().copy()
         volume_meta['intensity_encoding'] = 'e2e_raw'
         bscan_transform = self.get_bscan_transform()
-        localizer = self.get_localizer(registered=bscan_transform is not None)
+        localizer = self.get_localizer(registered=bscan_transform is not None,
+                                       reference=reference)
         if bscan_transform is not None:
             volume_meta['intensity_transform'] = 'vol'
         if localizer.spatial_transform is not None:
             volume_meta['bscan_meta'] = self._registered_bscan_positions(
                 volume_meta['bscan_meta'], localizer)
             volume_meta['localizer_coordinate_frame'] = 'registered'
+            if 'e2e_output_reference_key' in localizer.meta:
+                volume_meta['e2e_output_reference_key'] = localizer.meta['e2e_output_reference_key']
             if volume_meta['scale_unit'] == volume_meta['bscan_meta'][0]['pos_unit']:
                 first = volume_meta['bscan_meta'][0]
                 volume_meta['scale_x'] = float(np.linalg.norm(
@@ -1305,17 +1314,21 @@ class E2ESeriesStructure(E2EStructureMixin):
         these endpoints; its lateral shifts must not be added again.
         """
         result = []
-        scale = np.array([localizer.scale_x, localizer.scale_y])
+        output_scale = np.array([localizer.scale_x, localizer.scale_y])
+        raw_calibration = localizer.meta.get('raw_calibration', localizer.meta)
+        source_scale = np.array([raw_calibration['scale_x'], raw_calibration['scale_y']])
         for original in metadata:
             meta = original.copy()
-            offset = (scale * np.array(localizer.shape[::-1]) / 2
-                      if meta['pos_unit'] == '°' else np.zeros(2))
+            source_offset = (source_scale * np.array(localizer.shape[::-1]) / 2
+                             if meta['pos_unit'] == '°' else np.zeros(2))
+            output_offset = (output_scale * np.array(localizer.shape[::-1]) / 2
+                             if meta['pos_unit'] == '°' else np.zeros(2))
             for key in ('start_pos', 'end_pos'):
                 meta['raw_' + key] = tuple(original[key])
-                source = (np.asarray(original[key]) + offset) / scale
+                source = (np.asarray(original[key]) + source_offset) / source_scale
                 target = localizer.spatial_transform.source_to_output(
                     source, localizer.shape)
-                meta[key] = tuple(target * scale - offset)
+                meta[key] = tuple(target * output_scale - output_offset)
             result.append(meta)
         return result
 
@@ -1504,8 +1517,16 @@ class E2ESeriesStructure(E2EStructureMixin):
             raise ValueError('Multiple supplied E2E acquisitions match the reference key')
         return next(iter(matches.values()))
 
-    def get_localizer(self, registered: bool = False) -> EyeEnface:
-        """Return EyeEnface object for the localizer image."""
+    def get_localizer(self, registered: bool = False, *,
+                      reference: E2ESeriesStructure | None = None) -> EyeEnface:
+        """Return the localizer with optional reference-frame calibration.
+
+        For an explicit reference, ``meta`` describes registered pixels
+        and ``meta['raw_calibration']`` retains the acquisition's own
+        pixel scales and units. Registration still samples this series'
+        image, never the reference image. Different-sized reference
+        grids and chained references are not yet supported.
+        """
         try:
             folders = self.folders[TypesEnum.image]
             if len(folders) > 1:
@@ -1513,22 +1534,54 @@ class E2ESeriesStructure(E2EStructureMixin):
                     'There is more than one enface localizer image stored. This is not expected.'
                 )
 
-            return EyeEnface(folders[0].data.data,
-                             self.localizer_meta(height=folders[0].data.height,
-                                                 width=folders[0].data.width).copy(),
-                             spatial_transform=self.get_localizer_transform()
-                             if registered else None)
+            data = folders[0].data.data
         except KeyError:
             if self.n_bscans == 1:
                 slice_struct = next(iter(self.slices.values()))
                 data = slice_struct.get_localizer()
-                return EyeEnface(
-                    data, self.localizer_meta(*data.shape).copy(),
-                    spatial_transform=self.get_localizer_transform()
-                    if registered else None)
             else:
                 raise ValueError(
                     'There is no localizer/fundus image in the E2E file.')
+
+        meta = self.localizer_meta(*data.shape).copy()
+        transform = self.get_localizer_transform() if registered else None
+        if reference is not None:
+            if not registered or transform is None:
+                raise ValueError('Reference calibration requires registered localizer output')
+            if self.resolve_reference([reference]) is not reference:
+                raise ValueError('Supplied acquisition does not match the explicit E2E reference')
+            # A reference that itself needs another acquisition would require
+            # a composed grid/calibration, not its raw scales.
+            reference.resolve_reference()
+            reference_localizer = reference.get_localizer()
+            if reference_localizer.shape != data.shape:
+                raise ValueError('Different-sized E2E reference localizer grids are not supported')
+            if reference_localizer.laterality != self.laterality():
+                raise ValueError('E2E reference localizer laterality differs from the acquisition')
+            if reference_localizer.scale_unit != meta['scale_unit']:
+                raise ValueError('E2E reference localizer calibration units differ')
+            meta['raw_calibration'] = {
+                key: meta[key] for key in ('scale_x', 'scale_y', 'scale_unit', 'field_size')}
+            for key in ('scale_x', 'scale_y'):
+                value = reference_localizer.meta[key]
+                if not np.isfinite(value) or value <= 0:
+                    raise ValueError('Invalid E2E reference localizer calibration')
+                meta[key] = value
+            meta['field_size'] = reference_localizer.meta['field_size']
+            key = reference.get_acquisition_key()
+            meta['e2e_output_reference_key'] = key.as_dict() if key is not None else None
+        elif transform is not None and self._has_external_reference():
+            warnings.warn(
+                'E2E registered localizer references another acquisition; output metric '
+                'calibration uses this acquisition until reference= is supplied. '
+                'Raw pixels and calibration are preserved.',
+                RuntimeWarning, stacklevel=2)
+        return EyeEnface(data, meta, spatial_transform=transform)
+
+    def _has_external_reference(self) -> bool:
+        """Whether Type10025 identifies a different acquisition."""
+        key = self.get_reference_key()
+        return key is not None and key != self.get_acquisition_key()
 
     def get_bscan_meta(self) -> list[EyeBscanMeta]:
         """Return EyeBscanMeta objects for all B-scans in the series."""

@@ -155,6 +155,7 @@ with HeE2eReader('baseline.e2e') as baseline_reader, HeE2eReader('followup.e2e')
     baseline = baseline_reader.series[0]
     followup = followup_reader.series[0]
     reference = followup.resolve_reference([baseline, followup])
+    volume = followup.get_volume(reference=reference)
 ```
 
 Keep both readers open while accessing their series. `resolve_reference()`
@@ -165,9 +166,42 @@ raise `ValueError`; filenames and scan dates are never used to guess a match.
 `get_acquisition_key()` and `get_reference_key()` expose the immutable keys for
 applications that manage their own acquisition index.
 
-This resolves provenance only. It does not change calibration or establish an
-exact metric conversion. In the private paired fixtures the follow-up resolves
-to the supplied baseline, while four other series have no reference records.
+Passing the resolved acquisition to `get_volume(reference=...)` uses its
+localizer scales for the registered output grid. `get_localizer(registered=True,
+reference=...)` provides the same operation for the localizer alone. Pixels
+still come from the follow-up image. Its own calibration remains in
+`localizer.meta['raw_calibration']`; the usual `scale_x`, `scale_y`, `scale_unit`
+and `field_size` describe the registered output. B-scan `raw_start_pos` and
+`raw_end_pos` remain in the acquisition's metric frame. Both calibration and
+reference provenance survive `.eye` serialization.
+Materializing registration with `EyeEnface.transform()` removes the old raw
+calibration because the returned object's raw pixels are now the transformed
+output.
+
+The input pixel position is computed with the acquisition's scale, transformed
+to output pixels, then converted to physical coordinates with the reference's
+scale. Replacing both scales with the reference scale would incorrectly change
+the input pixel positions. No target VOL/XML scale is used. Both acquisitions
+still use the documented approximate optical model: this corrects the reference
+frame, not the unresolved vendor metric equation.
+
+Explicit references must match the native key and eye. Different-sized grids,
+different units and references that themselves need an external reference are
+rejected until their composition is implemented. Without `reference=`, the
+reader retains its prior acquisition-based metric approximation and warns when
+the registered localizer identifies another acquisition. Raw views do not need
+the reference and remain readable independently.
+
+In the private paired fixtures the follow-up resolves to the supplied baseline,
+while four other series have no reference records. The generated VOL audit
+accepts an optional `reference_e2e` source path per manifest pair; the resolver
+validates it before use. The paired VOL remains a verification input only.
+
+Using the supplied baseline reduces the follow-up's maximum endpoint difference
+from about 0.2895 mm to 0.00006284 mm. The remaining error is consistent with
+the still approximate metric calibration; endpoint bytes are not exact. All
+460 generated OCT arrays remain bit-identical to the paired VOLs, and the
+follow-up's 6843 localizer pixel differences remain visible in the report.
 
 ### Patient metadata
 

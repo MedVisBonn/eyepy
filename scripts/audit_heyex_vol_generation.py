@@ -11,6 +11,7 @@ does not establish full writer fidelity.
 from __future__ import annotations
 
 import argparse
+from contextlib import ExitStack
 import gc
 import json
 from pathlib import Path
@@ -32,9 +33,14 @@ def audit(pair):
         output = Path(temporary) / 'generated.vol'
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', UserWarning)
-            with HeE2eReader(pair['e2e']) as reader:
+            with ExitStack() as sources:
+                reader = sources.enter_context(HeE2eReader(pair['e2e']))
                 series, = (s for s in reader.series if s.get_bscan_meta())
-                volume = series.get_volume()
+                reference_series = None
+                if 'reference_e2e' in pair:
+                    reference_reader = sources.enter_context(HeE2eReader(pair['reference_e2e']))
+                    reference_series = series.resolve_reference(reference_reader.series)
+                volume = series.get_volume(reference=reference_series)
                 # These are test-context values, never read from the target.
                 context = HeVolExportContext(pid=1, vid=1, id='1', reference_id='1',
                                              visit_date='2000-01-01T00:00:00',
@@ -60,6 +66,7 @@ def audit(pair):
         return dict(
             context='synthetic receiving-database IDs and visit timestamp; not verified',
             full_cross_format_writer_verified=False,
+            reference_calibration_supplied='reference_e2e' in pair,
             source_exam_time_available=volume.meta['exam_time'] is not None,
             header=dict(version_equal=generated.version == reference.version,
                         bscan_versions_equal=all(a.version == b.version for a, b in zip(generated.bscans, reference.bscans)),

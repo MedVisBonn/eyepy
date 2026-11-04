@@ -125,7 +125,7 @@ def test_raw_e2e_fallback_displays_without_claiming_linear_conversion(monkeypatc
     series = E2ESeriesStructure(1)
     monkeypatch.setattr(series, 'get_meta', lambda: source.meta)
     monkeypatch.setattr(series, 'get_bscans', lambda: source.raw_data)
-    monkeypatch.setattr(series, 'get_localizer', lambda registered: source.localizer)
+    monkeypatch.setattr(series, 'get_localizer', lambda registered, reference=None: source.localizer)
     monkeypatch.setattr(series, 'get_layers', lambda: {})
     monkeypatch.setattr(series, 'get_layer_manual_maps', lambda: {})
     with pytest.warns(RuntimeWarning, match='normalization/registration unavailable'):
